@@ -46,6 +46,14 @@ class Command(BaseCommand):
         created_salaries = 0
         skipped_blank = 0
 
+        def num(val):
+            if val is None or str(val).startswith("#"):
+                return 0
+            try:
+                return float(val)
+            except (TypeError, ValueError):
+                return 0
+
         for row in ws.iter_rows(min_row=3, values_only=True):
             emp_id, name, designation = row[0], row[1], row[2]
             if not emp_id:
@@ -54,7 +62,13 @@ class Command(BaseCommand):
                 skipped_blank += 1
                 continue
 
-            net_payable = row[14] or 0
+            (
+                present_days, absent_days, sundays,
+                base_salary, per_day_rate, earned_base_salary,
+                attendance_allowance, total_gross_salary,
+                previous_advance, new_advance_taken, advance_deduction,
+                net_payable_salary, status,
+            ) = row[3], row[4], row[5], row[6], row[7], row[8], row[9], row[10], row[11], row[12], row[13], row[14], row[15]
 
             driver, created = Driver.objects.get_or_create(
                 cnic=f"TEST-{emp_id}",
@@ -78,7 +92,24 @@ class Command(BaseCommand):
             salary, s_created = DriverSalary.objects.get_or_create(
                 driver=driver,
                 month=salary_month,
-                defaults={"salary_amount": net_payable, "paid": False},
+                defaults={
+                    "emp_id": emp_id,
+                    "designation": designation,
+                    "present_days": int(num(present_days)),
+                    "absent_days": int(num(absent_days)),
+                    "sundays": int(num(sundays)),
+                    "base_salary": num(base_salary),
+                    "per_day_rate": num(per_day_rate),
+                    "earned_base_salary": num(earned_base_salary),
+                    "attendance_allowance": num(attendance_allowance),
+                    "total_gross_salary": num(total_gross_salary),
+                    "previous_advance": num(previous_advance),
+                    "new_advance_taken": num(new_advance_taken),
+                    "advance_deduction": num(advance_deduction),
+                    "net_payable_salary": num(net_payable_salary),
+                    "status": status or "Active",
+                    "paid": False,
+                },
             )
             if s_created:
                 created_salaries += 1

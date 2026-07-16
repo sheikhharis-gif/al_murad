@@ -8,7 +8,7 @@
             <h3 class="fw-bold text-dark mb-1">
                 <i class="bi bi-cash-coin text-primary me-2"></i>Salary Report
             </h3>
-            <p class="text-muted small mb-0">Monthly driver salary records and payment status.</p>
+            <p class="text-muted small mb-0">Monthly payroll: attendance, base salary, allowances, advances and net payable.</p>
         </div>
         <div>
             <a href="{% url 'salary_add' %}" class="btn btn-primary px-4 shadow-sm fw-bold rounded-3">
@@ -18,11 +18,11 @@
     </div>
 
     <div class="row g-3 mb-4">
-        <div class="col-md-4">
+        <div class="col-md-3">
             <div class="card border-0 shadow-sm rounded-4 p-3 border-start border-primary border-4">
                 <div class="d-flex align-items-center">
                     <div class="bg-primary-subtle p-3 rounded-circle me-3">
-                        <i class="bi bi-receipt text-primary fs-4"></i>
+                        <i class="bi bi-people text-primary fs-4"></i>
                     </div>
                     <div>
                         <h6 class="text-muted small mb-1">Total Records</h6>
@@ -31,49 +31,92 @@
                 </div>
             </div>
         </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm rounded-4 p-3 border-start border-success border-4">
+                <div class="d-flex align-items-center">
+                    <div class="bg-success-subtle p-3 rounded-circle me-3">
+                        <i class="bi bi-cash-stack text-success fs-4"></i>
+                    </div>
+                    <div>
+                        <h6 class="text-muted small mb-1">Total Net Payout</h6>
+                        <h4 class="fw-bold mb-0">Rs {{ total_payout|floatformat:0 }}</h4>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
         <div class="card-header bg-white border-0 py-3 px-4 d-flex justify-content-between align-items-center border-bottom">
-            <h5 class="fw-bold mb-0 text-dark">Salary Records</h5>
+            <h5 class="fw-bold mb-0 text-dark">Salary Engine</h5>
             <div class="input-group w-auto">
                 <span class="input-group-text bg-light border-0"><i class="bi bi-search"></i></span>
-                <input type="text" id="salarySearch" class="form-control bg-light border-0 small" placeholder="Search driver name...">
+                <input type="text" id="salarySearch" class="form-control bg-light border-0 small" placeholder="Search driver or emp id...">
             </div>
         </div>
 
         <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0 custom-salary-table">
+            <table class="table table-hover align-middle mb-0 custom-salary-table text-nowrap">
                 <thead class="bg-light">
                     <tr class="text-muted small text-uppercase fw-bold">
-                        <th class="ps-4">Driver</th>
+                        <th class="ps-4">Emp ID</th>
+                        <th>Employee Name</th>
+                        <th>Designation</th>
                         <th>Month</th>
-                        <th class="text-end">Salary Amount</th>
+                        <th class="text-end">Present</th>
+                        <th class="text-end">Absent</th>
+                        <th class="text-end">Sundays</th>
+                        <th class="text-end">Base Salary</th>
+                        <th class="text-end">Per Day Rate</th>
+                        <th class="text-end">Earned Base</th>
+                        <th class="text-end">Attendance Allowance</th>
+                        <th class="text-end">Total Gross</th>
+                        <th class="text-end">Previous Advance</th>
+                        <th class="text-end">New Advance</th>
+                        <th class="text-end">Advance Deduction</th>
+                        <th class="text-end">Net Payable</th>
                         <th class="text-center">Status</th>
+                        <th class="text-center">Paid</th>
                         <th class="text-end pe-4">Actions</th>
                     </tr>
                 </thead>
                 <tbody id="salaryTableBody">
                     {% for s in salaries %}
                     <tr>
-                        <td class="ps-4">
+                        <td class="ps-4 fw-semibold">{{ s.emp_id|default:"---" }}</td>
+                        <td>
                             <div class="d-flex align-items-center">
-                                <div class="avatar-circle me-3 bg-primary-subtle text-primary fw-bold">
+                                <div class="avatar-circle me-2 bg-primary-subtle text-primary fw-bold">
                                     {{ s.driver.name|slice:":1"|upper }}
                                 </div>
-                                <h6 class="fw-bold text-dark mb-0">{{ s.driver.name }}</h6>
+                                <span class="fw-bold text-dark">{{ s.driver.name }}</span>
                             </div>
                         </td>
+                        <td>{{ s.designation }}</td>
                         <td>{{ s.month|date:"F Y" }}</td>
-                        <td class="text-end fw-bold">Rs {{ s.salary_amount|floatformat:0 }}</td>
+                        <td class="text-end">{{ s.present_days }}</td>
+                        <td class="text-end">{{ s.absent_days }}</td>
+                        <td class="text-end">{{ s.sundays }}</td>
+                        <td class="text-end">{{ s.base_salary|floatformat:0 }}</td>
+                        <td class="text-end">{{ s.per_day_rate|floatformat:0 }}</td>
+                        <td class="text-end">{{ s.earned_base_salary|floatformat:0 }}</td>
+                        <td class="text-end">{{ s.attendance_allowance|floatformat:0 }}</td>
+                        <td class="text-end fw-semibold">{{ s.total_gross_salary|floatformat:0 }}</td>
+                        <td class="text-end">{{ s.previous_advance|floatformat:0 }}</td>
+                        <td class="text-end">{{ s.new_advance_taken|floatformat:0 }}</td>
+                        <td class="text-end">{{ s.advance_deduction|floatformat:0 }}</td>
+                        <td class="text-end fw-bold text-success">Rs {{ s.net_payable_salary|floatformat:0 }}</td>
+                        <td class="text-center">
+                            <span class="badge bg-info-subtle text-info-emphasis rounded-pill px-2">{{ s.status }}</span>
+                        </td>
                         <td class="text-center">
                             {% if s.paid %}
-                                <span class="badge bg-success-subtle text-success rounded-pill px-3 py-1 fw-bold">
-                                    <i class="bi bi-check-circle-fill me-1"></i> Paid
+                                <span class="badge bg-success-subtle text-success rounded-pill px-2 fw-bold">
+                                    <i class="bi bi-check-circle-fill me-1"></i>Paid
                                 </span>
                             {% else %}
-                                <span class="badge bg-warning-subtle text-warning-emphasis rounded-pill px-3 py-1 fw-bold">
-                                    <i class="bi bi-hourglass-split me-1"></i> Pending
+                                <span class="badge bg-warning-subtle text-warning-emphasis rounded-pill px-2 fw-bold">
+                                    <i class="bi bi-hourglass-split me-1"></i>Pending
                                 </span>
                             {% endif %}
                         </td>
@@ -90,7 +133,7 @@
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="5" class="text-center py-5">
+                        <td colspan="19" class="text-center py-5">
                             <div class="py-4 text-muted">
                                 <i class="bi bi-cash-coin display-1 opacity-25"></i>
                                 <h5 class="mt-3">No salary records found.</h5>
@@ -107,24 +150,26 @@
 
 <style>
     .custom-salary-table thead th {
-        font-size: 0.75rem;
-        padding: 1.1rem 0.75rem;
+        font-size: 0.72rem;
+        padding: 1rem 0.75rem;
         background-color: #f8fafc;
     }
     .custom-salary-table tbody td {
-        padding: 1rem 0.75rem;
+        padding: 0.85rem 0.75rem;
         border-bottom: 1px solid #f1f5f9;
+        font-size: 0.85rem;
     }
     .btn-white { background-color: #fff; border: none; }
     .btn-white:hover { background-color: #f8fafc; }
     .avatar-circle {
-        width: 40px;
-        height: 40px;
+        width: 32px;
+        height: 32px;
         border-radius: 50%;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 1.1rem;
+        font-size: 0.9rem;
+        flex-shrink: 0;
     }
     .custom-salary-table tr:hover { background-color: #fcfcfc; }
 </style>

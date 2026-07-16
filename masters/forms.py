@@ -74,7 +74,21 @@ class DriverSalaryForm(forms.ModelForm):
         widgets = {
             "driver": forms.Select(attrs={"class": "form-select"}),
             "month": forms.DateInput(attrs={"class": "form-control", "type": "date"}),
-            "salary_amount": forms.NumberInput(attrs={"class": "form-control", "step": "0.01"}),
+            "emp_id": forms.TextInput(attrs={"class": "form-control"}),
+            "designation": forms.TextInput(attrs={"class": "form-control"}),
+            "present_days": forms.NumberInput(attrs={"class": "form-control"}),
+            "absent_days": forms.NumberInput(attrs={"class": "form-control"}),
+            "sundays": forms.NumberInput(attrs={"class": "form-control"}),
+            "base_salary": forms.NumberInput(attrs={"class": "form-control", "step": "0.01"}),
+            "per_day_rate": forms.NumberInput(attrs={"class": "form-control", "step": "0.01"}),
+            "earned_base_salary": forms.NumberInput(attrs={"class": "form-control", "step": "0.01"}),
+            "attendance_allowance": forms.NumberInput(attrs={"class": "form-control", "step": "0.01"}),
+            "total_gross_salary": forms.NumberInput(attrs={"class": "form-control", "step": "0.01"}),
+            "previous_advance": forms.NumberInput(attrs={"class": "form-control", "step": "0.01"}),
+            "new_advance_taken": forms.NumberInput(attrs={"class": "form-control", "step": "0.01"}),
+            "advance_deduction": forms.NumberInput(attrs={"class": "form-control", "step": "0.01"}),
+            "net_payable_salary": forms.NumberInput(attrs={"class": "form-control", "step": "0.01"}),
+            "status": forms.TextInput(attrs={"class": "form-control"}),
             "paid": forms.CheckboxInput(attrs={"class": "form-check-input"}),
         }
 

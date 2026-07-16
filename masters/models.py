@@ -308,7 +308,26 @@ class Route(models.Model):
 class DriverSalary(models.Model):
     driver = models.ForeignKey(Driver, on_delete=models.CASCADE)
     month = models.DateField()
-    salary_amount = models.DecimalField(max_digits=10, decimal_places=2)
+
+    emp_id = models.CharField("Emp ID", max_length=20, blank=True)
+    designation = models.CharField(max_length=30, default="Driver")
+
+    present_days = models.PositiveIntegerField(default=0)
+    absent_days = models.PositiveIntegerField(default=0)
+    sundays = models.PositiveIntegerField(default=0)
+
+    base_salary = models.DecimalField("Base / Fixed Salary", max_digits=10, decimal_places=2, default=0)
+    per_day_rate = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    earned_base_salary = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    attendance_allowance = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    total_gross_salary = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+
+    previous_advance = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    new_advance_taken = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    advance_deduction = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+
+    net_payable_salary = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    status = models.CharField(max_length=20, default="Active")
     paid = models.BooleanField(default=False)
 
     def __str__(self):

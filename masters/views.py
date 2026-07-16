@@ -1,4 +1,5 @@
 from django.shortcuts import render, redirect
+from django.db.models import Sum
 from datetime import date
 
 from .models import (
@@ -344,7 +345,8 @@ from django.shortcuts import get_object_or_404
 
 def salary_list(request):
     salaries = DriverSalary.objects.select_related("driver").order_by("-month")
-    return render(request, "salary/salary_list.html", {"salaries": salaries})
+    total_payout = salaries.aggregate(total=Sum("net_payable_salary"))["total"] or 0
+    return render(request, "salary/salary_list.html", {"salaries": salaries, "total_payout": total_payout})
 
 
 def salary_add(request):
