@@ -16,7 +16,7 @@
 ```powershell
 cd "C:\Users\welcome\Desktop\Al_Murad"
 git branch -M main
-git remote add origin https://github.com/<your-user>/<your-repo>.git
+git remote add origin https://github.com/sheikhharis-gif/al_murad.git
 git add .
 git commit -m "chore: add PythonAnywhere deployment files"
 git push -u origin main
@@ -32,8 +32,8 @@ git push -u origin main
 3. Open a Bash console on PythonAnywhere.
 4. Clone your GitHub repo:
    ```bash
-   git clone https://github.com/<your-user>/<your-repo>.git
-   cd <your-repo>
+   git clone https://github.com/sheikhharis-gif/al_murad.git
+   cd al_murad
    ```
 5. Create a virtualenv:
    ```bash
