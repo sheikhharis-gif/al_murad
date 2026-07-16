@@ -622,20 +622,6 @@ body {
     z-index: 1;
 }
 
-.login-left-logo {
-    position: absolute;
-    top: 2rem;
-    left: 2rem;
-    width: 58px;
-    height: 58px;
-    object-fit: contain;
-    border-radius: 12px;
-    background: rgba(255, 255, 255, 0.95);
-    padding: 6px;
-    box-shadow: 0 10px 26px rgba(0, 0, 0, 0.35);
-    z-index: 3;
-}
-
 .login-left-content {
     position: relative;
     z-index: 2;
@@ -742,12 +728,13 @@ body {
 }
 
 .login-card .logo-wrap img {
-    width: 120px;
-    height: 120px;
+    width: 150px;
+    height: 150px;
     object-fit: contain;
-    border-radius: 22px;
-    margin-bottom: 1rem;
-    box-shadow: 0 10px 30px rgba(59, 130, 246, 0.3);
+    background: #fff;
+    border-radius: 0;
+    box-shadow: none;
+    margin-bottom: 0.5rem;
 }
 
 .login-card h2 {
