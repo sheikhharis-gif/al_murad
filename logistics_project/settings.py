@@ -24,7 +24,7 @@ SECRET_KEY = "django-insecure-o@fb22jv6r_63!0t34+ysu5_1lz&%f70th%*+ycx@h3+q^d05s
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False
-ALLOWED_HOSTS = ['harisuddin.pythonanywhere.com']
+ALLOWED_HOSTS = ['harisuddin.pythonanywhere.com', '127.0.0.1', 'localhost']
 
 
 # Application definition
@@ -63,6 +63,7 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+                "operations.context_processors.fleet_alerts",
             ],
         },
     },
@@ -119,7 +120,9 @@ USE_TZ = True
 STATIC_URL = "/static/"
 STATICFILES_DIRS = [BASE_DIR / "static"]
 STATIC_ROOT = BASE_DIR / "staticfiles"
-STATICFILES_DIRS = [BASE_DIR / "static"]
-STATIC_ROOT = BASE_DIR / "staticfiles"
+
+LOGIN_URL = "/accounts/login/"
+LOGIN_REDIRECT_URL = "/"
+LOGOUT_REDIRECT_URL = "/accounts/login/"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"

@@ -1,10 +1,12 @@
 import datetime as dt
 import io
+import json
 from datetime import date
 from decimal import Decimal
 from pathlib import Path
 from django.contrib.auth.decorators import login_required
-from django.db.models import Q, Sum
+from django.db.models import Count, Q, Sum
+from django.db.models.functions import TruncMonth
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.template.loader import get_template
@@ -34,7 +36,7 @@ from masters.models import (
 )
 
 # ================= DASHBOARD =================
-@login_required(login_url='/admin/login/')
+@login_required
 def dashboard(request):
     # --- LOGIC FOR EXPIRY ALERTS ---
     today = dt.date.today()
@@ -63,6 +65,17 @@ def dashboard(request):
     upcoming_maintenance = VehicleMaintenance.objects.filter(
         next_due_date__isnull=False
     ).order_by("next_due_date")[:8]
+
+    six_months_ago = today - dt.timedelta(days=180)
+    monthly_trips = (
+        Trip.objects.filter(trip_date__gte=six_months_ago)
+        .annotate(month=TruncMonth("trip_date"))
+        .values("month")
+        .annotate(count=Count("id"))
+        .order_by("month")
+    )
+    chart_labels = [entry["month"].strftime("%b %Y") for entry in monthly_trips]
+    chart_trips = [entry["count"] for entry in monthly_trips]
 
     amg_sheets = []
     selected_sheet = request.GET.get("sheet", "")
@@ -109,6 +122,8 @@ def dashboard(request):
         "total_expense": total_expense,
         "profit": profit,
         "upcoming_maintenance": upcoming_maintenance,
+        "chart_labels": json.dumps(chart_labels),
+        "chart_trips": json.dumps(chart_trips),
         "amg_sheets": amg_sheets,
         "selected_sheet": selected_sheet,
         "amg_headers": amg_headers,
@@ -249,7 +264,7 @@ def trip_list(request):
     return render(request, "operations/trip_list.html", context)
 
 
-@login_required(login_url='/admin/login/')
+@login_required
 def trips_excel(request):
     report_context = _get_report_context(request)
     trips = list(report_context["trips"].order_by("trip_date"))
@@ -385,7 +400,7 @@ def trips_excel(request):
     return response
 
 
-@login_required(login_url='/admin/login/')
+@login_required
 def trips_pdf(request):
     report_context = _get_report_context(request)
     trips = list(report_context["trips"].order_by("trip_date")[:3])

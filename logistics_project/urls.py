@@ -3,7 +3,7 @@ from django.urls import path, include
 
 urlpatterns = [
     path("admin/", admin.site.urls),
-
-    path("", include("operations.urls")),      # dashboard + trips
-    path("expenses/", include("masters.urls")),  # 👈 EXPENSES PREFIX
+    path("accounts/", include("django.contrib.auth.urls")),
+    path("", include("operations.urls")),
+    path("expenses/", include("masters.urls")),
 ]

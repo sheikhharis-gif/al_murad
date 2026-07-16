@@ -4,764 +4,172 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FleetPro | Advanced Logistics ERP</title>
-
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <title>{% block title %}Dashboard{% endblock %} | Al Murad Logistics</title>
+    <link rel="icon" type="image/png" href="{% static 'images/amglogo.png' %}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
-
-    <style>
-        :root {
-            --accent-color: #2563eb;
-            --accent-soft: rgba(37, 99, 235, 0.14);
-            --bg-page: #eef4fb;
-            --bg-surface: #ffffff;
-            --text-main: #0f172a;
-            --text-muted: #475569;
-            --border-color: rgba(226, 232, 240, 1);
-            --shadow-soft: 0 22px 50px rgba(15, 23, 42, 0.08);
-        }
-
-        html {
-            scroll-behavior: smooth;
-        }
-
-        body {
-            margin: 0;
-            font-family: 'Inter', sans-serif;
-            background: linear-gradient(180deg, #f5f7fb 0%, #e6eefc 100%);
-            color: var(--text-main);
-            overflow-x: hidden;
-        }
-
-        * {
-            box-sizing: border-box;
-        }
-
-        .main-wrapper {
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            background: transparent;
-        }
-
-        .top-navbar {
-            background: rgba(255, 255, 255, 0.98);
-            backdrop-filter: blur(16px);
-            border-bottom: 1px solid var(--border-color);
-            padding: 1rem 2rem;
-            position: sticky;
-            top: 0;
-            z-index: 999;
-            box-shadow: var(--shadow-soft);
-        }
-
-        .top-navbar .navbar-brand {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-            text-decoration: none;
-        }
-
-        .brand-logo {
-            max-width: 240px;
-            max-height: 90px;
-            width: auto;
-            height: auto;
-            object-fit: contain;
-        }
-
-        .brand-title {
-            display: flex;
-            flex-direction: column;
-            gap: 0.2rem;
-        }
-
-        .brand-title .title {
-            margin: 0;
-            font-size: 1.35rem;
-            font-weight: 800;
-            letter-spacing: 0.2px;
-            color: var(--text-main);
-        }
-
-        .brand-title .subtitle {
-            margin: 0;
-            font-size: 0.82rem;
-            color: var(--text-muted);
-            line-height: 1.4;
-        }
-
-        .top-navbar .header-actions {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-            flex-wrap: wrap;
-        }
-
-        .top-navbar .search-bar {
-            min-width: 280px;
-            width: 100%;
-            max-width: 360px;
-        }
-
-        .top-navbar .input-group {
-            background: #f8fafc;
-            border-radius: 999px;
-            overflow: hidden;
-            box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.14);
-        }
-
-        .top-navbar .form-control {
-            border: none;
-            background: transparent;
-            padding: 0.75rem 1rem;
-            min-width: 260px;
-        }
-
-        .top-navbar .input-group-text {
-            border: none;
-            background: transparent;
-            color: #64748b;
-        }
-
-        .top-navbar .user-profile {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-        }
-
-        .top-navbar .profile-info {
-            display: none;
-        }
-
-        .avatar {
-            width: 48px;
-            height: 48px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 50%;
-            background: var(--accent-color);
-            color: #fff;
-            font-weight: 700;
-            box-shadow: 0 12px 24px rgba(37, 99, 235, 0.18);
-        }
-
-        .top-tabs {
-            background: #ffffff;
-            border-bottom: 1px solid var(--border-color);
-            padding: 0.9rem 2rem;
-        }
-
-        .top-tabs .nav {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 0.65rem;
-            align-items: center;
-            overflow-x: auto;
-            padding: 0.15rem 0;
-        }
-
-        .top-tabs .nav-link {
-            color: var(--text-muted);
-            border-radius: 999px;
-            background: #f8fafc;
-            padding: 0.9rem 1.45rem;
-            font-size: 0.95rem;
-            font-weight: 600;
-            transition: all 0.25s ease;
-            display: inline-flex;
-            align-items: center;
-            min-height: 48px;
-            text-decoration: none;
-        }
-
-        .top-tabs .nav-link:hover {
-            transform: translateY(-1px);
-            background: rgba(37, 99, 235, 0.08);
-            color: var(--accent-color);
-        }
-
-        .top-tabs .nav-link.active {
-            background: rgba(37, 99, 235, 0.19);
-            color: #1d4ed8;
-            box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.18);
-        }
-
-        .top-tabs .dropdown-menu {
-            background: #ffffff;
-            border: 1px solid rgba(226, 232, 240, 0.95);
-            border-radius: 1rem;
-            box-shadow: 0 28px 65px rgba(15, 23, 42, 0.08);
-            min-width: 220px;
-            padding: 0.4rem 0;
-        }
-
-        .top-tabs .dropdown-item {
-            color: #0f172a;
-            padding: 0.9rem 1.25rem;
-            border-radius: 0.8rem;
-            transition: background 0.2s ease, color 0.2s ease;
-            font-weight: 600;
-        }
-
-        .top-tabs .dropdown-item:hover {
-            background: rgba(37, 99, 235, 0.08);
-            color: #1d4ed8;
-        }
-
-        .top-tabs .dropdown-item i {
-            margin-right: 0.75rem;
-            font-size: 0.95rem;
-        }
-
-        /* ===== Header dropdowns: notifications + profile ===== */
-        .header-actions .dropdown-toggle::after {
-            display: none;
-        }
-
-        .icon-btn {
-            width: 46px;
-            height: 46px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 14px;
-            background: #f8fafc;
-            box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.16);
-            color: #475569;
-            font-size: 1.15rem;
-            position: relative;
-            border: none;
-            transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease;
-        }
-
-        .icon-btn:hover {
-            background: rgba(37, 99, 235, 0.1);
-            color: #1d4ed8;
-            transform: translateY(-1px);
-        }
-
-        .icon-btn .notif-dot {
-            position: absolute;
-            top: 8px;
-            right: 9px;
-            width: 9px;
-            height: 9px;
-            border-radius: 50%;
-            background: #dc2626;
-            border: 2px solid #ffffff;
-        }
-
-        .profile-toggle {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            border: none;
-            background: transparent;
-            padding: 0.3rem 0.6rem 0.3rem 0.3rem;
-            border-radius: 999px;
-            transition: background 0.2s ease;
-        }
-
-        .profile-toggle:hover {
-            background: #f8fafc;
-        }
-
-        .profile-toggle .avatar {
-            width: 44px;
-            height: 44px;
-            font-size: 0.95rem;
-            position: relative;
-        }
-
-        .profile-toggle .avatar::after {
-            content: '';
-            position: absolute;
-            bottom: 1px;
-            right: 1px;
-            width: 11px;
-            height: 11px;
-            border-radius: 50%;
-            background: #16a34a;
-            border: 2px solid #ffffff;
-        }
-
-        .profile-toggle .bi-chevron-down {
-            font-size: 0.8rem;
-            color: #94a3b8;
-            transition: transform 0.2s ease;
-        }
-
-        .profile-toggle[aria-expanded="true"] .bi-chevron-down {
-            transform: rotate(180deg);
-        }
-
-        .header-dropdown-menu {
-            background: #ffffff;
-            border: 1px solid rgba(226, 232, 240, 0.95);
-            border-radius: 1.1rem;
-            box-shadow: 0 28px 65px rgba(15, 23, 42, 0.14);
-            padding: 0.5rem;
-            min-width: 240px;
-            animation: dropdown-pop 0.16s ease;
-        }
-
-        @keyframes dropdown-pop {
-            from { opacity: 0; transform: translateY(-6px) scale(0.98); }
-            to { opacity: 1; transform: translateY(0) scale(1); }
-        }
-
-        .header-dropdown-menu .dropdown-item {
-            border-radius: 0.7rem;
-            padding: 0.7rem 0.9rem;
-            font-weight: 600;
-            color: #0f172a;
-            display: flex;
-            align-items: center;
-            gap: 0.7rem;
-        }
-
-        .header-dropdown-menu .dropdown-item i {
-            font-size: 1rem;
-            color: #64748b;
-            width: 18px;
-            text-align: center;
-        }
-
-        .header-dropdown-menu .dropdown-item:hover {
-            background: rgba(37, 99, 235, 0.08);
-            color: #1d4ed8;
-        }
-
-        .header-dropdown-menu .dropdown-item:hover i {
-            color: #1d4ed8;
-        }
-
-        .header-dropdown-menu .dropdown-item.text-danger:hover {
-            background: rgba(220, 38, 38, 0.08);
-            color: #dc2626 !important;
-        }
-
-        .header-dropdown-menu .dropdown-item.text-danger:hover i {
-            color: #dc2626;
-        }
-
-        .dropdown-user-header {
-            padding: 0.7rem 0.9rem 0.85rem;
-            border-bottom: 1px solid var(--border-color);
-            margin-bottom: 0.4rem;
-        }
-
-        .dropdown-user-header .name {
-            font-weight: 700;
-            font-size: 0.95rem;
-            margin: 0;
-        }
-
-        .dropdown-user-header .role {
-            font-size: 0.8rem;
-            color: #64748b;
-            margin: 0;
-        }
-
-        .notif-menu {
-            min-width: 320px;
-            max-width: 360px;
-            padding: 0.6rem;
-        }
-
-        .notif-menu-head {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 0.3rem 0.5rem 0.6rem;
-        }
-
-        .notif-menu-head span:first-child {
-            font-weight: 700;
-            font-size: 0.95rem;
-        }
-
-        .notif-menu-head span:last-child {
-            font-size: 0.78rem;
-            color: #2563eb;
-            font-weight: 600;
-        }
-
-        .notif-item {
-            display: flex;
-            gap: 0.75rem;
-            padding: 0.65rem 0.6rem;
-            border-radius: 0.8rem;
-            align-items: flex-start;
-        }
-
-        .notif-item:hover {
-            background: #f8fafc;
-        }
-
-        .notif-item .dot-icon {
-            width: 34px;
-            height: 34px;
-            border-radius: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-shrink: 0;
-            font-size: 0.95rem;
-        }
-
-        .notif-item .txt p {
-            margin: 0;
-        }
-
-        .notif-item .txt .t {
-            font-size: 0.85rem;
-            font-weight: 600;
-            color: #0f172a;
-        }
-
-        .notif-item .txt .d {
-            font-size: 0.78rem;
-            color: #64748b;
-        }
-
-        .notif-item .txt .time {
-            font-size: 0.72rem;
-            color: #94a3b8;
-            margin-top: 0.15rem;
-        }
-
-        .content-body {
-            padding: 2.2rem 2rem 3rem;
-            flex: 1 0 auto;
-            max-width: 1400px;
-            margin: 0 auto;
-        }
-
-        .page-heading {
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: space-between;
-            align-items: center;
-            gap: 1rem;
-            margin-bottom: 1.75rem;
-        }
-
-        .page-heading h3 {
-            font-size: 1.75rem;
-            margin: 0;
-        }
-
-        .section-title {
-            font-size: 2.4rem;
-            font-weight: 800;
-            letter-spacing: -0.04em;
-            margin: 0;
-            line-height: 1.05;
-            color: var(--text-main);
-        }
-
-        .section-title + p {
-            font-size: 0.95rem;
-            color: #64748b;
-            margin-top: 0.25rem;
-        }
-
-        .card,
-        .card-advanced {
-            border: none;
-            border-radius: 1.5rem;
-            box-shadow: var(--shadow-soft);
-            background: var(--bg-surface);
-        }
-
-        .card-body {
-            padding: 1.75rem;
-        }
-
-        .stats-card {
-            transition: transform 0.25s ease, box-shadow 0.25s ease;
-            border-radius: 1.5rem !important;
-        }
-
-        .stats-card:hover {
-            transform: translateY(-6px);
-            box-shadow: 0 26px 60px rgba(15, 23, 42, 0.12);
-        }
-
-        .icon-shape {
-            width: 60px;
-            height: 60px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 18px;
-        }
-
-        .bg-primary-soft { background-color: rgba(37, 99, 235, 0.12); }
-        .bg-info-soft { background-color: rgba(56, 189, 248, 0.12); }
-        .bg-warning-soft { background-color: rgba(245, 158, 11, 0.12); }
-        .bg-danger-soft { background-color: rgba(220, 38, 38, 0.12); }
-
-        .alert-critical {
-            border-left: 5px solid #dc2626 !important;
-            background: #ffffff;
-            box-shadow: 0 14px 35px rgba(220, 38, 38, 0.08);
-        }
-
-        .btn-primary {
-            background-color: #2563eb;
-            border-color: #1d4ed8;
-        }
-
-        .footer {
-            background: #ffffff;
-            border-top: 1px solid var(--border-color);
-            padding: 1.2rem 2rem;
-            margin-top: auto;
-        }
-
-        .footer-text {
-            color: var(--text-muted);
-            font-size: 0.9rem;
-        }
-
-        .origins-brand {
-            color: var(--accent-color);
-            font-weight: 700;
-        }
-
-        @media (max-width: 1100px) {
-            .top-navbar,
-            .top-tabs,
-            .footer {
-                padding-left: 1.25rem;
-                padding-right: 1.25rem;
-            }
-        }
-
-        @media (max-width: 900px) {
-            .top-navbar .header-actions,
-            .top-navbar .navbar-brand {
-                width: 100%;
-                justify-content: space-between;
-            }
-
-            .top-navbar .profile-info {
-                display: none;
-            }
-
-            .top-navbar .search-bar {
-                max-width: 100%;
-                width: 100%;
-            }
-        }
-
-        @media (max-width: 720px) {
-            .top-navbar {
-                padding: 1rem 1rem;
-            }
-
-            .top-tabs {
-                padding: 0.7rem 1rem;
-            }
-
-            .top-tabs .nav-link {
-                padding: 0.75rem 1rem;
-                min-height: 42px;
-                font-size: 0.9rem;
-            }
-
-            .top-navbar .form-control {
-                min-width: 180px;
-            }
-        }
-    </style>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <link href="{% static 'css/app.css' %}" rel="stylesheet">
+    {% block extra_css %}{% endblock %}
 </head>
 <body>
 
-<div class="container-fluid p-0">
-    <div class="row g-0">
+<div class="app-shell">
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
-        <div class="col-12 main-wrapper">
-            <header class="top-navbar">
-                <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
-                    <a href="{% url 'dashboard' %}" class="navbar-brand">
-                        <img src="{% static 'images/amglogo.png' %}" alt="AMG Logo" class="brand-logo">
-                        <div class="brand-title">
-                            <p class="title">FleetPro</p>
-                            <p class="subtitle">Advanced Logistics ERP</p>
-                        </div>
-                    </a>
-                    <div class="d-flex flex-grow-1 justify-content-center px-3">
-                        <div class="search-bar w-100" style="max-width: 420px;">
-                            <div class="input-group">
-                                <span class="input-group-text"><i class="bi bi-search"></i></span>
-                                <input type="text" class="form-control" placeholder="Search data...">
-                            </div>
-                        </div>
-                    </div>
-                    <div class="header-actions d-flex align-items-center gap-2">
-
-                        <div class="dropdown">
-                            <button class="icon-btn" type="button" id="notifDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                                <i class="bi bi-bell-fill"></i>
-                                {% if critical_vehicles %}<span class="notif-dot"></span>{% endif %}
-                            </button>
-                            <ul class="dropdown-menu dropdown-menu-end header-dropdown-menu notif-menu" aria-labelledby="notifDropdown">
-                                <li class="notif-menu-head">
-                                    <span>Notifications</span>
-                                    <span role="button">Mark all read</span>
-                                </li>
-                                {% for v in critical_vehicles %}
-                                <li>
-                                    <a class="notif-item" href="{% url 'vehicle_edit' v.id %}">
-                                        <span class="dot-icon bg-danger-soft text-danger"><i class="bi bi-exclamation-triangle-fill"></i></span>
-                                        <span class="txt">
-                                            <p class="t">{{ v.vehicle_number }} document expiring</p>
-                                            <p class="d">Permit or fitness needs renewal</p>
-                                        </span>
-                                    </a>
-                                </li>
-                                {% empty %}
-                                <li>
-                                    <div class="notif-item">
-                                        <span class="dot-icon bg-primary-soft text-primary"><i class="bi bi-check2-circle"></i></span>
-                                        <span class="txt">
-                                            <p class="t">All caught up</p>
-                                            <p class="d">No pending alerts right now</p>
-                                        </span>
-                                    </div>
-                                </li>
-                                {% endfor %}
-                                <li><hr class="dropdown-divider my-2"></li>
-                                <li><a class="dropdown-item justify-content-center text-primary" href="#maintenance-section">View all alerts</a></li>
-                            </ul>
-                        </div>
-
-                        <div class="dropdown">
-                            <button class="profile-toggle" type="button" id="profileDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                                <div class="profile-info d-none d-sm-block text-end">
-                                    <p class="mb-0 fw-semibold">Administrator</p>
-                                    <p class="mb-0 text-muted small">Super Admin</p>
-                                </div>
-                                <div class="avatar">A</div>
-                                <i class="bi bi-chevron-down"></i>
-                            </button>
-                            <ul class="dropdown-menu dropdown-menu-end header-dropdown-menu" aria-labelledby="profileDropdown">
-                                <li class="dropdown-user-header">
-                                    <p class="name">Administrator</p>
-                                    <p class="role">Super Admin · FleetPro</p>
-                                </li>
-                                <li><a class="dropdown-item" href="#"><i class="bi bi-person-circle"></i>My Profile</a></li>
-                                <li><a class="dropdown-item" href="#"><i class="bi bi-gear-fill"></i>Account Settings</a></li>
-                                <li><a class="dropdown-item" href="{% url 'maintenance_list' %}"><i class="bi bi-clock-history"></i>Activity Log</a></li>
-                                <li><hr class="dropdown-divider my-2"></li>
-                                <li><a class="dropdown-item text-danger" href="{% url 'logout' %}"><i class="bi bi-box-arrow-right"></i>Logout</a></li>
-                            </ul>
-                        </div>
-
-                    </div>
-                </div>
-            </header>
-
-            <div class="top-tabs px-3">
-                <nav class="nav align-items-center flex-wrap">
-                    <a class="nav-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}" href="{% url 'dashboard' %}">Dashboard</a>
-
-                    <div class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle {% if request.resolver_match.url_name == 'trip_list' or request.resolver_match.url_name == 'trip_add' or request.resolver_match.url_name == 'trips_excel' or request.resolver_match.url_name == 'trips_pdf' %}active{% endif %}" href="#" id="tripsDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                            Trips
-                        </a>
-                        <ul class="dropdown-menu shadow-sm" aria-labelledby="tripsDropdown">
-                            <li><a class="dropdown-item" href="{% url 'trip_list' %}" target="_blank" rel="noopener"><i class="bi bi-list-task"></i>Trip List</a></li>
-                            <li><a class="dropdown-item" href="{% url 'trips_excel' %}" target="_blank" rel="noopener"><i class="bi bi-file-earmark-excel"></i>Export Excel</a></li>
-                            <li><a class="dropdown-item" href="{% url 'trips_pdf' %}" target="_blank" rel="noopener"><i class="bi bi-file-earmark-pdf"></i>Export PDF</a></li>
-                            <li><a class="dropdown-item" href="{% url 'trip_add' %}" target="_blank" rel="noopener"><i class="bi bi-plus-circle"></i>Add Trip</a></li>
-                        </ul>
-                    </div>
-
-                    <div class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle {% if request.resolver_match.url_name == 'job_list' or request.resolver_match.url_name == 'job_add' %}active{% endif %}" href="#" id="jobsDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                            Jobs
-                        </a>
-                        <ul class="dropdown-menu shadow-sm" aria-labelledby="jobsDropdown">
-                            <li><a class="dropdown-item" href="{% url 'job_list' %}" target="_blank" rel="noopener"><i class="bi bi-card-list"></i>Job Orders</a></li>
-                            <li><a class="dropdown-item" href="{% url 'job_add' %}" target="_blank" rel="noopener"><i class="bi bi-plus-circle"></i>Create Job</a></li>
-                        </ul>
-                    </div>
-
-                    <div class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle {% if request.resolver_match.url_name == 'client_list' or request.resolver_match.url_name == 'vendor_list' or request.resolver_match.url_name == 'vehicle_list' or request.resolver_match.url_name == 'driver_list' or request.resolver_match.url_name == 'expense_list' or request.resolver_match.url_name == 'maintenance_list' or request.resolver_match.url_name == 'locations_master' %}active{% endif %}" href="#" id="mastersDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                            Masters
-                        </a>
-                        <ul class="dropdown-menu shadow-sm" aria-labelledby="mastersDropdown">
-                            <li><a class="dropdown-item" href="{% url 'client_list' %}" target="_blank" rel="noopener"><i class="bi bi-people-fill"></i>Clients</a></li>
-                            <li><a class="dropdown-item" href="{% url 'vendor_list' %}" target="_blank" rel="noopener"><i class="bi bi-shop"></i>Vendors</a></li>
-                            <li><a class="dropdown-item" href="{% url 'vehicle_list' %}" target="_blank" rel="noopener"><i class="bi bi-truck"></i>Vehicles</a></li>
-                            <li><a class="dropdown-item" href="{% url 'driver_list' %}" target="_blank" rel="noopener"><i class="bi bi-person-badge"></i>Drivers</a></li>
-                            <li><a class="dropdown-item" href="{% url 'expense_list' %}" target="_blank" rel="noopener"><i class="bi bi-cash-stack"></i>Expenses</a></li>
-                            <li><a class="dropdown-item" href="{% url 'maintenance_list' %}" target="_blank" rel="noopener"><i class="bi bi-wrench-adjustable-circle"></i>Maintenance</a></li>
-                            <li><a class="dropdown-item" href="{% url 'locations_master' %}" target="_blank" rel="noopener"><i class="bi bi-geo-alt-fill"></i>Cities & Routes</a></li>
-                        </ul>
-                    </div>
-
-                    <a class="nav-link {% if request.resolver_match.url_name == 'maintenance_list' %}active{% endif %}" href="{% url 'maintenance_list' %}">Maintenance</a>
-                </nav>
+    <aside class="sidebar" id="sidebar">
+        <a href="{% url 'dashboard' %}" class="sidebar-brand">
+            <img src="{% static 'images/amglogo.png' %}" alt="Al Murad">
+            <div class="sidebar-brand-text">
+                <p class="name">Al Murad</p>
+                <p class="tagline">Fleet Management</p>
             </div>
+        </a>
 
-            <main class="content-body">
-                {% block content %}
-                {% endblock %}
-            </main>
+        <nav class="sidebar-nav">
+            <div class="nav-section-label">Overview</div>
+            <a href="{% url 'dashboard' %}" class="sidebar-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
+                <i class="bi bi-grid-1x2-fill"></i> Dashboard
+            </a>
 
-            <footer class="footer">
-                <div class="container-fluid">
-                    <div class="row align-items-center">
-                        <div class="col-md-6 text-center text-md-start mb-2 mb-md-0">
-                            <p class="footer-text mb-0">&copy; 2026 FleetPro. All Rights Reserved.</p>
-                        </div>
-                        <div class="col-md-6 text-center text-md-end">
-                            <p class="footer-text mb-0">
-                                Crafted By <span class="origins-brand">ORIGINS SOLUTIONS</span>
-                            </p>
-                        </div>
-                    </div>
+            <div class="nav-section-label">Operations</div>
+            <a href="{% url 'trip_list' %}" class="sidebar-link {% if request.resolver_match.url_name == 'trip_list' or request.resolver_match.url_name == 'trip_add' or request.resolver_match.url_name == 'trip_edit' %}active{% endif %}">
+                <i class="bi bi-signpost-split-fill"></i> Trips
+            </a>
+            <a href="{% url 'job_list' %}" class="sidebar-link {% if request.resolver_match.url_name == 'job_list' or request.resolver_match.url_name == 'job_add' or request.resolver_match.url_name == 'job_edit' %}active{% endif %}">
+                <i class="bi bi-briefcase-fill"></i> Job Orders
+            </a>
+            <a href="{% url 'expense_list' %}" class="sidebar-link {% if request.resolver_match.url_name == 'expense_list' or request.resolver_match.url_name == 'expense_sheet' %}active{% endif %}">
+                <i class="bi bi-cash-stack"></i> Expenses
+            </a>
+
+            <div class="nav-section-label">Fleet</div>
+            <a href="{% url 'vehicle_list' %}" class="sidebar-link {% if request.resolver_match.url_name == 'vehicle_list' or request.resolver_match.url_name == 'vehicle_add' or request.resolver_match.url_name == 'vehicle_edit' %}active{% endif %}">
+                <i class="bi bi-truck-front-fill"></i> Vehicles
+            </a>
+            <a href="{% url 'driver_list' %}" class="sidebar-link {% if request.resolver_match.url_name == 'driver_list' or request.resolver_match.url_name == 'driver_add' or request.resolver_match.url_name == 'driver_edit' %}active{% endif %}">
+                <i class="bi bi-person-badge-fill"></i> Drivers
+            </a>
+            <a href="{% url 'maintenance_list' %}" class="sidebar-link {% if request.resolver_match.url_name == 'maintenance_list' or request.resolver_match.url_name == 'maintenance_add' %}active{% endif %}">
+                <i class="bi bi-wrench-adjustable-circle-fill"></i> Maintenance
+                {% if critical_vehicles %}<span class="badge-count">{{ critical_vehicles|length }}</span>{% endif %}
+            </a>
+
+            <div class="nav-section-label">Masters</div>
+            <a href="{% url 'client_list' %}" class="sidebar-link {% if request.resolver_match.url_name == 'client_list' or request.resolver_match.url_name == 'client_add' %}active{% endif %}">
+                <i class="bi bi-building"></i> Clients
+            </a>
+            <a href="{% url 'vendor_list' %}" class="sidebar-link {% if request.resolver_match.url_name == 'vendor_list' or request.resolver_match.url_name == 'vendor_add' %}active{% endif %}">
+                <i class="bi bi-shop"></i> Vendors
+            </a>
+            <a href="{% url 'locations_master' %}" class="sidebar-link {% if request.resolver_match.url_name == 'locations_master' %}active{% endif %}">
+                <i class="bi bi-geo-alt-fill"></i> Cities & Routes
+            </a>
+        </nav>
+
+        <div class="sidebar-footer">
+            <div class="sidebar-user">
+                <div class="avatar">
+                    {% if user.is_authenticated %}{{ user.username|slice:":1"|upper }}{% else %}A{% endif %}
                 </div>
-            </footer>
+                <div class="info">
+                    <p class="name">{% if user.is_authenticated %}{{ user.get_full_name|default:user.username }}{% else %}Guest{% endif %}</p>
+                    <p class="role">{% if user.is_staff %}Administrator{% else %}Fleet User{% endif %}</p>
+                </div>
+            </div>
         </div>
+    </aside>
+
+    <div class="main-content">
+        <header class="top-bar">
+            <div class="top-bar-left">
+                <button class="sidebar-toggle" id="sidebarToggle" aria-label="Toggle menu">
+                    <i class="bi bi-list"></i>
+                </button>
+                <div class="page-breadcrumb">
+                    {% block breadcrumb %}<strong>{% block page_title %}Dashboard{% endblock %}</strong>{% endblock %}
+                </div>
+            </div>
+            <div class="top-bar-right">
+                <div class="top-search">
+                    <i class="bi bi-search"></i>
+                    <input type="text" placeholder="Search fleet data..." id="globalSearch">
+                </div>
+
+                <div class="dropdown">
+                    <button class="icon-btn" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-bell"></i>
+                        {% if critical_vehicles %}<span class="notif-dot"></span>{% endif %}
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end header-dropdown">
+                        <li class="px-3 py-2 border-bottom">
+                            <strong style="font-size:0.9rem;">Notifications</strong>
+                        </li>
+                        {% for v in critical_vehicles %}
+                        <li>
+                            <a class="notif-item" href="{% url 'vehicle_edit' v.id %}">
+                                <span class="dot-icon bg-danger-soft text-danger"><i class="bi bi-exclamation-triangle-fill"></i></span>
+                                <span>
+                                    <div style="font-weight:600;font-size:0.85rem;">{{ v.vehicle_number }}</div>
+                                    <div style="font-size:0.78rem;color:#64748b;">Document expiring soon</div>
+                                </span>
+                            </a>
+                        </li>
+                        {% empty %}
+                        <li>
+                            <div class="notif-item">
+                                <span class="dot-icon bg-success-soft text-success"><i class="bi bi-check-circle-fill"></i></span>
+                                <span>
+                                    <div style="font-weight:600;font-size:0.85rem;">All clear</div>
+                                    <div style="font-size:0.78rem;color:#64748b;">No pending alerts</div>
+                                </span>
+                            </div>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+
+                <div class="dropdown">
+                    <button class="icon-btn" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-person-circle"></i>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end header-dropdown">
+                        <li class="px-3 py-2 border-bottom">
+                            <strong style="font-size:0.9rem;">{% if user.is_authenticated %}{{ user.username }}{% endif %}</strong>
+                            <div style="font-size:0.78rem;color:#64748b;">Al Murad Logistics</div>
+                        </li>
+                        <li><a class="dropdown-item" href="{% url 'maintenance_list' %}"><i class="bi bi-wrench me-2"></i>Maintenance</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item text-danger" href="{% url 'logout' %}"><i class="bi bi-box-arrow-right me-2"></i>Sign Out</a></li>
+                    </ul>
+                </div>
+            </div>
+        </header>
+
+        <main class="content-area">
+            {% if messages %}
+            {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show rounded-3 mb-3" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+            {% endfor %}
+            {% endif %}
+
+            {% block content %}{% endblock %}
+        </main>
+
+        <footer class="app-footer">
+            <span>&copy; 2026 Al Murad Logistics. All rights reserved.</span>
+            <span>Crafted by <a href="#" class="brand-link">ORIGINS SOLUTIONS</a></span>
+        </footer>
     </div>
 </div>
 
+<button id="backToTop" aria-label="Back to top"><i class="bi bi-chevron-up"></i></button>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-
-<script>
-    // Open top-nav dropdowns (Trips / Jobs / Masters) on hover for desktop,
-    // fall back to click on touch/mobile so nothing breaks there.
-    (function () {
-        function isDesktop() {
-            return window.matchMedia("(min-width: 901px) and (hover: hover)").matches;
-        }
-        document.querySelectorAll('.top-tabs .nav-item.dropdown').forEach(function (item) {
-            var toggle = item.querySelector('.dropdown-toggle');
-            var instance = bootstrap.Dropdown.getOrCreateInstance(toggle);
-            var closeTimer;
-
-            item.addEventListener('mouseenter', function () {
-                if (!isDesktop()) return;
-                clearTimeout(closeTimer);
-                instance.show();
-            });
-            item.addEventListener('mouseleave', function () {
-                if (!isDesktop()) return;
-                closeTimer = setTimeout(function () { instance.hide(); }, 150);
-            });
-        });
-    })();
-</script>
-
+<script src="{% static 'js/app.js' %}"></script>
+{% block extra_js %}{% endblock %}
 </body>
 </html>
