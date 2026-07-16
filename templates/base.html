@@ -216,6 +216,224 @@
             font-size: 0.95rem;
         }
 
+        /* ===== Header dropdowns: notifications + profile ===== */
+        .header-actions .dropdown-toggle::after {
+            display: none;
+        }
+
+        .icon-btn {
+            width: 46px;
+            height: 46px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 14px;
+            background: #f8fafc;
+            box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.16);
+            color: #475569;
+            font-size: 1.15rem;
+            position: relative;
+            border: none;
+            transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease;
+        }
+
+        .icon-btn:hover {
+            background: rgba(37, 99, 235, 0.1);
+            color: #1d4ed8;
+            transform: translateY(-1px);
+        }
+
+        .icon-btn .notif-dot {
+            position: absolute;
+            top: 8px;
+            right: 9px;
+            width: 9px;
+            height: 9px;
+            border-radius: 50%;
+            background: #dc2626;
+            border: 2px solid #ffffff;
+        }
+
+        .profile-toggle {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            border: none;
+            background: transparent;
+            padding: 0.3rem 0.6rem 0.3rem 0.3rem;
+            border-radius: 999px;
+            transition: background 0.2s ease;
+        }
+
+        .profile-toggle:hover {
+            background: #f8fafc;
+        }
+
+        .profile-toggle .avatar {
+            width: 44px;
+            height: 44px;
+            font-size: 0.95rem;
+            position: relative;
+        }
+
+        .profile-toggle .avatar::after {
+            content: '';
+            position: absolute;
+            bottom: 1px;
+            right: 1px;
+            width: 11px;
+            height: 11px;
+            border-radius: 50%;
+            background: #16a34a;
+            border: 2px solid #ffffff;
+        }
+
+        .profile-toggle .bi-chevron-down {
+            font-size: 0.8rem;
+            color: #94a3b8;
+            transition: transform 0.2s ease;
+        }
+
+        .profile-toggle[aria-expanded="true"] .bi-chevron-down {
+            transform: rotate(180deg);
+        }
+
+        .header-dropdown-menu {
+            background: #ffffff;
+            border: 1px solid rgba(226, 232, 240, 0.95);
+            border-radius: 1.1rem;
+            box-shadow: 0 28px 65px rgba(15, 23, 42, 0.14);
+            padding: 0.5rem;
+            min-width: 240px;
+            animation: dropdown-pop 0.16s ease;
+        }
+
+        @keyframes dropdown-pop {
+            from { opacity: 0; transform: translateY(-6px) scale(0.98); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        .header-dropdown-menu .dropdown-item {
+            border-radius: 0.7rem;
+            padding: 0.7rem 0.9rem;
+            font-weight: 600;
+            color: #0f172a;
+            display: flex;
+            align-items: center;
+            gap: 0.7rem;
+        }
+
+        .header-dropdown-menu .dropdown-item i {
+            font-size: 1rem;
+            color: #64748b;
+            width: 18px;
+            text-align: center;
+        }
+
+        .header-dropdown-menu .dropdown-item:hover {
+            background: rgba(37, 99, 235, 0.08);
+            color: #1d4ed8;
+        }
+
+        .header-dropdown-menu .dropdown-item:hover i {
+            color: #1d4ed8;
+        }
+
+        .header-dropdown-menu .dropdown-item.text-danger:hover {
+            background: rgba(220, 38, 38, 0.08);
+            color: #dc2626 !important;
+        }
+
+        .header-dropdown-menu .dropdown-item.text-danger:hover i {
+            color: #dc2626;
+        }
+
+        .dropdown-user-header {
+            padding: 0.7rem 0.9rem 0.85rem;
+            border-bottom: 1px solid var(--border-color);
+            margin-bottom: 0.4rem;
+        }
+
+        .dropdown-user-header .name {
+            font-weight: 700;
+            font-size: 0.95rem;
+            margin: 0;
+        }
+
+        .dropdown-user-header .role {
+            font-size: 0.8rem;
+            color: #64748b;
+            margin: 0;
+        }
+
+        .notif-menu {
+            min-width: 320px;
+            max-width: 360px;
+            padding: 0.6rem;
+        }
+
+        .notif-menu-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.3rem 0.5rem 0.6rem;
+        }
+
+        .notif-menu-head span:first-child {
+            font-weight: 700;
+            font-size: 0.95rem;
+        }
+
+        .notif-menu-head span:last-child {
+            font-size: 0.78rem;
+            color: #2563eb;
+            font-weight: 600;
+        }
+
+        .notif-item {
+            display: flex;
+            gap: 0.75rem;
+            padding: 0.65rem 0.6rem;
+            border-radius: 0.8rem;
+            align-items: flex-start;
+        }
+
+        .notif-item:hover {
+            background: #f8fafc;
+        }
+
+        .notif-item .dot-icon {
+            width: 34px;
+            height: 34px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            font-size: 0.95rem;
+        }
+
+        .notif-item .txt p {
+            margin: 0;
+        }
+
+        .notif-item .txt .t {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #0f172a;
+        }
+
+        .notif-item .txt .d {
+            font-size: 0.78rem;
+            color: #64748b;
+        }
+
+        .notif-item .txt .time {
+            font-size: 0.72rem;
+            color: #94a3b8;
+            margin-top: 0.15rem;
+        }
+
         .content-body {
             padding: 2.2rem 2rem 3rem;
             flex: 1 0 auto;
@@ -386,12 +604,66 @@
                             </div>
                         </div>
                     </div>
-                    <div class="user-profile d-flex align-items-center gap-3">
-                        <div class="profile-info d-none d-sm-block text-end">
-                            <p class="mb-0 fw-semibold">Administrator</p>
-                            <p class="mb-0 text-muted small">Super Admin</p>
+                    <div class="header-actions d-flex align-items-center gap-2">
+
+                        <div class="dropdown">
+                            <button class="icon-btn" type="button" id="notifDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="bi bi-bell-fill"></i>
+                                {% if critical_vehicles %}<span class="notif-dot"></span>{% endif %}
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end header-dropdown-menu notif-menu" aria-labelledby="notifDropdown">
+                                <li class="notif-menu-head">
+                                    <span>Notifications</span>
+                                    <span role="button">Mark all read</span>
+                                </li>
+                                {% for v in critical_vehicles %}
+                                <li>
+                                    <a class="notif-item" href="{% url 'vehicle_edit' v.id %}">
+                                        <span class="dot-icon bg-danger-soft text-danger"><i class="bi bi-exclamation-triangle-fill"></i></span>
+                                        <span class="txt">
+                                            <p class="t">{{ v.vehicle_number }} document expiring</p>
+                                            <p class="d">Permit or fitness needs renewal</p>
+                                        </span>
+                                    </a>
+                                </li>
+                                {% empty %}
+                                <li>
+                                    <div class="notif-item">
+                                        <span class="dot-icon bg-primary-soft text-primary"><i class="bi bi-check2-circle"></i></span>
+                                        <span class="txt">
+                                            <p class="t">All caught up</p>
+                                            <p class="d">No pending alerts right now</p>
+                                        </span>
+                                    </div>
+                                </li>
+                                {% endfor %}
+                                <li><hr class="dropdown-divider my-2"></li>
+                                <li><a class="dropdown-item justify-content-center text-primary" href="#maintenance-section">View all alerts</a></li>
+                            </ul>
                         </div>
-                        <div class="avatar">A</div>
+
+                        <div class="dropdown">
+                            <button class="profile-toggle" type="button" id="profileDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                                <div class="profile-info d-none d-sm-block text-end">
+                                    <p class="mb-0 fw-semibold">Administrator</p>
+                                    <p class="mb-0 text-muted small">Super Admin</p>
+                                </div>
+                                <div class="avatar">A</div>
+                                <i class="bi bi-chevron-down"></i>
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end header-dropdown-menu" aria-labelledby="profileDropdown">
+                                <li class="dropdown-user-header">
+                                    <p class="name">Administrator</p>
+                                    <p class="role">Super Admin · FleetPro</p>
+                                </li>
+                                <li><a class="dropdown-item" href="#"><i class="bi bi-person-circle"></i>My Profile</a></li>
+                                <li><a class="dropdown-item" href="#"><i class="bi bi-gear-fill"></i>Account Settings</a></li>
+                                <li><a class="dropdown-item" href="{% url 'maintenance_list' %}"><i class="bi bi-clock-history"></i>Activity Log</a></li>
+                                <li><hr class="dropdown-divider my-2"></li>
+                                <li><a class="dropdown-item text-danger" href="{% url 'logout' %}"><i class="bi bi-box-arrow-right"></i>Logout</a></li>
+                            </ul>
+                        </div>
+
                     </div>
                 </div>
             </header>
@@ -465,6 +737,31 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+    // Open top-nav dropdowns (Trips / Jobs / Masters) on hover for desktop,
+    // fall back to click on touch/mobile so nothing breaks there.
+    (function () {
+        function isDesktop() {
+            return window.matchMedia("(min-width: 901px) and (hover: hover)").matches;
+        }
+        document.querySelectorAll('.top-tabs .nav-item.dropdown').forEach(function (item) {
+            var toggle = item.querySelector('.dropdown-toggle');
+            var instance = bootstrap.Dropdown.getOrCreateInstance(toggle);
+            var closeTimer;
+
+            item.addEventListener('mouseenter', function () {
+                if (!isDesktop()) return;
+                clearTimeout(closeTimer);
+                instance.show();
+            });
+            item.addEventListener('mouseleave', function () {
+                if (!isDesktop()) return;
+                closeTimer = setTimeout(function () { instance.hide(); }, 150);
+            });
+        });
+    })();
+</script>
 
 </body>
 </html>

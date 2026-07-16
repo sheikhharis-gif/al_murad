@@ -32,6 +32,35 @@
         animation: pulse-red 2s infinite;
         background: #fff;
     }
+
+    /* Quick actions dropdown */
+    .quick-actions-menu {
+        border: 1px solid rgba(226, 232, 240, 0.95);
+        border-radius: 1rem;
+        box-shadow: 0 28px 65px rgba(15, 23, 42, 0.12);
+        padding: 0.5rem;
+        min-width: 220px;
+    }
+    .quick-actions-menu .dropdown-item {
+        border-radius: 0.7rem;
+        padding: 0.7rem 0.9rem;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 0.7rem;
+    }
+    .quick-actions-menu .dropdown-item i {
+        color: #64748b;
+        width: 18px;
+        text-align: center;
+    }
+    .quick-actions-menu .dropdown-item:hover {
+        background: rgba(37, 99, 235, 0.08);
+        color: #1d4ed8;
+    }
+    .quick-actions-menu .dropdown-item:hover i {
+        color: #1d4ed8;
+    }
 </style>
 
 <div class="container-fluid py-4" style="scroll-behavior: smooth;">
@@ -40,9 +69,23 @@
         <h3 class="fw-bold text-dark mb-0">
             <i class="bi bi-speedometer2 text-primary me-2"></i>Fleet Dashboard
         </h3>
-        <span class="badge bg-white text-dark border shadow-sm p-2 rounded-pill">
-            <i class="bi bi-calendar3 text-primary me-1"></i> {% now "jS F Y" %}
-        </span>
+        <div class="d-flex align-items-center gap-2">
+            <span class="badge bg-white text-dark border shadow-sm p-2 rounded-pill">
+                <i class="bi bi-calendar3 text-primary me-1"></i> {% now "jS F Y" %}
+            </span>
+            <div class="dropdown">
+                <button class="btn btn-primary rounded-pill px-3 shadow-sm dropdown-toggle" type="button" id="quickActionsBtn" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="bi bi-plus-lg me-1"></i>Quick Add
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end quick-actions-menu" aria-labelledby="quickActionsBtn">
+                    <li><a class="dropdown-item" href="{% url 'trip_add' %}"><i class="bi bi-truck"></i>New Trip</a></li>
+                    <li><a class="dropdown-item" href="{% url 'job_add' %}"><i class="bi bi-card-list"></i>New Job Order</a></li>
+                    <li><hr class="dropdown-divider my-2"></li>
+                    <li><a class="dropdown-item" href="{% url 'vehicle_list' %}"><i class="bi bi-bus-front"></i>Vehicles</a></li>
+                    <li><a class="dropdown-item" href="{% url 'driver_list' %}"><i class="bi bi-person-badge"></i>Drivers</a></li>
+                </ul>
+            </div>
+        </div>
     </div>
 
     {% if critical_vehicles %}
