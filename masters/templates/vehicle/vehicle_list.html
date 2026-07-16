@@ -1,0 +1,194 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid py-4 bg-light min-vh-100">
+    
+    <div class="row align-items-center mb-4">
+        <div class="col-md-6">
+            <h3 class="fw-bold text-dark mb-1">
+                <i class="bi bi-truck-flatbed text-primary me-2"></i>Fleet Management
+            </h3>
+            <p class="text-muted small">Real-time monitoring of vehicle location, drivers, and fitness issues.</p>
+        </div>
+        <div class="col-md-6 text-md-end">
+            <a href="{% url 'vehicle_add' %}" class="btn btn-primary px-4 shadow-sm fw-bold rounded-3">
+                <i class="bi bi-plus-lg me-2"></i>New Vehicle
+            </a>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+        <div class="card-header bg-white border-0 py-3 px-4 d-flex justify-content-between align-items-center border-bottom">
+            <div class="d-flex align-items-center">
+                <h5 class="fw-bold mb-0 me-3">Vehicle Registry</h5>
+                <span class="badge bg-primary-subtle text-primary rounded-pill">{{ vehicles.count }} Total</span>
+            </div>
+            <div class="search-box">
+                <i class="bi bi-search"></i>
+                <input type="text" id="vehicleSearch" class="form-control" placeholder="Search vehicle, driver or vendor...">
+            </div>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0 custom-table">
+                <thead>
+                    <tr>
+                        <th class="ps-4">Vehicle & Driver</th> <th>Vendor Info</th>
+                        <th>Provincial Permits</th>
+                        <th>Fitness Expiry</th>
+                        <th>Operational Status</th> 
+                        <th class="text-end pe-4">Action</th>
+                    </tr>
+                </thead>
+                <tbody id="vehicleTableBody">
+                    {% for v in vehicles %}
+                    <tr>
+                        <td class="ps-4">
+                            <div class="d-flex align-items-center">
+                                <div class="vehicle-icon me-3">
+                                    <i class="bi bi-truck"></i>
+                                </div>
+                                <div>
+                                    <div class="fw-bold text-dark fs-6">{{ v.vehicle_number }}</div>
+                                    <div class="text-primary extra-small fw-bold">
+                                        <i class="bi bi-person-fill"></i> 
+                                        {% if v.driver %}{{ v.driver.name }}{% else %}No Driver Assigned{% endif %}
+                                    </div>
+                                    <span class="text-muted extra-small text-uppercase">{{ v.vehicle_type }}</span>
+                                </div>
+                            </div>
+                        </td>
+
+                        <td>
+                            <div class="vendor-info">
+                                <span class="d-block fw-semibold text-secondary small">
+                                    {% if v.vendor %}{{ v.vendor.name }}{% else %}Company Owned{% endif %}
+                                </span>
+                                <span class="badge bg-light text-dark extra-small border">{{ v.vehicle_mode }}</span>
+                            </div>
+                        </td>
+
+                        <td>
+                            <div class="doc-grid">
+                                {% with status=v.check_expiry|default:"safe" %}
+                                <div class="doc-item {% if v.sindh_permit_expiry < today %}bg-danger text-white border-danger{% endif %}" title="Sindh">
+                                    <span class="p-tag">S</span> {{ v.sindh_permit_expiry|default:"--" }}
+                                </div>
+                                <div class="doc-item {% if v.punjab_permit_expiry < today %}bg-danger text-white border-danger{% endif %}" title="Punjab">
+                                    <span class="p-tag">P</span> {{ v.punjab_permit_expiry|default:"--" }}
+                                </div>
+                                <div class="doc-item {% if v.kpk_permit_expiry < today %}bg-danger text-white border-danger{% endif %}" title="KPK">
+                                    <span class="p-tag">K</span> {{ v.kpk_permit_expiry|default:"--" }}
+                                </div>
+                                <div class="doc-item {% if v.balochistan_permit_expiry < today %}bg-danger text-white border-danger{% endif %}" title="Balochistan">
+                                    <span class="p-tag">B</span> {{ v.balochistan_permit_expiry|default:"--" }}
+                                </div>
+                                {% endwith %}
+                            </div>
+                        </td>
+
+                        <td>
+                            <div class="doc-grid fitness">
+                                <div class="doc-item {% if v.fitness_expiry_sindh < today %}bg-danger text-white border-danger{% endif %}">
+                                    <span class="p-tag fit">S</span> {{ v.fitness_expiry_sindh|default:"--" }}
+                                </div>
+                                <div class="doc-item {% if v.fitness_expiry_punjab < today %}bg-danger text-white border-danger{% endif %}">
+                                    <span class="p-tag fit">P</span> {{ v.fitness_expiry_punjab|default:"--" }}
+                                </div>
+                                <div class="doc-item {% if v.fitness_expiry_kpk < today %}bg-danger text-white border-danger{% endif %}">
+                                    <span class="p-tag fit">K</span> {{ v.fitness_expiry_kpk|default:"--" }}
+                                </div>
+                                <div class="doc-item {% if v.fitness_expiry_balochistan < today %}bg-danger text-white border-danger{% endif %}">
+                                    <span class="p-tag fit">B</span> {{ v.fitness_expiry_balochistan|default:"--" }}
+                                </div>
+                            </div>
+                        </td>
+
+                        <td>
+                            <div class="location-badge">
+                                <div class="small fw-bold mb-1"><i class="bi bi-geo-alt-fill text-danger"></i> {{ v.current_location }}</div>
+                                {% if v.is_active %}
+                                    <span class="badge bg-success-subtle text-success border border-success">Active</span>
+                                {% else %}
+                                    <span class="badge bg-secondary-subtle text-secondary border">Inactive</span>
+                                {% endif %}
+                            </div>
+                        </td>
+
+                        <td class="text-end pe-4">
+                            <div class="btn-group shadow-sm rounded-pill bg-white overflow-hidden border">
+                                <a href="{% url 'vehicle_edit' v.id %}" class="btn btn-sm btn-white text-warning py-2 px-3 border-end">
+                                    <i class="bi bi-pencil-square"></i>
+                                </a>
+                                <a href="{% url 'vehicle_delete' v.id %}" class="btn btn-sm btn-white text-danger py-2 px-3" onclick="return confirm('Pakka delete karna hai?')">
+                                    <i class="bi bi-trash"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="text-center py-5">
+                            <div class="text-muted">
+                                <i class="bi bi-inbox fs-1 d-block mb-3"></i>
+                                Koi vehicle nahi mili. Nayi add karein!
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* Styling for consistency */
+    .custom-table thead th {
+        background-color: #f8fafc;
+        color: #64748b;
+        font-weight: 700;
+        text-transform: uppercase;
+        font-size: 0.65rem;
+        letter-spacing: 0.8px;
+        padding: 1.2rem 1rem;
+        border-bottom: 2px solid #f1f5f9;
+    }
+    .custom-table tbody td { padding: 1rem; border-bottom: 1px solid #f1f5f9; }
+    .vehicle-icon {
+        width: 40px; height: 40px;
+        background: #eef2ff; color: #4f46e5;
+        display: flex; align-items: center; justify-content: center;
+        border-radius: 10px;
+    }
+    .doc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; min-width: 180px; }
+    .doc-item {
+        background: #f8fafc; border: 1px solid #e2e8f0;
+        padding: 4px 6px; border-radius: 6px;
+        font-size: 0.7rem; display: flex; align-items: center;
+    }
+    .p-tag {
+        background: #334155; color: white;
+        width: 16px; height: 16px;
+        display: inline-flex; align-items: center; justify-content: center;
+        border-radius: 4px; margin-right: 6px; font-size: 0.55rem;
+    }
+    .p-tag.fit { background: #0d6efd; }
+    .search-box { position: relative; width: 280px; }
+    .search-box i { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #94a3b8; }
+    .search-box .form-control { padding-left: 35px; border-radius: 10px; }
+    .location-badge { background: #fff9f9; border: 1px solid #ffeded; padding: 6px 12px; border-radius: 8px; font-size: 0.8rem; }
+    .extra-small { font-size: 0.65rem; letter-spacing: 0.5px; }
+</style>
+
+<script>
+    // Live Search Functionality
+    document.getElementById('vehicleSearch').addEventListener('keyup', function() {
+        let value = this.value.toLowerCase();
+        let rows = document.querySelectorAll('#vehicleTableBody tr');
+        rows.forEach(row => {
+            row.style.display = (row.innerText.toLowerCase().indexOf(value) > -1) ? "" : "none";
+        });
+    });
+</script>
+{% endblock %}

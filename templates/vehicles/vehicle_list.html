@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h3 class="mb-4">Vehicles</h3>
+
+<div class="card p-3">
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Number</th>
+                <th>Type</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for v in vehicles %}
+            <tr>
+                <td>{{ v.number }}</td>
+                <td>{{ v.vehicle_type }}</td>
+                <td>{{ v.status }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="3" class="text-center">No vehicles found</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

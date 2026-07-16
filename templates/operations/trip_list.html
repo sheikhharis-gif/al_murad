@@ -1,0 +1,253 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid py-4 bg-light min-vh-100">
+    
+    <!-- HEADER SECTION -->
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+        <div>
+            <h3 class="fw-bold text-dark mb-1">
+                <i class="bi bi-bar-chart-line-fill text-primary me-2"></i>Trip & Performance Report Ledger
+            </h3>
+            <p class="text-muted small mb-0">Track real-time trip revenues, fuel/operational expenses, and bottom-line profitability.</p>
+        </div>
+        <div class="d-flex flex-wrap gap-2">
+            <a href="{% url 'trips_pdf' %}?report={{ report }}&client={{ selected_client|default:'' }}&vehicle={{ selected_vehicle|default:'' }}&route={{ selected_route|default:'' }}&start_date={{ start_date|default:'' }}&end_date={{ end_date|default:'' }}" class="btn btn-outline-danger btn-sm rounded-3 px-3 shadow-sm d-inline-flex align-items-center">
+                <i class="bi bi-file-earmark-pdf me-1"></i> Export PDF
+            </a>
+            <a href="{% url 'trips_excel' %}?report={{ report }}&client={{ selected_client|default:'' }}&vehicle={{ selected_vehicle|default:'' }}&route={{ selected_route|default:'' }}&start_date={{ start_date|default:'' }}&end_date={{ end_date|default:'' }}" class="btn btn-outline-success btn-sm rounded-3 px-3 shadow-sm d-inline-flex align-items-center">
+                <i class="bi bi-file-earmark-excel me-1"></i> Export Excel
+            </a>
+            <a href="{% url 'trip_add' %}" class="btn btn-primary px-4 shadow-sm fw-bold rounded-3 btn-sm d-inline-flex align-items-center">
+                <i class="bi bi-plus-lg me-2"></i>Record New Trip
+            </a>
+        </div>
+    </div>
+
+    <!-- FILTER BOARD -->
+    <div class="card border-0 shadow-sm rounded-4 mb-4">
+        <div class="card-body p-4">
+            <h6 class="fw-bold text-secondary mb-3 d-flex align-items-center">
+                <i class="bi bi-funnel-fill text-primary me-2"></i>Filter Report Parameters
+            </h6>
+            <form method="get" class="row g-3">
+                <div class="col-md-2 col-sm-6">
+                    <label class="form-label small fw-semibold text-muted">Fleet Mode</label>
+                    <select name="report" class="form-select form-select-sm rounded-3">
+                        <option value="all" {% if report == 'all' %}selected{% endif %}>All Vehicles</option>
+                        <option value="own" {% if report == 'own' %}selected{% endif %}>OWN Only</option>
+                    </select>
+                </div>
+                <div class="col-md-2 col-sm-6">
+                    <label class="form-label small fw-semibold text-muted">Client</label>
+                    <select name="client" class="form-select form-select-sm rounded-3">
+                        <option value="">-- All Clients --</option>
+                        {% for c in clients %}
+                        <option value="{{ c.id }}" {% if selected_client == c.id|stringformat:"s" %}selected{% endif %}>{{ c.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2 col-sm-6">
+                    <label class="form-label small fw-semibold text-muted">Vehicle</label>
+                    <select name="vehicle" class="form-select form-select-sm rounded-3">
+                        <option value="">-- All Vehicles --</option>
+                        {% for v in vehicles %}
+                        <option value="{{ v.id }}" {% if selected_vehicle == v.id|stringformat:"s" %}selected{% endif %}>{{ v.vehicle_number }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2 col-sm-6">
+                    <label class="form-label small fw-semibold text-muted">Route Code</label>
+                    <select name="route" class="form-select form-select-sm rounded-3">
+                        <option value="">-- All Routes --</option>
+                        {% for r in routes %}
+                        <option value="{{ r.id }}" {% if selected_route == r.id|stringformat:"s" %}selected{% endif %}>{{ r.route_code }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2 col-sm-6">
+                    <label class="form-label small fw-semibold text-muted">Start Date</label>
+                    <input type="date" name="start_date" class="form-control form-control-sm rounded-3" value="{{ start_date|default:'' }}">
+                </div>
+                <div class="col-md-2 col-sm-6">
+                    <label class="form-label small fw-semibold text-muted">End Date</label>
+                    <input type="date" name="end_date" class="form-control form-control-sm rounded-3" value="{{ end_date|default:'' }}">
+                </div>
+                <div class="col-12 d-flex justify-content-end gap-2 mt-3">
+                    <a href="{% url 'trip_list' %}" class="btn btn-light btn-sm px-3 rounded-3 fw-semibold">Clear Filters</a>
+                    <button type="submit" class="btn btn-primary btn-sm px-4 rounded-3 fw-bold">Apply Query</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- STATS DASHBOARD -->
+    <div class="row g-3 mb-4">
+        <div class="col-xl-2 col-md-4 col-sm-6">
+            <div class="card border-0 shadow-sm rounded-4 p-3 border-start border-primary border-4 h-100">
+                <span class="text-muted small text-uppercase fw-semibold">Filtered Trips</span>
+                <h3 class="fw-bold mb-0 text-primary mt-1">{{ trips.count }}</h3>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-4 col-sm-6">
+            <div class="card border-0 shadow-sm rounded-4 p-3 border-start border-success border-4 h-100">
+                <span class="text-muted small text-uppercase fw-semibold">Freight Revenue</span>
+                <h3 class="fw-bold mb-0 text-success mt-1">Rs {{ total_freight|floatformat:0 }}</h3>
+            </div>
+        </div>
+        <div class="col-xl-2 col-md-4 col-sm-6">
+            <div class="card border-0 shadow-sm rounded-4 p-3 border-start border-danger border-4 h-100">
+                <span class="text-muted small text-uppercase fw-semibold">Trip Expenses</span>
+                <h3 class="fw-bold mb-0 text-danger mt-1">Rs {{ total_expense|floatformat:0 }}</h3>
+            </div>
+        </div>
+        <div class="col-xl-2 col-md-4 col-sm-6">
+            <div class="card border-0 shadow-sm rounded-4 p-3 border-start border-warning border-4 h-100">
+                <span class="text-muted small text-uppercase fw-semibold">Fuel Filled</span>
+                <h3 class="fw-bold mb-0 text-warning mt-1">{{ total_liters|floatformat:1 }} L</h3>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-8 col-sm-12">
+            <div class="card border-0 shadow-sm rounded-4 p-3 border-start border-info border-4 h-100">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <span class="text-muted small text-uppercase fw-semibold">Net Bottom-Line Profit</span>
+                        <h3 class="fw-bold mb-0 text-info mt-1">Rs {{ net_profit|floatformat:0 }}</h3>
+                    </div>
+                    <span class="badge {% if pl_percentage >= 20 %}bg-success{% else %}bg-warning{% endif %} rounded-pill py-1 px-2.5 small fw-bold">
+                        P&L: {{ pl_percentage|floatformat:1 }}%
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN DATA TABLE -->
+    <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+        <div class="card-header bg-white border-0 py-3 px-4 d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-2 border-bottom">
+            <h5 class="fw-bold mb-0 text-dark d-flex align-items-center">
+                <i class="bi bi-file-earmark-spreadsheet-fill text-primary me-2"></i>Professional Trip Reports Log
+            </h5>
+            <div class="search-box position-relative" style="min-width: 280px;">
+                <i class="bi bi-search position-absolute top-50 start-0 translate-middle-y ms-3 text-muted"></i>
+                <input type="text" id="tripSearch" class="form-control form-control-sm bg-light border-0 ps-5 rounded-pill" placeholder="Live search results...">
+            </div>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0 custom-trip-table">
+                <thead class="bg-light-subtle">
+                    <tr class="text-muted small text-uppercase fw-bold border-bottom">
+                        <th class="ps-4 py-3">Job ID & Client</th>
+                        <th class="py-3">Date & Bilty #</th>
+                        <th class="py-3">Vehicle Details</th>
+                        <th class="py-3">Route & Distance</th>
+                        <th class="text-end py-3">Revenue (Rs)</th>
+                        <th class="text-end py-3">Total Exp (Rs)</th>
+                        <th class="text-end py-3">Net Profit (Rs)</th>
+                        <th class="text-center pe-4 py-3">Action</th>
+                    </tr>
+                </thead>
+                <tbody id="tripTableBody">
+                    {% for t in trips %}
+                    <tr>
+                        <td class="ps-4">
+                            <div class="d-flex flex-column">
+                                <span class="badge bg-primary-subtle text-primary rounded-pill mb-1 fw-bold w-fit-content px-2 py-1">Job #{{ t.job.job_number }}</span>
+                                <span class="fw-bold text-dark" style="font-size: 0.95rem;">{{ t.client.name }}</span>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="d-flex flex-column">
+                                <span class="text-dark fw-semibold" style="font-size: 0.9rem;">Bilty: {{ t.bilty_number }}</span>
+                                <small class="text-muted"><i class="bi bi-calendar3 me-1"></i>{{ t.trip_date|date:"d M, Y" }}</small>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="d-flex flex-column">
+                                <span class="badge bg-dark text-white rounded-3 px-2 py-1 font-monospace w-fit-content">{{ t.vehicle.vehicle_number }}</span>
+                                <small class="text-muted mt-1" style="font-size: 0.75rem;">
+                                    Type: {{ t.vehicle.vehicle_type }} | Driver: {% if t.vehicle.driver %}{{ t.vehicle.driver.name }}{% else %}N/A{% endif %}
+                                </small>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="d-flex flex-column">
+                                <span class="text-dark fw-semibold" style="font-size: 0.88rem;">{{ t.route }}</span>
+                                <small class="text-muted" style="font-size: 0.75rem;"><i class="bi bi-speedometer me-1"></i>{{ t.route.distance_km }} KMs</small>
+                            </div>
+                        </td>
+                        <td class="text-end fw-bold text-success">
+                            {{ t.freight|floatformat:0 }}
+                            <div class="text-muted small fw-normal" style="font-size: 0.7rem;">
+                                {{ t.weight }} Tons x {{ t.rate|floatformat:0 }}
+                            </div>
+                        </td>
+                        <td class="text-end fw-bold text-danger">
+                            {% if t.expenses.all %}
+                                {{ t.expenses.all.0.total_expense|floatformat:0 }}
+                                <div class="text-muted small fw-normal" style="font-size: 0.7rem;">
+                                    Fuel: {{ t.expenses.all.0.fuel_liter|floatformat:1 }} L
+                                </div>
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                        <td class="text-end fw-bold {% if t.expenses.all %}{% with exp=t.expenses.all.0.total_expense %}{% if t.freight > exp %}text-info{% else %}text-danger{% endif %}{% endwith %}{% else %}text-info{% endif %}">
+                            {% if t.expenses.all %}
+                                {% with exp=t.expenses.all.0.total_expense %}
+                                    Rs {{ t.freight|floatformat:0 }}
+                                {% endwith %}
+                            {% else %}
+                                Rs {{ t.freight|floatformat:0 }}
+                            {% endif %}
+                        </td>
+                        <td class="text-center pe-4">
+                            <div class="btn-group shadow-sm rounded-pill overflow-hidden bg-light p-1">
+                                <a href="{% url 'trip_edit' t.id %}" class="btn btn-sm btn-white border-0 rounded-circle me-1" title="Edit">
+                                    <i class="bi bi-pencil text-warning"></i>
+                                </a>
+                                <a href="{% url 'trip_delete' t.id %}" class="btn btn-sm btn-white border-0 rounded-circle" title="Delete" onclick="return confirm('Delete this trip?')">
+                                    <i class="bi bi-trash text-danger"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="8" class="text-center py-5">
+                            <i class="bi bi-truck-flatbed display-4 text-muted opacity-25"></i>
+                            <p class="text-muted mt-2">No trips recorded yet matching selected criteria.</p>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<style>
+    .w-fit-content { width: fit-content; }
+    .btn-white {
+        background-color: white; width: 32px; height: 32px;
+        display: inline-flex; align-items: center; justify-content: center;
+        transition: 0.2s;
+    }
+    .btn-white:hover { transform: scale(1.1); background-color: #f8fafc; }
+    .custom-trip-table tbody td { padding: 1rem 0.75rem; border-bottom: 1px solid #f1f5f9; }
+    .font-monospace { font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace !important; font-size: 0.8rem; }
+    .bg-light-subtle { background-color: #f8fafc; }
+</style>
+
+<script>
+    // Live Search Logic
+    document.getElementById('tripSearch').addEventListener('keyup', function() {
+        let value = this.value.toLowerCase();
+        let rows = document.querySelectorAll('#tripTableBody tr');
+        rows.forEach(row => {
+            row.style.display = (row.innerText.toLowerCase().indexOf(value) > -1) ? "" : "none";
+        });
+    });
+</script>
+{% endblock %}

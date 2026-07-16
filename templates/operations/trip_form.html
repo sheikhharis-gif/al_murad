@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <div class="d-flex align-items-center justify-content-between mb-4">
+                <h3 class="fw-bold text-primary mb-0">
+                    <i class="bi bi-plus-circle-fill me-2"></i>Add New Trip
+                </h3>
+                <a href="{% url 'trip_list' %}" class="btn btn-outline-secondary btn-sm">Back to List</a>
+            </div>
+
+            <div id="job-info-alert" class="alert alert-info border-0 shadow-sm rounded-3 mb-4 d-none">
+                <div class="d-flex align-items-center">
+                    <i class="bi bi-info-circle-fill fs-4 me-3"></i>
+                    <div>
+                        <h6 class="mb-1 fw-bold">Active Job Details</h6>
+                        <p class="mb-0 small" id="job-details-text">Selected job details will appear here.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card border-0 shadow-sm rounded-3">
+                <div class="card-body p-4 p-md-5">
+                    <form method="post" novalidate>
+                        {% csrf_token %}
+
+                        <div class="row g-4">
+                            {% for field in form %}
+                                <div class="col-md-6">
+                                    <label for="{{ field.id_for_label }}" class="form-label fw-semibold text-secondary">
+                                        {{ field.label }}
+                                    </label>
+                                    
+                                    <div class="input-group">
+                                        {{ field }}
+                                    </div>
+
+                                    {% if field.errors %}
+                                        {% for error in field.errors %}
+                                            <div class="text-danger small mt-1">
+                                                <i class="bi bi-exclamation-circle me-1"></i>{{ error }}
+                                            </div>
+                                        {% endfor %}
+                                    {% endif %}
+                                </div>
+                            {% endfor %}
+                        </div>
+
+                        <hr class="my-4 text-muted opacity-25">
+
+                        <div class="d-flex justify-content-end gap-2">
+                            <a href="{% url 'trip_list' %}" class="btn btn-light px-4 border">Cancel</a>
+                            <button type="submit" class="btn btn-primary px-4 shadow-sm fw-bold">
+                                <i class="bi bi-save me-2"></i>Save Trip Details
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    input, select, textarea {
+        display: block; width: 100%; padding: 0.6rem 0.8rem;
+        font-size: 1rem; color: #334155;
+        background-color: #fff; border: 1px solid #e2e8f0;
+        border-radius: 0.5rem; transition: all 0.2s;
+    }
+    input:focus, select:focus {
+        border-color: #3b82f6; box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1); outline: none;
+    }
+    .form-label { margin-bottom: 0.4rem; font-size: 0.9rem; }
+</style>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        // 1. Automatic Date Handling
+        const tripDate = document.querySelector('input[name="trip_date"]');
+        if (tripDate) tripDate.type = "date";
+
+        // 2. Job Info Logic (Optional but recommended)
+        // Jab user Job select kare, toh hum extra info dikha sakte hain (if needed via AJAX)
+        const jobSelect = document.querySelector('select[name="job"]');
+        const infoAlert = document.getElementById('job-info-alert');
+        const infoText = document.getElementById('job-details-text');
+
+        if (jobSelect) {
+            jobSelect.addEventListener('change', function() {
+                const selectedText = jobSelect.options[jobSelect.selectedIndex].text;
+                if (this.value) {
+                    infoAlert.classList.remove('d-none');
+                    infoText.innerHTML = `You are adding a trip to <strong>${selectedText}</strong>. Vehicle and Driver will be assigned automatically from this Job.`;
+                } else {
+                    infoAlert.classList.add('d-none');
+                }
+            });
+        }
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,205 @@
+{% extends "base.html" %}
+
+{% block content %}
+<style>
+    /* Sidebar & Scrollbar Styling (Aapki original logic) */
+    .sidebar, #sidebar, .main-sidebar {
+        height: 100vh !important;
+        overflow-y: auto !important;
+        scrollbar-width: thin;
+        scrollbar-color: rgba(255,255,255,0.2) transparent;
+    }
+    .sidebar::-webkit-scrollbar { width: 5px; }
+    .sidebar::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); border-radius: 10px; }
+
+    /* Custom Styles */
+    .bg-primary-soft { background-color: rgba(13, 110, 253, 0.1); }
+    .bg-danger-soft { background-color: rgba(220, 53, 69, 0.1); }
+    .bg-info-soft { background-color: rgba(13, 202, 240, 0.1); }
+    .bg-warning-soft { background-color: rgba(255, 193, 7, 0.1); }
+    
+    .stats-card { transition: transform 0.2s ease; border-radius: 1.25rem !important; }
+    .stats-card:hover { transform: translateY(-5px); }
+
+    /* Expiry Alert Animation */
+    @keyframes pulse-red {
+        0% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.4); }
+        70% { box-shadow: 0 0 0 10px rgba(220, 53, 69, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0); }
+    }
+    .alert-critical { 
+        border-left: 5px solid #dc3545 !important; 
+        animation: pulse-red 2s infinite;
+        background: #fff;
+    }
+</style>
+
+<div class="container-fluid py-4" style="scroll-behavior: smooth;">
+    
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3 class="fw-bold text-dark mb-0">
+            <i class="bi bi-speedometer2 text-primary me-2"></i>Fleet Dashboard
+        </h3>
+        <span class="badge bg-white text-dark border shadow-sm p-2 rounded-pill">
+            <i class="bi bi-calendar3 text-primary me-1"></i> {% now "jS F Y" %}
+        </span>
+    </div>
+
+    {% if critical_vehicles %}
+    <div class="row mb-4 animate__animated animate__fadeIn">
+        <div class="col-12">
+            <div class="card alert-critical shadow-sm border-0 rounded-4">
+                <div class="card-body p-4">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="bg-danger text-white rounded-circle p-2 me-3">
+                            <i class="bi bi-exclamation-triangle-fill fs-4"></i>
+                        </div>
+                        <div>
+                            <h5 class="fw-bold text-danger mb-0">Document Expiry Alerts</h5>
+                            <p class="text-muted small mb-0">Following vehicles have expired or expiring permits/fitness.</p>
+                        </div>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-sm align-middle mb-0">
+                            <thead>
+                                <tr class="text-muted small uppercase">
+                                    <th>Vehicle</th>
+                                    <th>Issue</th>
+                                    <th class="text-end">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for v in critical_vehicles %}
+                                <tr>
+                                    <td class="fw-bold text-dark">{{ v.vehicle_number }}</td>
+                                    <td>
+                                        <div class="d-flex gap-1">
+                                            {% if v.sindh_permit_expiry <= warning_date %}
+                                                <span class="badge {% if v.sindh_permit_expiry < today %}bg-danger{% else %}bg-warning text-dark{% endif %} small">
+                                                    Sindh Permit
+                                                </span>
+                                            {% endif %}
+                                            {% if v.fitness_expiry_sindh <= warning_date %}
+                                                <span class="badge {% if v.fitness_expiry_sindh < today %}bg-danger{% else %}bg-warning text-dark{% endif %} small">
+                                                    Fitness
+                                                </span>
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                    <td class="text-end">
+                                        <a href="{% url 'vehicle_edit' v.id %}" class="btn btn-sm btn-danger rounded-pill px-3">Update</a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="row g-4 mb-5">
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm h-100 stats-card">
+                <div class="card-body p-4 text-center">
+                    <div class="icon-shape bg-primary-soft text-primary rounded-circle mx-auto mb-3" style="width: 60px; height:60px; display: flex; align-items: center; justify-content: center;">
+                        <i class="bi bi-truck fs-3"></i>
+                    </div>
+                    <p class="text-uppercase small fw-bold text-muted mb-1">Total Trips</p>
+                    <h2 class="fw-bold mb-0">{{ total_trips }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm h-100 stats-card">
+                <div class="card-body p-4 text-center">
+                    <div class="icon-shape bg-info-soft text-info rounded-circle mx-auto mb-3" style="width: 60px; height:60px; display: flex; align-items: center; justify-content: center;">
+                        <i class="bi bi-bus-front fs-3"></i>
+                    </div>
+                    <p class="text-uppercase small fw-bold text-muted mb-1">Vehicles</p>
+                    <h2 class="fw-bold mb-0">{{ total_vehicles }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm h-100 stats-card">
+                <div class="card-body p-4 text-center">
+                    <div class="icon-shape bg-warning-soft text-warning rounded-circle mx-auto mb-3" style="width: 60px; height:60px; display: flex; align-items: center; justify-content: center;">
+                        <i class="bi bi-person-badge fs-3"></i>
+                    </div>
+                    <p class="text-uppercase small fw-bold text-muted mb-1">Drivers</p>
+                    <h2 class="fw-bold mb-0">{{ total_drivers }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm h-100 stats-card bg-primary text-white">
+                <div class="card-body p-4 text-center">
+                    <div class="icon-shape bg-white-soft text-white rounded-circle mx-auto mb-3" style="width: 60px; height:60px; display: flex; align-items: center; justify-content: center;">
+                        <i class="bi bi-cash-stack fs-3"></i>
+                    </div>
+                    <p class="text-uppercase small fw-bold text-white-50 mb-1">Profit</p>
+                    <h2 class="fw-bold mb-0">Rs {{ profit }}</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <div class="row" id="maintenance-section">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+                <div class="card-header bg-white py-3 border-0 d-flex align-items-center justify-content-between">
+                    <h5 class="mb-0 fw-bold">
+                        <i class="bi bi-tools me-2 text-danger"></i>Maintenance Alerts
+                    </h5>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="bg-light">
+                            <tr>
+                                <th class="ps-4">Vehicle</th>
+                                <th class="text-center">Due Date</th>
+                                <th class="text-center">Status</th>
+                                <th class="text-end pe-4">Due KM</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for m in upcoming_maintenance %}
+                            {% with status=m.get_status %}
+                            <tr class="{% if status == 'OVERDUE' %}table-danger overdue-pulse{% endif %}">
+                                <td class="ps-4 fw-bold">{{ m.vehicle }}</td>
+                                <td class="text-center">{{ m.next_due_date|date:"d M, Y" }}</td>
+                                <td class="text-center">
+                                    {% if status == 'OVERDUE' %}
+                                        <span class="text-danger fw-bold animate-flicker">OVERDUE</span>
+                                    {% else %}
+                                        <span class="badge bg-success-subtle text-success">Safe</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end pe-4">{{ m.next_due_km }} KM</td>
+                            </tr>
+                            {% endwith %}
+                            {% empty %}
+                            <tr><td colspan="4" class="text-center py-4 text-muted">No maintenance due.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<button id="backToTop" class="btn btn-primary rounded-circle shadow-lg" style="display: none; position: fixed; bottom: 20px; right: 20px; width: 50px; height: 50px; z-index: 1000;">
+    <i class="bi bi-chevron-up fs-4"></i>
+</button>
+
+<script>
+    const topBtn = document.getElementById("backToTop");
+    window.onscroll = () => { topBtn.style.display = (window.scrollY > 300) ? "block" : "none"; };
+    topBtn.onclick = () => { window.scrollTo({ top: 0, behavior: 'smooth' }); };
+</script>
+{% endblock %}

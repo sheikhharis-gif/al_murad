@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h3 class="fw-bold text-dark mb-1">
+                <i class="bi bi-shop text-primary me-2"></i>Vendor Directory
+            </h3>
+            <p class="text-muted small mb-0">Manage third-party suppliers, fuel stations, and workshop partners.</p>
+        </div>
+        <div>
+            <a href="{% url 'vendor_add' %}" class="btn btn-primary px-4 shadow-sm fw-bold rounded-3">
+                <i class="bi bi-plus-circle-fill me-2"></i>Register New Vendor
+            </a>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+        <div class="card-header bg-white border-0 py-3 px-4 d-flex justify-content-between align-items-center border-bottom">
+            <h5 class="fw-bold mb-0 text-dark">Supplier List</h5>
+            <div class="input-group w-auto">
+                <span class="input-group-text bg-light border-0"><i class="bi bi-search"></i></span>
+                <input type="text" id="vendorSearch" class="form-control bg-light border-0 small" placeholder="Search vendor name...">
+            </div>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0 custom-vendor-table">
+                <thead class="bg-light text-muted small text-uppercase fw-bold">
+                    <tr>
+                        <th class="ps-4">Vendor Name</th>
+                        <th>Vehicles Count</th> <th>Contact Information</th>
+                        <th class="text-end pe-4">Management</th>
+                    </tr>
+                </thead>
+                <tbody id="vendorTableBody">
+                    {% for v in vendors %}
+                    <tr>
+                        <td class="ps-4">
+                            <div class="d-flex align-items-center">
+                                <div class="vendor-avatar me-3 bg-info-subtle text-info">
+                                    <i class="bi bi-truck-flatbed"></i>
+                                </div>
+                                <div>
+                                    <h6 class="fw-bold text-dark mb-0">{{ v.name }}</h6>
+                                    <small class="text-muted small">Partner ID: VND-{{ v.id }}</small>
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            {% if v.vehicle_count > 0 %}
+                                <span class="badge bg-success-soft text-success px-3 py-2 rounded-pill border border-success-subtle">
+                                    <i class="bi bi-truck me-1 small"></i> {{ v.vehicle_count }} Vehicles
+                                </span>
+                            {% else %}
+                                <span class="badge bg-light text-muted px-3 py-2 rounded-pill border">
+                                    <i class="bi bi-info-circle me-1 small"></i> 0 Vehicles
+                                </span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="d-flex flex-column">
+                                <span class="text-dark fw-medium small">
+                                    <i class="bi bi-telephone text-primary me-2"></i>{{ v.phone }}
+                                </span>
+                                <span class="text-muted small">
+                                    <i class="bi bi-person me-2"></i>{{ v.poc }}
+                                </span>
+                            </div>
+                        </td>
+                        <td class="text-end pe-4">
+                            <div class="btn-group shadow-sm rounded-2 overflow-hidden border">
+                                <a href="tel:{{ v.phone }}" class="btn btn-white btn-sm" title="Call Now">
+                                    <i class="bi bi-telephone-outbound text-success"></i>
+                                </a>
+                                <a href="{% url 'vendor_edit' v.id %}" class="btn btn-white btn-sm border-start" title="Edit Vendor">
+                                    <i class="bi bi-pencil-square text-warning"></i>
+                                </a>
+                                <form action="{% url 'vendor_delete' v.id %}" method="POST" class="d-inline">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-white btn-sm border-start" title="Delete Vendor" 
+                                            onclick="return confirm('Bae, kya waqai is vendor ko delete karna hai?')">
+                                        <i class="bi bi-trash text-danger"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="4" class="text-center py-5">
+                            <div class="py-4 opacity-50">
+                                <i class="bi bi-building-exclamation display-1"></i>
+                                <h5 class="mt-3">No vendors found in the database.</h5>
+                                <p class="small">System mein koi supplier ya vendor mojood nahi hai.</p>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* Professional Vendor Styles */
+    .bg-success-soft { background-color: rgba(25, 135, 84, 0.1) !important; }
+    
+    .custom-vendor-table thead th {
+        font-size: 0.75rem;
+        padding: 1.2rem 0.75rem;
+        background-color: #f8fafc;
+        letter-spacing: 0.4px;
+    }
+
+    .custom-vendor-table tbody td {
+        padding: 1.2rem 0.75rem;
+        border-bottom: 1px solid #f1f5f9;
+    }
+
+    .vendor-avatar {
+        width: 42px;
+        height: 42px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.2rem;
+    }
+
+    .bg-info-subtle { background-color: #e0f2fe !important; }
+    
+    .btn-white { background-color: #fff; border: none; }
+    .btn-white:hover { background-color: #f8fafc; }
+
+    .custom-vendor-table tr:hover {
+        background-color: #f9fafb;
+    }
+</style>
+{% endblock %}

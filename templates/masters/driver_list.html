@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h3 class="mb-3">👤 Drivers</h3>
+
+<table class="table table-bordered bg-white">
+    <thead>
+        <tr>
+            <th>Name</th>
+            <th>CNIC</th>
+            <th>Phone</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for d in drivers %}
+        <tr>
+            <td>{{ d.name }}</td>
+            <td>{{ d.cnic }}</td>
+            <td>{{ d.phone }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="3">No drivers found</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

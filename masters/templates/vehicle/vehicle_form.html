@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <form method="post" novalidate>
+        {% csrf_token %}
+
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h3 class="fw-bold text-dark mb-0">
+                    <i class="bi bi-truck text-primary me-2"></i>
+                    {% if vehicle %}Edit Vehicle: {{ vehicle.vehicle_number }}{% else %}Registration of New Vehicle{% endif %}
+                </h3>
+                <p class="text-muted small mb-0">Fill in the technical, permit, and location details.</p>
+            </div>
+            <div class="d-flex gap-2">
+                <a href="{% url 'vehicle_list' %}" class="btn btn-light border px-4 shadow-sm">Cancel</a>
+                <button type="submit" class="btn btn-primary px-4 shadow-sm fw-bold">
+                    <i class="bi bi-save me-2"></i>{% if vehicle %}Update Vehicle{% else %}Save Vehicle{% endif %}
+                </button>
+            </div>
+        </div>
+
+        <div class="row g-4">
+            <div class="col-lg-8">
+                
+                <div class="card border-0 shadow-sm rounded-4 mb-4 border-start border-primary border-4">
+                    <div class="card-body p-4">
+                        <label class="form-label small fw-bold text-uppercase text-primary">Select Vendor</label>
+                        {{ form.vendor }}
+                    </div>
+                </div>
+
+                <div class="card border-0 shadow-sm rounded-4 mb-4">
+                    <div class="card-header bg-white border-0 pt-4 px-4">
+                        <h5 class="fw-bold mb-0 text-primary">Registration & Location</h5>
+                    </div>
+                    <div class="card-body p-4">
+                        <div class="row g-3">
+                            <div class="col-md-6"><label class="form-label small">Vehicle Number</label>{{ form.vehicle_number }}</div>
+                            <div class="col-md-6"><label class="form-label small text-warning">Current Location</label>{{ form.current_location }}</div>
+                            <div class="col-md-4"><label class="form-label small">Mode</label>{{ form.vehicle_mode }}</div>
+                            <div class="col-md-4"><label class="form-label small">Type</label>{{ form.vehicle_type }}</div>
+                            <div class="col-md-4"><label class="form-label small">Wheeler</label>{{ form.wheeler }}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card border-0 shadow-sm rounded-4 mb-4">
+                    <div class="card-header bg-white border-0 pt-4 px-4">
+                        <h5 class="fw-bold mb-0 text-primary">Technical Specifications</h5>
+                    </div>
+                    <div class="card-body p-4">
+                        <div class="row g-3">
+                            <div class="col-md-4"><label class="form-label small">Engine No</label>{{ form.engine_no }}</div>
+                            <div class="col-md-4"><label class="form-label small">Chassis No</label>{{ form.chassis_no }}</div>
+                            <div class="col-md-4"><label class="form-label small">Container No</label>{{ form.container_no }}</div>
+                            <div class="col-md-12"><label class="form-label small">Vehicle Color</label>{{ form.color }}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card border-0 shadow-sm rounded-4">
+                    <div class="card-header bg-white border-0 pt-4 px-4">
+                        <h5 class="fw-bold mb-0 text-primary">Permits & Compliance</h5>
+                    </div>
+                    <div class="card-body p-4">
+                        <div class="row g-4">
+                            <div class="col-md-6">
+                                <div class="p-3 border rounded-3 bg-light-subtle">
+                                    <h6 class="fw-bold border-bottom pb-2">Sindh Province</h6>
+                                    <div class="row g-2">
+                                        <div class="col-6"><label class="x-small">Permit</label>{{ form.sindh_permit_expiry }}</div>
+                                        <div class="col-6"><label class="x-small text-danger">Fitness</label>{{ form.fitness_expiry_sindh }}</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="p-3 border rounded-3 bg-light-subtle">
+                                    <h6 class="fw-bold border-bottom pb-2">Punjab Province</h6>
+                                    <div class="row g-2">
+                                        <div class="col-6"><label class="x-small">Permit</label>{{ form.punjab_permit_expiry }}</div>
+                                        <div class="col-6"><label class="x-small text-danger">Fitness</label>{{ form.fitness_expiry_punjab }}</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="p-3 border rounded-3 bg-light-subtle">
+                                    <h6 class="fw-bold border-bottom pb-2">KPK Province</h6>
+                                    <div class="row g-2">
+                                        <div class="col-6"><label class="x-small">Permit</label>{{ form.kpk_permit_expiry }}</div>
+                                        <div class="col-6"><label class="x-small text-danger">Fitness</label>{{ form.fitness_expiry_kpk }}</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="p-3 border rounded-3 bg-light-subtle">
+                                    <h6 class="fw-bold border-bottom pb-2">Balochistan Province</h6>
+                                    <div class="row g-2">
+                                        <div class="col-6"><label class="x-small">Permit</label>{{ form.balochistan_permit_expiry }}</div>
+                                        <div class="col-6"><label class="x-small text-danger">Fitness</label>{{ form.fitness_expiry_balochistan }}</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-4">
+                <div class="card border-0 shadow-sm rounded-4 mb-4 bg-light p-4">
+                    <div class="form-check form-switch fs-5 text-center">
+                        {{ form.is_active }}
+                        <label class="form-check-label ms-2 fw-bold">Active Status</label>
+                    </div>
+                    <hr>
+                    <label class="form-label small fw-bold">Current Mileage (KM)</label>
+                    {{ form.current_km }}
+                    <div class="mt-3">
+                        <label class="form-label small fw-bold">Last Update</label>
+                        {{ form.last_meter_update }}
+                    </div>
+                </div>
+
+                <div class="card border-0 shadow-sm rounded-4 mb-4 p-4">
+                    <h6 class="fw-bold mb-3">
+                        <i class="bi bi-person-badge me-2 text-primary"></i>Assign Driver
+                    </h6>
+                    <div class="mb-3">
+                        <label class="form-label small">Select Driver</label>
+                        {{ form.driver }}
+                        <div class="form-text x-small mt-1">Select from registered drivers list.</div>
+                    </div>
+                    <a href="{% url 'driver_add' %}" class="btn btn-outline-primary btn-sm w-100 mt-2">
+                        <i class="bi bi-plus-circle me-1"></i>Add New Driver
+                    </a>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+<style>
+    input, select, textarea { display: block; width: 100%; padding: 0.6rem 1rem; border: 1px solid #e2e8f0; border-radius: 8px; margin-bottom: 5px; }
+    .form-label { font-weight: 600; color: #64748b; font-size: 0.85rem; }
+    .x-small { font-size: 0.7rem; text-transform: uppercase; font-weight: bold; color: #64748b; }
+    .bg-light-subtle { background-color: #f8fafc; }
+</style>
+{% endblock %}

@@ -1,0 +1,247 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    
+    <div class="mb-4">
+        <h3 class="fw-bold text-dark mb-1">Logistics Configuration</h3>
+        <p class="text-muted small">Manage operational cities and auto-calculate haulage routes instantly.</p>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-lg-5">
+            <div class="card border-0 shadow-sm rounded-4 h-100">
+                <div class="card-header bg-white border-0 pt-4 px-4">
+                    <h5 class="fw-bold mb-0 text-primary">
+                        <i class="bi bi-building-add me-2"></i>City Registration
+                    </h5>
+                </div>
+                
+                <div class="card-body px-4">
+                    <form method="post" id="cityForm" class="bg-light p-4 rounded-4 mb-4 border border-light-subtle">
+                        {% csrf_token %}
+                        <input type="hidden" name="add_city">
+                        
+                        <input id="latInput" name="latitude" type="hidden" required>
+                        <input id="lonInput" name="longitude" type="hidden" required>
+
+                        <div class="row g-3">
+                            <div class="col-md-8">
+                                <label class="form-label small fw-bold">City Name</label>
+                                <div class="input-group">
+                                    <input id="cityNameInput" name="city_name" class="form-control" placeholder="e.g. Islamabad" required>
+                                    <button type="button" class="btn btn-primary" onclick="searchCity()">
+                                        <i class="bi bi-search"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small fw-bold">Code</label>
+                                <input name="city_code" class="form-control" placeholder="ISB" required>
+                            </div>
+                        </div>
+
+                        <div id="searchStatus" class="small mt-2 min-height-20"></div>
+
+                        <button class="btn btn-dark w-100 mt-3 fw-bold rounded-3 py-2">
+                            <i class="bi bi-plus-circle me-2"></i>Register City
+                        </button>
+                    </form>
+
+                    <div class="table-responsive" style="max-height: 400px;">
+                        <table class="table table-hover align-middle custom-table">
+                            <thead class="sticky-top bg-white">
+                                <tr class="text-muted small text-uppercase">
+                                    <th>City Name</th>
+                                    <th class="text-end">Code</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for c in cities %}
+                                <tr>
+                                    <td class="fw-bold text-dark">{{ c.name }}</td>
+                                    <td class="text-end"><span class="badge bg-secondary-subtle text-secondary px-3">{{ c.code }}</span></td>
+                                </tr>
+                                {% empty %}
+                                <tr><td colspan="2" class="text-center py-4 text-muted">No cities found.</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-7">
+            <div class="card border-0 shadow-sm rounded-4 h-100">
+                <div class="card-header bg-white border-0 pt-4 px-4">
+                    <h5 class="fw-bold mb-0 text-success">
+                        <i class="bi bi-signpost-split me-2"></i>Route Network
+                    </h5>
+                </div>
+
+                <div class="card-body px-4 text-center">
+                    <form method="post" class="bg-light p-4 rounded-4 mb-4 border border-light-subtle text-start">
+                        {% csrf_token %}
+                        <input type="hidden" name="add_route">
+
+                        <div class="row g-3 align-items-end">
+                            <div class="col-md-5">
+                                <label class="form-label small fw-bold text-muted">Starting Point</label>
+                                <select name="origin" class="form-select border-0 shadow-sm" required>
+                                    <option value="">Select Origin</option>
+                                    {% for c in cities %}
+                                    <option value="{{ c.id }}">{{ c.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-2 text-center pb-2 d-none d-md-block">
+                                <div class="bg-white rounded-circle shadow-sm d-inline-block p-2" style="width: 40px; height:40px;">
+                                    <i class="bi bi-arrow-right text-success"></i>
+                                </div>
+                            </div>
+                            <div class="col-md-5">
+                                <label class="form-label small fw-bold text-muted">End Point</label>
+                                <select name="destination" class="form-select border-0 shadow-sm" required>
+                                    <option value="">Select Destination</option>
+                                    {% for c in cities %}
+                                    <option value="{{ c.id }}">{{ c.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-12 mt-4">
+                                <button class="btn btn-success w-100 fw-bold rounded-3 py-2 shadow-sm">
+                                    <i class="bi bi-map me-2"></i>Generate Smart Route
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+
+                    <div id="routeMap" class="mb-4 rounded-4 shadow-sm border" style="height: 350px; width: 100%;"></div>
+
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle custom-table text-start">
+                            <thead class="bg-light">
+                                <tr class="text-muted small text-uppercase font-weight-bold">
+                                    <th>Defined Route</th>
+                                    <th class="text-end">Distance</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for r in routes %}
+                                <tr onclick="drawRoute({{ r.origin.latitude }}, {{ r.origin.longitude }}, {{ r.destination.latitude }}, {{ r.destination.longitude }}, '{{ r.origin.name }}', '{{ r.destination.name }}')" style="cursor: pointer;">
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <span class="fw-semibold">{{ r.origin.name }}</span>
+                                            <i class="bi bi-arrow-right-short mx-2 text-muted fs-5"></i>
+                                            <span class="fw-semibold">{{ r.destination.name }}</span>
+                                        </div>
+                                    </td>
+                                    <td class="text-end fw-bold text-success">
+                                        {{ r.distance_km }} <span class="small text-muted fw-normal">km</span>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr><td colspan="2" class="text-center py-4 text-muted">No routes configured yet.</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<script>
+    function searchCity() {
+        const city = document.getElementById('cityNameInput').value;
+        const status = document.getElementById('searchStatus');
+        
+        if (!city) {
+            status.innerHTML = `<span class="text-warning small">Please enter city name</span>`;
+            return;
+        }
+
+        status.innerHTML = `<div class="spinner-border spinner-border-sm text-primary me-1"></div> <span class="text-muted small">Locating...</span>`;
+        
+        fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(city)}`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.length > 0) {
+                    const firstResult = data[0];
+                    document.getElementById('latInput').value = parseFloat(firstResult.lat).toFixed(6);
+                    document.getElementById('lonInput').value = parseFloat(firstResult.lon).toFixed(6);
+                    status.innerHTML = `<span class="text-success small fw-bold"><i class="bi bi-check-circle-fill"></i> Location Verified</span>`;
+                } else {
+                    status.innerHTML = `<span class="text-danger small fw-bold"><i class="bi bi-x-circle-fill"></i> City not found.</span>`;
+                }
+            })
+            .catch(err => {
+                status.innerHTML = `<span class="text-danger small">Network error.</span>`;
+            });
+    }
+
+    var map = L.map('routeMap').setView([30.3753, 69.3451], 5);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+    var routeLayer;
+    var markers = [];
+
+    function drawRoute(lat1, lon1, lat2, lon2, name1, name2) {
+        if (routeLayer) map.removeLayer(routeLayer);
+        markers.forEach(m => map.removeLayer(m));
+        markers = [];
+
+        var m1 = L.marker([lat1, lon1]).addTo(map).bindPopup(name1);
+        var m2 = L.marker([lat2, lon2]).addTo(map).bindPopup(name2);
+        markers.push(m1, m2);
+
+        fetch(`https://router.project-osrm.org/route/v1/driving/${lon1},${lat1};${lon2},${lat2}?overview=full&geometries=geojson`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.routes && data.routes[0]) {
+                    var coords = data.routes[0].geometry;
+                    routeLayer = L.geoJSON(coords, {
+                        style: { color: '#2ecc71', weight: 5, opacity: 0.8 }
+                    }).addTo(map);
+                    map.fitBounds(routeLayer.getBounds(), {padding: [50, 50]});
+                }
+            });
+    }
+
+    {% if routes %}
+        {% with first=routes|first %}
+            drawRoute({{ first.origin.latitude }}, {{ first.origin.longitude }}, {{ first.destination.latitude }}, {{ first.destination.longitude }}, '{{ first.origin.name }}', '{{ first.destination.name }}');
+        {% endwith %}
+    {% endif %}
+</script>
+
+<style>
+    .form-control, .form-select {
+        border-radius: 10px;
+        padding: 0.7rem 1rem;
+        border: 1px solid #e0e6ed;
+        background-color: #fff;
+    }
+    .form-control:focus, .form-select:focus {
+        box-shadow: 0 0 0 4px rgba(13, 110, 253, 0.05);
+        border-color: #0d6efd;
+    }
+    .custom-table th {
+        border: none;
+        background-color: #f8f9fa;
+        color: #6c757d;
+        font-weight: 600;
+        padding: 15px;
+    }
+    .custom-table td {
+        padding: 15px;
+        border-bottom: 1px solid #f1f4f8;
+    }
+    .min-height-20 { min-height: 20px; }
+    #routeMap { z-index: 1; }
+</style>
+{% endblock %}

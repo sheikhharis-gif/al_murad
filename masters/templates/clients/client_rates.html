@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h4>Client Rates – {{ client.name }}</h4>
+
+<form method="post" class="card p-3 mb-3">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit" class="btn btn-success">Add Rate</button>
+</form>
+
+<table class="table table-bordered">
+    <tr>
+        <th>Route</th>
+        <th>Rate</th>
+        <th>Fuel Price</th>
+        <th>Effective Date</th>
+    </tr>
+    {% for r in rates %}
+    <tr>
+        <td>{{ r.route }}</td>
+        <td>{{ r.rate }}</td>
+        <td>{{ r.fuel_price }}</td>
+        <td>{{ r.effective_date }}</td>
+    </tr>
+    {% empty %}
+    <tr><td colspan="4">No rates found</td></tr>
+    {% endfor %}
+</table>
+
+{% endblock %}

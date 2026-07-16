@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h3 class="fw-bold text-dark mb-1">
+                <i class="bi bi-tools text-primary me-2"></i>Vehicle Maintenance
+            </h3>
+            <p class="text-muted small mb-0">Monitor service history and track upcoming maintenance schedules.</p>
+        </div>
+        <div>
+            <a href="{% url 'maintenance_add' %}" class="btn btn-primary px-4 shadow-sm fw-bold rounded-3">
+                <i class="bi bi-plus-lg me-2"></i>Schedule Maintenance
+            </a>
+        </div>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm rounded-4 p-3 border-start border-warning border-4">
+                <div class="d-flex align-items-center">
+                    <div class="bg-warning-subtle p-3 rounded-circle me-3">
+                        <i class="bi bi-calendar-event text-warning fs-4"></i>
+                    </div>
+                    <div>
+                        <h6 class="text-muted small mb-1">Upcoming Services</h6>
+                        <h4 class="fw-bold mb-0">{{ records.count }}</h4>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+        <div class="card-header bg-white border-0 py-3 px-4 d-flex justify-content-between align-items-center border-bottom">
+            <h5 class="fw-bold mb-0 text-dark">Service Logs</h5>
+            <div class="input-group w-auto">
+                <span class="input-group-text bg-light border-0"><i class="bi bi-search"></i></span>
+                <input type="text" id="maintSearch" class="form-control bg-light border-0 small" placeholder="Search vehicle...">
+            </div>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0 custom-maint-table">
+                <thead class="bg-light">
+                    <tr class="text-muted small text-uppercase fw-bold">
+                        <th class="ps-4">Vehicle</th>
+                        <th>Service Type</th>
+                        <th>Service Date</th>
+                        <th>Milestone (KM)</th>
+                        <th>Next Due Date</th>
+                        <th>Operational Remarks</th>
+                        <th class="text-end pe-4">Status</th>
+                    </tr>
+                </thead>
+                <tbody id="maintTableBody">
+                    {% for m in records %}
+                    <tr>
+                        <td class="ps-4">
+                            <span class="badge bg-dark text-white rounded-2 px-2 py-1 font-monospace">
+                                {{ m.vehicle }}
+                            </span>
+                        </td>
+                        <td>
+                            <div class="d-flex align-items-center text-dark fw-semibold">
+                                <i class="bi bi-gear-fill text-muted me-2 small"></i>
+                                {{ m.maintenance_type }}
+                            </div>
+                        </td>
+                        <td>
+                            <span class="text-muted small"><i class="bi bi-calendar3 me-1"></i> {{ m.change_date|date:"d M, Y" }}</span>
+                        </td>
+                        <td>
+                            <span class="fw-bold text-secondary">{{ m.change_km }} <small>KM</small></span>
+                        </td>
+                        <td>
+                            <span class="badge bg-info-subtle text-info-emphasis rounded-pill px-3">
+                                {{ m.next_due_date|date:"d M, Y" }}
+                            </span>
+                        </td>
+                        <td>
+                            <p class="text-muted small mb-0 text-truncate" style="max-width: 180px;" title="{{ m.remarks }}">
+                                {{ m.remarks|default:"Standard service" }}
+                            </p>
+                        </td>
+                        <td class="text-end pe-4">
+                            <span class="text-success small fw-bold">
+                                <i class="bi bi-check-circle-fill me-1"></i> Completed
+                            </span>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="text-center py-5">
+                            <div class="opacity-25 mb-3">
+                                <i class="bi bi-wrench-adjustable display-1"></i>
+                            </div>
+                            <h5 class="text-muted">No maintenance records found.</h5>
+                            <p class="small text-muted">Achi performance ke liye regular maintenance record lazmi hai.</p>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* Professional Maintenance Layout */
+    .custom-maint-table thead th {
+        font-size: 0.75rem;
+        padding: 1.1rem 0.75rem;
+        background-color: #f8fafc;
+        letter-spacing: 0.5px;
+    }
+
+    .custom-maint-table tbody td {
+        padding: 1.2rem 0.75rem;
+        border-bottom: 1px solid #f1f5f9;
+    }
+
+    .bg-info-subtle { background-color: #e0f2fe !important; }
+    .text-info-emphasis { color: #0369a1 !important; }
+
+    .font-monospace { font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace !important; }
+    
+    /* Subtle Row Hover */
+    .custom-maint-table tbody tr:hover {
+        background-color: #f9fafb;
+        cursor: default;
+    }
+</style>
+
+<script>
+    // Real-time Filtering
+    document.getElementById('maintSearch').addEventListener('keyup', function() {
+        let value = this.value.toLowerCase();
+        let rows = document.querySelectorAll('#maintTableBody tr');
+        rows.forEach(row => {
+            row.style.display = (row.innerText.toLowerCase().indexOf(value) > -1) ? "" : "none";
+        });
+    });
+</script>
+{% endblock %}

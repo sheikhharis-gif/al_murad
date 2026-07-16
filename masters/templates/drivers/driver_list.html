@@ -1,0 +1,158 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h3 class="fw-bold text-dark mb-1">
+                <i class="bi bi-person-badge text-primary me-2"></i>Driver Registry
+            </h3>
+            <p class="text-muted small mb-0">Manage driver profiles, contact details, and employment status.</p>
+        </div>
+        <div>
+            <a href="{% url 'driver_add' %}" class="btn btn-primary px-4 shadow-sm fw-bold rounded-3">
+                <i class="bi bi-person-plus-fill me-2"></i>Register New Driver
+            </a>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+        <div class="card-header bg-white border-0 py-3 px-4 d-flex justify-content-between align-items-center border-bottom">
+            <h5 class="fw-bold mb-0 text-dark">Active Personnel</h5>
+            <div class="input-group w-auto">
+                <span class="input-group-text bg-light border-0"><i class="bi bi-search"></i></span>
+                <input type="text" id="driverSearch" class="form-control bg-light border-0 small" placeholder="Search by name or CNIC...">
+            </div>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0 custom-driver-table">
+                <thead class="bg-light">
+                    <tr class="text-muted small text-uppercase fw-bold">
+                        <th class="ps-4">Driver Profile</th>
+                        <th>Contact Number</th>
+                        <th>Identification (CNIC)</th>
+                        <th>Status</th>
+                        <th class="text-end pe-4">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="driverTableBody">
+                    {% for d in drivers %}
+                    <tr>
+                        <td class="ps-4">
+                            <div class="d-flex align-items-center">
+                                <div class="avatar-circle me-3 bg-primary-subtle text-primary fw-bold">
+                                    {{ d.name|slice:":1"|upper }}
+                                </div>
+                                <div>
+                                    <h6 class="fw-bold text-dark mb-0">{{ d.name }}</h6>
+                                    <small class="text-muted">ID: DRV-00{{ d.id }}</small>
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <span class="badge bg-light text-dark border rounded-pill px-3 py-2 fw-medium">
+                                <i class="bi bi-telephone me-2 text-primary"></i>{{ d.mobile }}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="font-monospace text-secondary fw-semibold">{{ d.cnic }}</span>
+                        </td>
+                        <td>
+                            {% if d.is_active %}
+                                <span class="badge bg-success-subtle text-success rounded-pill px-3 py-1 fw-bold">
+                                    <i class="bi bi-circle-fill small me-1"></i> Active
+                                </span>
+                            {% else %}
+                                <span class="badge bg-danger-subtle text-danger rounded-pill px-3 py-1 fw-bold">
+                                    <i class="bi bi-circle-fill small me-1"></i> Inactive
+                                </span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end pe-4">
+                            <div class="btn-group shadow-sm rounded-2 overflow-hidden bg-white border">
+                                <a href="#" class="btn btn-sm btn-white text-primary border-end" title="View Profile">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                                
+                                <a href="{% url 'driver_edit' d.id %}" class="btn btn-sm btn-white text-warning border-end" title="Edit Driver">
+                                    <i class="bi bi-pencil-square"></i>
+                                </a>
+
+                                <a href="{% url 'driver_delete' d.id %}" 
+                                   class="btn btn-sm btn-white text-danger" 
+                                   title="Delete Driver"
+                                   onclick="return confirm('Kya aap waqai is Driver ko delete karna chahte hain?')">
+                                    <i class="bi bi-trash"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="text-center py-5">
+                            <div class="py-4 text-muted">
+                                <i class="bi bi-people display-1 opacity-25"></i>
+                                <h5 class="mt-3">No drivers found in the records.</h5>
+                                <p class="small">Shuruat karne ke liye naya driver register karein.</p>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* Sab styling wahi hai jo aapne di thi */
+    .custom-driver-table thead th {
+        font-size: 0.75rem;
+        padding: 1.1rem 0.75rem;
+        background-color: #f8fafc;
+        letter-spacing: 0.5px;
+    }
+
+    .custom-driver-table tbody td {
+        padding: 1rem 0.75rem;
+        border-bottom: 1px solid #f1f5f9;
+    }
+
+    .btn-white { background-color: #fff; border: none; }
+    .btn-white:hover { background-color: #f8fafc; }
+
+    .avatar-circle {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.1rem;
+    }
+
+    .bg-primary-subtle { background-color: #e0e7ff !important; }
+    .bg-success-subtle { background-color: #dcfce7 !important; }
+    .bg-danger-subtle { background-color: #fee2e2 !important; }
+
+    .custom-driver-table tr:hover {
+        background-color: #fcfcfc;
+        transition: 0.2s ease;
+    }
+
+    .font-monospace { font-family: 'SFMono-Regular', Consolas, monospace !important; }
+</style>
+
+<script>
+    // Live Driver Filtering Logic
+    document.getElementById('driverSearch').addEventListener('keyup', function() {
+        let value = this.value.toLowerCase();
+        let rows = document.querySelectorAll('#driverTableBody tr');
+        rows.forEach(row => {
+            row.style.display = (row.innerText.toLowerCase().indexOf(value) > -1) ? "" : "none";
+        });
+    });
+</script>
+{% endblock %}

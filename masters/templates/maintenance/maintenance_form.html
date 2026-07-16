@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            
+            <div class="d-flex align-items-center justify-content-between mb-4 pb-2 border-bottom">
+                <h3 class="fw-bold text-dark mb-0">
+                    <i class="bi bi-tools text-primary me-2"></i>Add Maintenance Record
+                </h3>
+                <a href="{% url 'maintenance_list' %}" class="btn btn-outline-secondary btn-sm rounded-pill px-3">
+                    <i class="bi bi-arrow-left me-1"></i> Back to History
+                </a>
+            </div>
+
+            <div class="card border-0 shadow-sm rounded-4">
+                <div class="card-body p-4 p-md-5">
+                    <form method="post" novalidate>
+                        {% csrf_token %}
+
+                        <div class="row g-4">
+                            <div class="col-md-6">
+                                <label for="vehicle" class="form-label fw-bold text-secondary">Select Vehicle</label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light border-end-0"><i class="bi bi-truck"></i></span>
+                                    <select name="vehicle" id="vehicle" class="form-select border-start-0 ps-0" required>
+                                        {% for v in vehicles %}
+                                        <option value="{{ v.id }}">{{ v.vehicle_number }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label for="maintenance_type" class="form-label fw-bold text-secondary">Maintenance Type</label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light border-end-0"><i class="bi bi-gear-wide-connected"></i></span>
+                                    <select name="maintenance_type" id="maintenance_type" class="form-select border-start-0 ps-0" required>
+                                        <option value="OIL">Oil Change</option>
+                                        <option value="TIRE">Tire Change</option>
+                                        <option value="BRAKE">Brake Repair</option>
+                                        <option value="OTHER">General Service</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="col-md-4">
+                                <label for="change_date" class="form-label fw-bold text-secondary">Current Service Date</label>
+                                <input type="date" name="change_date" id="change_date" class="form-control bg-light" required>
+                            </div>
+
+                            <div class="col-md-4">
+                                <label for="change_km" class="form-label fw-bold text-secondary">Current Odometer (KM)</label>
+                                <input type="number" name="change_km" id="change_km" class="form-control bg-light" placeholder="e.g. 45000" required>
+                            </div>
+
+                            <div class="col-md-4">
+                                <label for="next_due_date" class="form-label fw-bold text-danger-emphasis">Next Due Date (Projected)</label>
+                                <input type="date" name="next_due_date" id="next_due_date" class="form-control border-danger-subtle bg-danger-subtle bg-opacity-10">
+                            </div>
+
+                            <div class="col-12">
+                                <label for="remarks" class="form-label fw-bold text-secondary">Maintenance Remarks</label>
+                                <textarea name="remarks" id="remarks" class="form-control bg-light" rows="3" placeholder="Write any specific notes here..."></textarea>
+                            </div>
+                        </div>
+
+                        <hr class="my-4 opacity-25">
+
+                        <div class="d-flex justify-content-end gap-3">
+                            <button type="reset" class="btn btn-light px-4 border rounded-pill">Reset Form</button>
+                            <button type="submit" class="btn btn-primary px-5 rounded-pill shadow-sm">
+                                <i class="bi bi-save me-2"></i>Save Maintenance Entry
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* Styling for the Maintenance Form */
+    .form-control, .form-select {
+        padding: 0.75rem 1rem;
+        border: 1px solid #dee2e6;
+        border-radius: 10px;
+        transition: all 0.2s ease;
+    }
+    
+    .form-control:focus, .form-select:focus {
+        background-color: #fff !important;
+        border-color: #0d6efd;
+        box-shadow: 0 0 0 4px rgba(13, 110, 253, 0.1);
+    }
+
+    .input-group-text {
+        border-radius: 10px 0 0 10px;
+        color: #6c757d;
+    }
+
+    .form-label {
+        font-size: 0.85rem;
+        margin-bottom: 0.5rem;
+    }
+
+    /* Red highlight for Next Due Date to emphasize importance */
+    #next_due_date:focus {
+        border-color: #dc3545;
+        box-shadow: 0 0 0 4px rgba(220, 53, 69, 0.1);
+    }
+</style>
+{% endblock %}

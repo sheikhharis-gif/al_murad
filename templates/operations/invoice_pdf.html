@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        @page { size: A4; margin: 1cm; }
+        body { font-family: Helvetica, Arial, sans-serif; font-size: 10px; color: #333; line-height: 1.4; }
+        
+        /* Header Styling */
+        .header-box { background-color: #f8f9fa; text-align: center; padding: 15px; border: 2px solid #333; margin-bottom: 20px; }
+        .title { font-size: 22px; font-weight: bold; text-transform: uppercase; letter-spacing: 2px; }
+        
+        /* Top Info Grid */
+        .info-table { width: 100%; margin-bottom: 15px; border-collapse: collapse; }
+        .info-table td { padding: 4px; border: 1px solid #eee; }
+        .label { font-weight: bold; background-color: #f2f2f2; width: 15%; color: #555; }
+        .value { width: 18%; padding-left: 8px; }
+
+        /* Section Titles */
+        .section-header { background-color: #444; color: white; padding: 5px 10px; font-size: 12px; font-weight: bold; margin-top: 15px; border-radius: 3px; }
+
+        /* Data Tables */
+        .data-table { width: 100%; margin-top: 5px; border-collapse: collapse; }
+        .data-table th { background-color: #f2f2f2; color: #333; padding: 7px; border: 1px solid #333; text-align: left; font-size: 9px; }
+        .data-table td { padding: 6px; border: 1px solid #ddd; text-align: left; }
+
+        /* Summary Box Styling */
+        .summary-container { margin-top: 20px; width: 100%; }
+        .summary-box { float: right; width: 300px; }
+        .summary-table { width: 100%; border-collapse: collapse; border: 2px solid #333; }
+        .summary-table td { padding: 8px; border: 1px solid #333; }
+        .total-row { background-color: #f8f9fa; font-weight: bold; font-size: 11px; }
+        .profit-row { background-color: #FFD700; font-weight: bold; font-size: 12px; }
+
+        .clearfix { clear: both; }
+    </style>
+</head>
+<body>
+
+    <div class="header-box">
+        <div class="title">Job Invoice - AL MURAD</div>
+    </div>
+
+    <table class="info-table">
+        <tr>
+            <td class="label">Job #</td><td class="value">{{ job.job_number }}</td>
+            <td class="label">Vehicle No</td><td class="value">{{ job.vehicle.vehicle_number }}</td>
+            <td class="label">Date</td><td class="value">{{ invoice_date|date:"d-M-Y" }}</td>
+        </tr>
+        <tr>
+            <td class="label">Client</td><td class="value">{{ client_name }}</td>
+            <td class="label">Status</td><td class="value">{{ job.get_status_display }}</td>
+            <td class="label">Total Trips</td><td class="value">{{ trips|length }}</td>
+        </tr>
+    </table>
+
+    <div class="section-header">TRIP DETAILS (FREIGHT & ROUTE)</div>
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Trip #</th>
+                <th>Bilty #</th>
+                <th>Route</th>
+                <th>Weight</th>
+                <th>Rate</th>
+                <th>Freight</th>
+                <th>Detention</th>
+                <th>Total</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for trip in trips %}
+            <tr>
+                <td>{{ trip.trip_no }}</td>
+                <td>{{ trip.bilty_number|default:"---" }}</td>
+                <td>{{ trip.route.name|default:trip.route }}</td>
+                <td>{{ trip.weight }}</td>
+                <td>{{ trip.rate }}</td>
+                <td>Rs {{ trip.freight }}</td>
+                <td>Rs {{ trip.detention }}</td>
+                <td style="font-weight: bold;">Rs {{ trip.freight }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="8" style="text-align: center;">No trips found for this job.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="summary-container">
+        <div class="summary-box">
+            <table class="summary-table">
+                <tr>
+                    <td>Total Weight</td>
+                    <td align="right">{{ total_weight|default:"0.00" }} Tons</td>
+                </tr>
+                <tr>
+                    <td>Total Gross Income</td>
+                    <td align="right">Rs {{ total_income|default:"0.00" }}</td>
+                </tr>
+                <tr>
+                    <td>Total Trip Expenses (Toll/Food/etc)</td>
+                    <td align="right">Rs {{ total_expenses|default:"0.00" }}</td>
+                </tr>
+                <tr class="total-row">
+                    <td><strong>Total Deductions</strong></td>
+                    <td align="right"><strong>Rs {{ total_expenses|default:"0.00" }}</strong></td>
+                </tr>
+                <tr class="profit-row">
+                    <td><strong>NET PROFIT ON JOB</strong></td>
+                    <td align="right"><strong>Rs {{ net_profit|default:"0.00" }}</strong></td>
+                </tr>
+            </table>
+        </div>
+        <div class="clearfix"></div>
+    </div>
+
+    <div style="margin-top: 50px;">
+        <p>____________________<br>Authorized Signature</p>
+    </div>
+
+</body>
+</html>

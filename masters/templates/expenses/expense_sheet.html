@@ -1,0 +1,179 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-11">
+            
+            <div class="d-flex align-items-center justify-content-between mb-4">
+                <h3 class="fw-bold text-dark mb-0">
+                    <span class="text-primary">📑</span> Expense Sheet
+                </h3>
+                <div class="text-muted small">Enter trip-related costs below</div>
+            </div>
+
+            {% if form.errors %}
+            <div class="alert alert-danger">
+                <strong>Ghalti:</strong> Form save nahi hua. Meharbani karke fields check karein.
+                {{ form.errors }}
+            </div>
+            {% endif %}
+
+            <form method="post">
+                {% csrf_token %}
+                
+                <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+                    <div class="card-body p-4 p-md-5">
+                        
+                        <div class="mb-5">
+                            <h5 class="text-uppercase fs-6 fw-bold text-muted mb-3 border-bottom pb-2">
+                                <i class="bi bi-info-circle me-2"></i>Basic Information
+                            </h5>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold">Trip Number</label>
+                                    {{ form.trip }}
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold">Date</label>
+                                    {{ form.date }}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-5">
+                            <h5 class="text-uppercase fs-6 fw-bold text-muted mb-3 border-bottom pb-2">
+                                <i class="bi bi-fuel-pump me-2"></i>Fuel Details
+                            </h5>
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <label class="form-label">Pump Name</label>
+                                    {{ form.pump_name }}
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label">Slip No</label>
+                                    {{ form.slip_no }}
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label text-primary fw-bold">Fuel Liters</label>
+                                    {{ form.fuel_liter }}
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label text-danger fw-bold">Fuel Rate</label>
+                                    {{ form.fuel_rate }} </div>
+                                <div class="col-md-2">
+                                    <label class="form-label text-success fw-bold">Fuel Amount</label>
+                                    {{ form.fuel_amount }}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-5">
+                            <h5 class="text-uppercase fs-6 fw-bold text-muted mb-3 border-bottom pb-2">
+                                <i class="bi bi-cash-stack me-2"></i>Other Expenses
+                            </h5>
+                            <div class="row g-3">
+                                <div class="col-md-3"><label class="form-label">Toll Tax</label>{{ form.toll_tax }}</div>
+                                <div class="col-md-3"><label class="form-label">Inam</label>{{ form.inam }}</div>
+                                <div class="col-md-3"><label class="form-label">Police</label>{{ form.police }}</div>
+                                <div class="col-md-3"><label class="form-label">Food</label>{{ form.food }}</div>
+                                <div class="col-md-3"><label class="form-label">Card</label>{{ form.card }}</div>
+                                <div class="col-md-3"><label class="form-label">Maintenance</label>{{ form.maintenance }}</div>
+                                <div class="col-md-3"><label class="form-label">Other</label>{{ form.other }}</div>
+                            </div>
+                        </div>
+
+                        <div class="bg-light p-4 rounded-3 border-start border-primary border-5 mt-4">
+                            <div class="row align-items-center">
+                                <div class="col-md-6 text-center text-md-start">
+                                    <h4 class="mb-0 fw-bold">Grand Total Expense</h4>
+                                    <p class="text-muted small mb-0">Auto-calculated from all fields</p>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="input-group input-group-lg">
+                                        <span class="input-group-text bg-primary text-white border-0">Rs.</span>
+                                        <input type="text" id="display_total" class="form-control fw-bold bg-white" readonly placeholder="0.00">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                    
+                    <div class="card-footer bg-white p-4 border-top-0 d-flex gap-2">
+                        <button type="submit" class="btn btn-primary btn-lg flex-grow-1 shadow-sm">
+                            <i class="bi bi-check2-circle me-2"></i>Save Expense Sheet
+                        </button>
+                        <a href="{% url 'trip_list' %}" class="btn btn-outline-secondary btn-lg px-4 text-decoration-none">Cancel</a>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+    input, select {
+        display: block; width: 100%; padding: 0.6rem 0.75rem;
+        font-size: 0.95rem; color: #334155; background-color: #f8fafc;
+        border: 1px solid #e2e8f0; border-radius: 8px; transition: all 0.2s ease;
+    }
+    input:focus { background-color: #fff; border-color: #3b82f6; box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1); outline: none; }
+    .form-label { font-size: 0.85rem; color: #64748b; margin-bottom: 0.4rem; }
+</style>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Elements for Fuel Calculation
+        const fuelLiterInput = document.getElementById('id_fuel_liter');
+        const fuelRateInput = document.getElementById('id_fuel_rate');
+        const fuelAmountInput = document.getElementById('id_fuel_amount');
+
+        // Sab expense fields total ke liye
+        const fieldsToSum = [
+            'id_fuel_amount', 'id_toll_tax', 'id_inam', 'id_police', 
+            'id_food', 'id_card', 'id_maintenance', 'id_other'
+        ];
+
+        const displayTotal = document.getElementById('display_total');
+
+        // 1. Fuel Amount Calculate karne ka function (Liters * Rate)
+        function calculateFuelAmount() {
+            const liters = parseFloat(fuelLiterInput.value) || 0;
+            const rate = parseFloat(fuelRateInput.value) || 0;
+            const totalFuelCost = liters * rate;
+            fuelAmountInput.value = totalFuelCost.toFixed(2);
+            calculateGrandTotal(); // Fuel change ho toh grand total bhi update ho
+        }
+
+        // 2. Grand Total Calculate karne ka function
+        function calculateGrandTotal() {
+            let total = 0;
+            fieldsToSum.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                    total += parseFloat(el.value) || 0;
+                }
+            });
+            if (displayTotal) {
+                displayTotal.value = total.toLocaleString('en-US', {minimumFractionDigits: 2});
+            }
+        }
+
+        // Event Listeners for Fuel Calculation
+        if(fuelLiterInput) fuelLiterInput.addEventListener('input', calculateFuelAmount);
+        if(fuelRateInput) fuelRateInput.addEventListener('input', calculateFuelAmount);
+
+        // Event Listeners for Grand Total
+        fieldsToSum.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) {
+                el.addEventListener('input', calculateGrandTotal);
+            }
+        });
+
+        // Run on Page Load
+        calculateGrandTotal();
+    });
+</script>
+{% endblock %}

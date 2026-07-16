@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6"> 
+            <div class="d-flex align-items-center mb-4">
+                <div class="bg-primary text-white rounded-3 p-2 me-3 shadow-sm">
+                    <i class="bi bi-truck fs-4"></i>
+                </div>
+                <div>
+                    <h3 class="fw-bold mb-0">Assign New Voyage</h3>
+                    <p class="text-muted small mb-0">Assign a vehicle to start a new job cycle (Voyage).</p>
+                </div>
+            </div>
+
+            <div class="card border-0 shadow-sm rounded-4">
+                <div class="card-body p-4 p-md-5">
+                    <form method="post" novalidate>
+                        {% csrf_token %}
+
+                        <div class="mb-4">
+                            <label class="form-label fw-bold text-secondary small text-uppercase tracking-wider">
+                                <i class="bi bi-truck me-1"></i> Select Vehicle
+                            </label>
+                            <div class="input-group">
+                                {{ form.vehicle }}
+                            </div>
+                            {% if form.vehicle.errors %}
+                                <div class="text-danger small mt-1">{{ form.vehicle.errors }}</div>
+                            {% endif %}
+                            <div class="form-text small">Chassis number aur plate dekh kar gari select karein.</div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="form-label fw-bold text-secondary small text-uppercase tracking-wider">
+                                <i class="bi bi-chat-left-text me-1"></i> Voyage Remarks
+                            </label>
+                            <div class="input-group">
+                                {{ form.remarks }}
+                            </div>
+                            <div class="form-text small">Driver ka naam ya gari ki condition yahan likh sakte hain.</div>
+                            {% if form.remarks.errors %}
+                                <div class="text-danger small mt-1">{{ form.remarks.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <hr class="my-4 opacity-25">
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary btn-lg shadow-sm py-3 fw-bold rounded-3">
+                                <i class="bi bi-play-circle me-2"></i>Start Job / Voyage
+                            </button>
+                            <a href="{% url 'job_list' %}" class="btn btn-light btn-lg py-2 border-0 text-muted">
+                                Cancel & Return
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* Professional Styling */
+    select, textarea {
+        display: block;
+        width: 100%;
+        padding: 0.75rem 1rem;
+        font-size: 1rem;
+        font-weight: 400;
+        line-height: 1.5;
+        color: #2d3748;
+        background-color: #f7fafc;
+        border: 2px solid #edf2f7;
+        border-radius: 0.5rem;
+        transition: all 0.2s ease-in-out;
+    }
+    select:focus, textarea:focus {
+        background-color: #fff;
+        border-color: #4299e1;
+        outline: 0;
+        box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.15);
+    }
+    .tracking-wider { letter-spacing: 0.05em; }
+    .btn-primary {
+        background: linear-gradient(135deg, #4299e1 0%, #3182ce 100%);
+        border: none;
+    }
+    .btn-primary:hover {
+        background: linear-gradient(135deg, #3182ce 0%, #2b6cb0 100%);
+        transform: translateY(-1px);
+    }
+</style>
+{% endblock %}

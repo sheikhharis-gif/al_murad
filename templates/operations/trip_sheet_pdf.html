@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body { font-family: Arial, sans-serif; color: #111; margin: 20px; }
+        .title { text-align: center; font-size: 18pt; font-weight: bold; margin-bottom: 10px; }
+        .subtitle { text-align: center; font-size: 10pt; margin-bottom: 20px; }
+        .section { margin-bottom: 14px; }
+        .row { width: 100%; display: table; }
+        .cell { display: table-cell; vertical-align: top; padding: 2px 4px; }
+        .label { font-weight: bold; }
+        .box { border: 1px solid #444; padding: 6px; }
+        .small-label { font-size: 9pt; color: #333; }
+        .trip-block { width: 33%; border: 1px solid #444; padding: 6px; }
+        .trip-header { font-weight: bold; margin-bottom: 6px; }
+        .field-row { margin-bottom: 4px; }
+        .field-label { font-weight: bold; }
+        .footer-table { width: 100%; border-collapse: collapse; margin-top: 16px; }
+        .footer-table td { padding: 4px; }
+        .footer-table .label { width: 30%; }
+        .footer-table .value { width: 70%; }
+    </style>
+</head>
+<body>
+    <div class="title">Trip Sheet Own</div>
+    <div class="subtitle">Generated on {{ today|date:"d M, Y" }}</div>
+
+    <div class="row section">
+        <div class="cell box" style="width: 55%;">
+            <div class="field-row"><span class="label">Job #</span>: {% if first_trip %}{{ first_trip.job.job_number }}{% endif %}</div>
+            <div class="field-row"><span class="label">Vehicle Number</span>: {% if first_trip %}{{ first_trip.vehicle.vehicle_number }}{% endif %}</div>
+        </div>
+        <div class="cell box" style="width: 45%;">
+            <div class="field-row"><span class="label">Driver 1 Name</span>: {% if first_trip and first_trip.vehicle.driver %}{{ first_trip.vehicle.driver.name }}{% endif %}</div>
+            <div class="field-row"><span class="label">Driver 2 Name</span>: </div>
+        </div>
+    </div>
+
+    <div class="row section">
+        <div class="cell box" style="width: 40%;">
+            <div class="field-row"><span class="label">Meter Out</span>: {% if meter_out is not None %}{{ meter_out }}{% endif %}</div>
+        </div>
+        <div class="cell box" style="width: 30%;">
+            <div class="field-row"><span class="label">Meter In</span>: {% if meter_in is not None %}{{ meter_in }}{% endif %}</div>
+        </div>
+        <div class="cell box" style="width: 30%;">
+            <div class="field-row"><span class="label">KMs</span>: {% if kms is not None %}{{ kms }}{% endif %}</div>
+            <div class="field-row"><span class="label">Fuel in Liters</span>: {% if fuel_liters is not None %}{{ fuel_liters }}{% endif %}</div>
+            <div class="field-row"><span class="label">Fuel Average</span>: {% if fuel_average is not None %}{{ fuel_average }}{% endif %}</div>
+        </div>
+    </div>
+
+    <div class="row section">
+        {% for trip in trips_display %}
+        <div class="trip-block">
+            <div class="trip-header">Trip {{ forloop.counter }}</div>
+            <div class="field-row"><span class="field-label">Trip #</span>: {{ trip.trip_no }}</div>
+            <div class="field-row"><span class="field-label">Bilty #</span>: {{ trip.bilty_number }}</div>
+            <div class="field-row"><span class="field-label">Client</span>: {{ trip.client.name }}</div>
+            <div class="field-row"><span class="field-label">Route</span>: {{ trip.route }}</div>
+            <div class="field-row"><span class="field-label">Freight</span>: {{ trip.freight|floatformat:0 }}</div>
+            <div class="field-row"><span class="field-label">Detention</span>: {{ trip.detention|floatformat:0 }}</div>
+            <div class="field-row"><span class="field-label">Additional Stop</span>: 0</div>
+            <div class="field-row"><span class="field-label">Total Freight</span>: {{ trip.freight|floatformat:0 }}</div>
+            <div class="field-row"><span class="field-label">Departure Date</span>: {{ trip.trip_date|date:"d M, Y" }}</div>
+            <div class="field-row"><span class="field-label">Arrival Date</span>: {{ trip.trip_date|date:"d M, Y" }}</div>
+            <div class="field-row"><span class="field-label">Delivery</span>: {{ trip.trip_date|date:"d M, Y" }}</div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <table class="footer-table">
+        <tr>
+            <td class="label">Toll Tax</td>
+            <td class="value">{{ toll_tax|default:"" }}</td>
+        </tr>
+        <tr>
+            <td class="label">Incentive</td>
+            <td class="value">{{ incentive|default:"" }}</td>
+        </tr>
+        <tr>
+            <td class="label">Food</td>
+            <td class="value">{{ food|default:"" }}</td>
+        </tr>
+        <tr>
+            <td class="label">Police</td>
+            <td class="value">{{ police|default:"" }}</td>
+        </tr>
+        <tr>
+            <td class="label">Card</td>
+            <td class="value">{{ card|default:"" }}</td>
+        </tr>
+        <tr>
+            <td class="label">Maintenance</td>
+            <td class="value">{{ maintenance|default:"" }}</td>
+        </tr>
+        <tr>
+            <td class="label">Total</td>
+            <td class="value">{{ total_expense|default:"" }}</td>
+        </tr>
+    </table>
+</body>
+</html>
