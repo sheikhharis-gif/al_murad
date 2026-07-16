@@ -580,23 +580,6 @@ body {
     animation: orb-float 12s ease-in-out infinite;
 }
 
-.orb-1 {
-    width: 420px;
-    height: 420px;
-    top: -120px;
-    left: -100px;
-    background: radial-gradient(circle, rgba(59,130,246,0.55) 0%, rgba(59,130,246,0) 70%);
-}
-
-.orb-2 {
-    width: 380px;
-    height: 380px;
-    bottom: -140px;
-    left: 20%;
-    background: radial-gradient(circle, rgba(99,102,241,0.45) 0%, rgba(99,102,241,0) 70%);
-    animation-delay: -4s;
-}
-
 .orb-3 {
     width: 320px;
     height: 320px;
@@ -620,6 +603,42 @@ body {
     justify-content: center;
     padding: 3rem 4rem;
     color: #fff;
+    overflow: hidden;
+}
+
+.login-video-bg {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    z-index: 0;
+}
+
+.login-video-overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(7,15,28,0.9) 0%, rgba(12,25,41,0.82) 50%, rgba(18,41,74,0.78) 100%);
+    z-index: 1;
+}
+
+.login-left-logo {
+    position: absolute;
+    top: 2rem;
+    left: 2rem;
+    width: 58px;
+    height: 58px;
+    object-fit: contain;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.95);
+    padding: 6px;
+    box-shadow: 0 10px 26px rgba(0, 0, 0, 0.35);
+    z-index: 3;
+}
+
+.login-left-content {
+    position: relative;
+    z-index: 2;
 }
 
 .login-badge {

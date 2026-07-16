@@ -14,26 +14,33 @@
 <body>
 
 <div class="login-page">
-    <span class="login-orb orb-1"></span>
-    <span class="login-orb orb-2"></span>
     <span class="login-orb orb-3"></span>
 
     <div class="login-left">
-        <div class="login-badge"><i class="bi bi-patch-check-fill"></i> Trusted Fleet ERP Platform</div>
-        <h1>Fleet Management<br><span class="gradient-text">Made Simple</span></h1>
-        <p>Manage trips, vehicles, drivers, and maintenance from one professional dashboard built for Al Murad Logistics.</p>
-        <div class="login-features">
-            <div class="login-feature">
-                <i class="bi bi-truck-front-fill"></i>
-                <span>Real-time fleet & trip tracking</span>
-            </div>
-            <div class="login-feature">
-                <i class="bi bi-shield-check"></i>
-                <span>Document expiry & maintenance alerts</span>
-            </div>
-            <div class="login-feature">
-                <i class="bi bi-graph-up-arrow"></i>
-                <span>Revenue, expense & profit analytics</span>
+        <video class="login-video-bg" autoplay muted loop playsinline poster="{% static 'videos/trucks-bg-poster.jpg' %}">
+            <source src="{% static 'videos/trucks-bg.mp4' %}" type="video/mp4">
+        </video>
+        <div class="login-video-overlay"></div>
+
+        <img src="{% static 'images/amglogo.png' %}" alt="Al Murad Logistics" class="login-left-logo">
+
+        <div class="login-left-content">
+            <div class="login-badge"><i class="bi bi-patch-check-fill"></i> Trusted Fleet ERP Platform</div>
+            <h1>Fleet Management<br><span class="gradient-text">Made Simple</span></h1>
+            <p>Manage trips, vehicles, drivers, and maintenance from one professional dashboard built for Al Murad Logistics.</p>
+            <div class="login-features">
+                <div class="login-feature">
+                    <i class="bi bi-truck-front-fill"></i>
+                    <span>Real-time fleet & trip tracking</span>
+                </div>
+                <div class="login-feature">
+                    <i class="bi bi-shield-check"></i>
+                    <span>Document expiry & maintenance alerts</span>
+                </div>
+                <div class="login-feature">
+                    <i class="bi bi-graph-up-arrow"></i>
+                    <span>Revenue, expense & profit analytics</span>
+                </div>
             </div>
         </div>
     </div>
