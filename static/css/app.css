@@ -336,6 +336,12 @@ body {
 .stat-card.highlight .stat-sub { color: rgba(255,255,255,0.65); }
 .stat-card.highlight .stat-icon { background: rgba(255,255,255,0.2); color: #fff; }
 
+.stat-icon-text {
+    font-size: 1.05rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+}
+
 /* ===== PAGE HEADER ===== */
 .page-header {
     display: flex;
