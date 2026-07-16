@@ -141,12 +141,16 @@ class VehicleMaintenance(models.Model):
     MAINTENANCE_TYPE = [
         ("OIL", "Oil Change"),
         ("TIRE", "Tire Change"),
+        ("BRAKE", "Brake Repair"),
+        ("OTHER", "General Service"),
     ]
 
     # KM LIMITS (AUTO LOGIC)
     MAINTENANCE_LIMIT = {
-        "OIL": 1000,   # Oil change after 1000 km
-        "TIRE": 5000,  # Tire change after 5000 km
+        "OIL": 1000,    # Oil change after 1000 km
+        "TIRE": 5000,   # Tire change after 5000 km
+        "BRAKE": 10000, # Brake repair after 10000 km
+        "OTHER": 3000,  # General service after 3000 km
     }
 
     vehicle = models.ForeignKey(Vehicle, on_delete=models.CASCADE)
