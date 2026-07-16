@@ -124,6 +124,29 @@ class Command(BaseCommand):
                 }
             )
 
+            # Most rows in this sheet only have a customer name filled in (they exist
+            # purely to populate the Excel dropdown validation list) with no real trip
+            # data. Only continue to Job/Trip/Expense creation when there's an actual
+            # weight and vehicle number on the row - otherwise this is just a client
+            # master-data row.
+            weight_raw = row[7]
+            vehicle_raw = row[11]
+            has_real_trip = (
+                weight_raw not in (None, "", "-")
+                and not str(weight_raw).startswith("#")
+                and vehicle_raw not in (None, "", "-")
+                and not str(vehicle_raw).startswith("#")
+            )
+            if not has_real_trip:
+                skipped_count += 1
+                continue
+
+            # Skip rows we've already imported in a previous run (matched by bilty #)
+            bilty_check = str(row[14]).strip() if row[14] else None
+            if bilty_check and Trip.objects.filter(bilty_number=bilty_check).exists():
+                skipped_count += 1
+                continue
+
             # 2. Cities & Route
             origin_name = str(row[5]).strip() if row[5] else "Karachi"
             dest_name = str(row[6]).strip() if row[6] else "Lahore"
