@@ -595,45 +595,72 @@ def job_view_trips(request, job_id):
 def job_invoice_pdf(request, job_id):
     # Job fetch karein (id ki bajaye job_number use karein jo primary key hai)
     job = get_object_or_404(Job, job_number=job_id)
-    
+
     # Is job se linked saari trips fetch karein
-    trips = job.trips.all()
-    
-    # Saari trips ke kharche (expenses) jama karein
-    # Naya logic: Expenses ab alag model mein hain jo trip se linked hain
-    total_expenses = 0
+    trips = job.trips.select_related("client", "route").order_by("trip_date")
+
+    # Har trip ke sath uska fuel/expense data attach karein taake template mein
+    # dobara query na karni pare
+    fuel_rows = []
     for trip in trips:
-        # Har trip ke saare linked expenses ka total_expense plus karein
-        trip_total = trip.expenses.aggregate(total=Sum('total_expense'))['total'] or 0
-        total_expenses += float(trip_total)
+        fuel_rows.extend(trip.expenses.all())
 
-    # Income calculations
+    expense_totals = Expense.objects.filter(trip__job=job).aggregate(
+        toll_tax=Sum("toll_tax"),
+        inam=Sum("inam"),
+        police=Sum("police"),
+        food=Sum("food"),
+        card=Sum("card"),
+        maintenance=Sum("maintenance"),
+        other=Sum("other"),
+        fuel_liter=Sum("fuel_liter"),
+        fuel_amount=Sum("fuel_amount"),
+    )
+    for key, value in expense_totals.items():
+        expense_totals[key] = float(value or 0)
+
+    trip_expense_total = (
+        expense_totals["toll_tax"] + expense_totals["inam"] + expense_totals["police"]
+        + expense_totals["food"] + expense_totals["card"] + expense_totals["maintenance"]
+        + expense_totals["other"]
+    )
+    fuel_expense_total = expense_totals["fuel_amount"]
+    total_expenses = trip_expense_total + fuel_expense_total
+
+    total_kms = sum(trip.route.distance_km for trip in trips)
+    fuel_average = round(total_kms / expense_totals["fuel_liter"], 2) if expense_totals["fuel_liter"] else 0
+
     total_freight = sum(float(trip.freight) for trip in trips)
-    total_detention = sum(float(trip.detention) for trip in trips)
-    total_income = total_freight + total_detention
-
-    # Final Profit calculation
-    net_profit = total_income - total_expenses
+    net_profit = total_freight - total_expenses
+    nr_percent = round((net_profit / total_freight) * 100, 1) if total_freight else 0
 
     context = {
         'job': job,
+        'vehicle': job.vehicle,
         'trips': trips,
-        'total_income': total_income,
+        'fuel_rows': fuel_rows,
+        'total_kms': total_kms,
+        'fuel_liters': expense_totals["fuel_liter"],
+        'fuel_average': fuel_average,
+        'expense_totals': expense_totals,
+        'trip_expense_total': trip_expense_total,
+        'fuel_expense_total': fuel_expense_total,
         'total_expenses': total_expenses,
+        'total_freight': total_freight,
         'net_profit': net_profit,
+        'nr_percent': nr_percent,
         'invoice_date': date.today(),
     }
 
-    # Naya template path set karein
-    template_path = 'operations/invoice_pdf.html' 
+    template_path = 'operations/invoice_pdf.html'
     response = HttpResponse(content_type='application/pdf')
-    response['Content-Disposition'] = f'attachment; filename="Invoice_Job_{job_id}.pdf"'
+    response['Content-Disposition'] = f'attachment; filename="Trip_Sheet_Job_{job_id}.pdf"'
 
     template = get_template(template_path)
     html = template.render(context)
-    
+
     pisa_status = pisa.CreatePDF(html, dest=response)
-    
+
     if pisa_status.err:
         return HttpResponse('PDF banane mein masla hua', status=400)
     return response

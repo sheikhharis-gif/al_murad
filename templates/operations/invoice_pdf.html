@@ -4,11 +4,12 @@
     <style>
         @page { size: A4; margin: 1cm; }
         body { font-family: Helvetica, Arial, sans-serif; font-size: 10px; color: #333; line-height: 1.4; }
-        
+
         /* Header Styling */
-        .header-box { background-color: #f8f9fa; text-align: center; padding: 15px; border: 2px solid #333; margin-bottom: 20px; }
+        .header-box { background-color: #f8f9fa; text-align: center; padding: 15px; border: 2px solid #333; margin-bottom: 15px; }
         .title { font-size: 22px; font-weight: bold; text-transform: uppercase; letter-spacing: 2px; }
-        
+        .subtitle { font-size: 10px; color: #666; margin-top: 4px; }
+
         /* Top Info Grid */
         .info-table { width: 100%; margin-bottom: 15px; border-collapse: collapse; }
         .info-table td { padding: 4px; border: 1px solid #eee; }
@@ -22,6 +23,7 @@
         .data-table { width: 100%; margin-top: 5px; border-collapse: collapse; }
         .data-table th { background-color: #f2f2f2; color: #333; padding: 7px; border: 1px solid #333; text-align: left; font-size: 9px; }
         .data-table td { padding: 6px; border: 1px solid #ddd; text-align: left; }
+        .data-table .total-row td { background-color: #f2f2f2; font-weight: bold; }
 
         /* Summary Box Styling */
         .summary-container { margin-top: 20px; width: 100%; }
@@ -37,19 +39,29 @@
 <body>
 
     <div class="header-box">
-        <div class="title">Job Invoice - AL MURAD</div>
+        <div class="title">AL MURAD LOGISTICS</div>
+        <div class="subtitle">Trip Sheet {% if vehicle.vehicle_mode == 'RENTAL' %}(Rental){% else %}(Own){% endif %} - Generated on {{ invoice_date|date:"d-M-Y" }}</div>
     </div>
 
     <table class="info-table">
         <tr>
             <td class="label">Job #</td><td class="value">{{ job.job_number }}</td>
-            <td class="label">Vehicle No</td><td class="value">{{ job.vehicle.vehicle_number }}</td>
-            <td class="label">Date</td><td class="value">{{ invoice_date|date:"d-M-Y" }}</td>
+            <td class="label">Vehicle No</td><td class="value">{{ vehicle.vehicle_number }}</td>
+            <td class="label">Vehicle Type</td><td class="value">{{ vehicle.vehicle_type }}</td>
         </tr>
         <tr>
-            <td class="label">Client</td><td class="value">{{ client_name }}</td>
+            <td class="label">Driver</td><td class="value">{{ vehicle.driver.name|default:"---" }}</td>
+            {% if vehicle.vehicle_mode == 'RENTAL' %}
+            <td class="label">Vendor</td><td class="value">{{ vehicle.vendor.name }}</td>
+            {% else %}
             <td class="label">Status</td><td class="value">{{ job.get_status_display }}</td>
+            {% endif %}
             <td class="label">Total Trips</td><td class="value">{{ trips|length }}</td>
+        </tr>
+        <tr>
+            <td class="label">Total KMs</td><td class="value">{{ total_kms }}</td>
+            <td class="label">Fuel (Liters)</td><td class="value">{{ fuel_liters|floatformat:1 }}</td>
+            <td class="label">Fuel Average</td><td class="value">{{ fuel_average }} km/l</td>
         </tr>
     </table>
 
@@ -59,12 +71,13 @@
             <tr>
                 <th>Trip #</th>
                 <th>Bilty #</th>
+                <th>Client</th>
                 <th>Route</th>
                 <th>Weight</th>
-                <th>Rate</th>
                 <th>Freight</th>
                 <th>Detention</th>
-                <th>Total</th>
+                <th>Total Freight</th>
+                <th>Date</th>
             </tr>
         </thead>
         <tbody>
@@ -72,18 +85,89 @@
             <tr>
                 <td>{{ trip.trip_no }}</td>
                 <td>{{ trip.bilty_number|default:"---" }}</td>
-                <td>{{ trip.route.name|default:trip.route }}</td>
-                <td>{{ trip.weight }}</td>
-                <td>{{ trip.rate }}</td>
-                <td>Rs {{ trip.freight }}</td>
-                <td>Rs {{ trip.detention }}</td>
-                <td style="font-weight: bold;">Rs {{ trip.freight }}</td>
+                <td>{{ trip.client.name }}</td>
+                <td>{{ trip.route }}</td>
+                <td>{{ trip.weight }} T</td>
+                <td>Rs {{ trip.freight|floatformat:0 }}</td>
+                <td>Rs {{ trip.detention|floatformat:0 }}</td>
+                <td style="font-weight: bold;">Rs {{ trip.freight|floatformat:0 }}</td>
+                <td>{{ trip.trip_date|date:"d M, Y" }}</td>
             </tr>
             {% empty %}
             <tr>
-                <td colspan="8" style="text-align: center;">No trips found for this job.</td>
+                <td colspan="9" style="text-align: center;">No trips found for this job.</td>
             </tr>
             {% endfor %}
+            <tr class="total-row">
+                <td colspan="7" style="text-align: right;">Total Freight</td>
+                <td colspan="2">Rs {{ total_freight|floatformat:0 }}</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <div class="section-header">EXPENSE BREAKDOWN</div>
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Toll Tax</th>
+                <th>Incentive</th>
+                <th>Food</th>
+                <th>Police</th>
+                <th>Card</th>
+                <th>Maintenance</th>
+                <th>Other</th>
+                <th>Fuel Amount</th>
+                <th>Total Expense</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>Rs {{ expense_totals.toll_tax|floatformat:0 }}</td>
+                <td>Rs {{ expense_totals.inam|floatformat:0 }}</td>
+                <td>Rs {{ expense_totals.food|floatformat:0 }}</td>
+                <td>Rs {{ expense_totals.police|floatformat:0 }}</td>
+                <td>Rs {{ expense_totals.card|floatformat:0 }}</td>
+                <td>Rs {{ expense_totals.maintenance|floatformat:0 }}</td>
+                <td>Rs {{ expense_totals.other|floatformat:0 }}</td>
+                <td>Rs {{ fuel_expense_total|floatformat:0 }}</td>
+                <td style="font-weight: bold;">Rs {{ total_expenses|floatformat:0 }}</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <div class="section-header">FUEL LOG</div>
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Pump Name</th>
+                <th>Slip #</th>
+                <th>Liters</th>
+                <th>Rate</th>
+                <th>Amount</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for e in fuel_rows %}
+            <tr>
+                <td>{{ e.date|date:"d M, Y" }}</td>
+                <td>{{ e.pump_name|default:"---" }}</td>
+                <td>{{ e.slip_no|default:"---" }}</td>
+                <td>{{ e.fuel_liter|floatformat:1 }}</td>
+                <td>{{ e.fuel_rate|floatformat:2 }}</td>
+                <td>Rs {{ e.fuel_amount|floatformat:0 }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="6" style="text-align: center;">No fuel entries recorded for this job.</td>
+            </tr>
+            {% endfor %}
+            <tr class="total-row">
+                <td colspan="3" style="text-align: right;">Total</td>
+                <td>{{ fuel_liters|floatformat:1 }}</td>
+                <td>-</td>
+                <td>Rs {{ fuel_expense_total|floatformat:0 }}</td>
+            </tr>
         </tbody>
     </table>
 
@@ -91,24 +175,24 @@
         <div class="summary-box">
             <table class="summary-table">
                 <tr>
-                    <td>Total Weight</td>
-                    <td align="right">{{ total_weight|default:"0.00" }} Tons</td>
+                    <td>Trip Expense (Toll/Food/etc)</td>
+                    <td align="right">Rs {{ trip_expense_total|floatformat:0 }}</td>
                 </tr>
                 <tr>
-                    <td>Total Gross Income</td>
-                    <td align="right">Rs {{ total_income|default:"0.00" }}</td>
-                </tr>
-                <tr>
-                    <td>Total Trip Expenses (Toll/Food/etc)</td>
-                    <td align="right">Rs {{ total_expenses|default:"0.00" }}</td>
+                    <td>Fuel Expense</td>
+                    <td align="right">Rs {{ fuel_expense_total|floatformat:0 }}</td>
                 </tr>
                 <tr class="total-row">
-                    <td><strong>Total Deductions</strong></td>
-                    <td align="right"><strong>Rs {{ total_expenses|default:"0.00" }}</strong></td>
+                    <td><strong>Total Expenses</strong></td>
+                    <td align="right"><strong>Rs {{ total_expenses|floatformat:0 }}</strong></td>
+                </tr>
+                <tr>
+                    <td>Total Freight</td>
+                    <td align="right">Rs {{ total_freight|floatformat:0 }}</td>
                 </tr>
                 <tr class="profit-row">
-                    <td><strong>NET PROFIT ON JOB</strong></td>
-                    <td align="right"><strong>Rs {{ net_profit|default:"0.00" }}</strong></td>
+                    <td><strong>NET PROFIT</strong></td>
+                    <td align="right"><strong>Rs {{ net_profit|floatformat:0 }} ({{ nr_percent }}%)</strong></td>
                 </tr>
             </table>
         </div>

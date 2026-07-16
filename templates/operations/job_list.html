@@ -118,8 +118,8 @@
                         </td>
                         <td class="text-end pe-4">
                             <div class="d-flex justify-content-end gap-2">
-                                <a href="{% url 'job_invoice_pdf' job.job_number %}" class="btn btn-sm btn-outline-success rounded-pill px-3 shadow-sm" title="Download Full Invoice">
-                                    <i class="bi bi-file-earmark-pdf-fill me-1"></i> Invoice
+                                <a href="{% url 'job_invoice_pdf' job.job_number %}" class="btn btn-sm btn-outline-success rounded-pill px-3 shadow-sm" title="Download Detailed Trip Sheet">
+                                    <i class="bi bi-file-earmark-pdf-fill me-1"></i> Trip Sheet
                                 </a>
 
                                 <a href="{% url 'trip_add' %}?job={{ job.job_number }}" class="btn btn-sm btn-outline-primary rounded-pill px-3 shadow-sm">
@@ -133,7 +133,7 @@
                                     <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0 rounded-3">
                                         <li>
                                             <a class="dropdown-item py-2" href="{% url 'job_invoice_pdf' job.job_number %}">
-                                                <i class="bi bi-printer me-2 text-success"></i> Print Full Invoice
+                                                <i class="bi bi-printer me-2 text-success"></i> Print Trip Sheet
                                             </a>
                                         </li>
                                         <li><hr class="dropdown-divider"></li>
