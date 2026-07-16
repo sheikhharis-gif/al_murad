@@ -742,12 +742,12 @@ body {
 }
 
 .login-card .logo-wrap img {
-    width: 76px;
-    height: 76px;
+    width: 120px;
+    height: 120px;
     object-fit: contain;
-    border-radius: 18px;
+    border-radius: 22px;
     margin-bottom: 1rem;
-    box-shadow: 0 8px 24px rgba(59, 130, 246, 0.25);
+    box-shadow: 0 10px 30px rgba(59, 130, 246, 0.3);
 }
 
 .login-card h2 {
