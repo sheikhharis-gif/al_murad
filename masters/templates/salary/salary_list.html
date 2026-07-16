@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid py-4">
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h3 class="fw-bold text-dark mb-1">
+                <i class="bi bi-cash-coin text-primary me-2"></i>Salary Report
+            </h3>
+            <p class="text-muted small mb-0">Monthly driver salary records and payment status.</p>
+        </div>
+        <div>
+            <a href="{% url 'salary_add' %}" class="btn btn-primary px-4 shadow-sm fw-bold rounded-3">
+                <i class="bi bi-plus-circle-fill me-2"></i>Add Salary Entry
+            </a>
+        </div>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm rounded-4 p-3 border-start border-primary border-4">
+                <div class="d-flex align-items-center">
+                    <div class="bg-primary-subtle p-3 rounded-circle me-3">
+                        <i class="bi bi-receipt text-primary fs-4"></i>
+                    </div>
+                    <div>
+                        <h6 class="text-muted small mb-1">Total Records</h6>
+                        <h4 class="fw-bold mb-0">{{ salaries.count }}</h4>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+        <div class="card-header bg-white border-0 py-3 px-4 d-flex justify-content-between align-items-center border-bottom">
+            <h5 class="fw-bold mb-0 text-dark">Salary Records</h5>
+            <div class="input-group w-auto">
+                <span class="input-group-text bg-light border-0"><i class="bi bi-search"></i></span>
+                <input type="text" id="salarySearch" class="form-control bg-light border-0 small" placeholder="Search driver name...">
+            </div>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0 custom-salary-table">
+                <thead class="bg-light">
+                    <tr class="text-muted small text-uppercase fw-bold">
+                        <th class="ps-4">Driver</th>
+                        <th>Month</th>
+                        <th class="text-end">Salary Amount</th>
+                        <th class="text-center">Status</th>
+                        <th class="text-end pe-4">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="salaryTableBody">
+                    {% for s in salaries %}
+                    <tr>
+                        <td class="ps-4">
+                            <div class="d-flex align-items-center">
+                                <div class="avatar-circle me-3 bg-primary-subtle text-primary fw-bold">
+                                    {{ s.driver.name|slice:":1"|upper }}
+                                </div>
+                                <h6 class="fw-bold text-dark mb-0">{{ s.driver.name }}</h6>
+                            </div>
+                        </td>
+                        <td>{{ s.month|date:"F Y" }}</td>
+                        <td class="text-end fw-bold">Rs {{ s.salary_amount|floatformat:0 }}</td>
+                        <td class="text-center">
+                            {% if s.paid %}
+                                <span class="badge bg-success-subtle text-success rounded-pill px-3 py-1 fw-bold">
+                                    <i class="bi bi-check-circle-fill me-1"></i> Paid
+                                </span>
+                            {% else %}
+                                <span class="badge bg-warning-subtle text-warning-emphasis rounded-pill px-3 py-1 fw-bold">
+                                    <i class="bi bi-hourglass-split me-1"></i> Pending
+                                </span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end pe-4">
+                            <div class="btn-group shadow-sm rounded-2 overflow-hidden bg-white border">
+                                <a href="{% url 'salary_edit' s.id %}" class="btn btn-sm btn-white text-warning border-end" title="Edit Entry">
+                                    <i class="bi bi-pencil-square"></i>
+                                </a>
+                                <a href="{% url 'salary_delete' s.id %}" class="btn btn-sm btn-white text-danger" title="Delete Entry" onclick="return confirm('Delete this salary record?')">
+                                    <i class="bi bi-trash"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="text-center py-5">
+                            <div class="py-4 text-muted">
+                                <i class="bi bi-cash-coin display-1 opacity-25"></i>
+                                <h5 class="mt-3">No salary records found.</h5>
+                                <p class="small">Get started by adding a salary entry.</p>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<style>
+    .custom-salary-table thead th {
+        font-size: 0.75rem;
+        padding: 1.1rem 0.75rem;
+        background-color: #f8fafc;
+    }
+    .custom-salary-table tbody td {
+        padding: 1rem 0.75rem;
+        border-bottom: 1px solid #f1f5f9;
+    }
+    .btn-white { background-color: #fff; border: none; }
+    .btn-white:hover { background-color: #f8fafc; }
+    .avatar-circle {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.1rem;
+    }
+    .custom-salary-table tr:hover { background-color: #fcfcfc; }
+</style>
+
+<script>
+    document.getElementById('salarySearch').addEventListener('keyup', function() {
+        let value = this.value.toLowerCase();
+        let rows = document.querySelectorAll('#salaryTableBody tr');
+        rows.forEach(row => {
+            row.style.display = (row.innerText.toLowerCase().indexOf(value) > -1) ? "" : "none";
+        });
+    });
+</script>
+{% endblock %}

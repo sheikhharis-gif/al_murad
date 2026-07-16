@@ -36,4 +36,10 @@ urlpatterns = [
     
     path("locations/", views.locations_master, name="locations_master"),
 
+    # SALARY
+    path("salary/", views.salary_list, name="salary_list"),
+    path("salary/add/", views.salary_add, name="salary_add"),
+    path("salary/edit/<int:salary_id>/", views.salary_edit, name="salary_edit"),
+    path("salary/delete/<int:salary_id>/", views.salary_delete, name="salary_delete"),
+
 ]

@@ -1,5 +1,5 @@
 from django import forms
-from .models import Vehicle, Driver, Vendor, City, Route, Client, Expense, ClientRate
+from .models import Vehicle, Driver, Vendor, City, Route, Client, Expense, ClientRate, DriverSalary
 from operations.models import Trip
 
 ################ VEHICLES ################
@@ -64,6 +64,19 @@ class DriverForm(forms.ModelForm):
         self.fields["license_expiry"].widget = forms.DateInput(attrs={"class": "form-control", "type": "date"})
         self.fields["joining_date"].widget = forms.DateInput(attrs={"class": "form-control", "type": "date"})
         self.fields["is_active"].widget.attrs.update({"class": "form-check-input"})
+
+################ SALARY ################
+
+class DriverSalaryForm(forms.ModelForm):
+    class Meta:
+        model = DriverSalary
+        fields = "__all__"
+        widgets = {
+            "driver": forms.Select(attrs={"class": "form-select"}),
+            "month": forms.DateInput(attrs={"class": "form-control", "type": "date"}),
+            "salary_amount": forms.NumberInput(attrs={"class": "form-control", "step": "0.01"}),
+            "paid": forms.CheckboxInput(attrs={"class": "form-check-input"}),
+        }
 
 ################ MASTERS ################
 

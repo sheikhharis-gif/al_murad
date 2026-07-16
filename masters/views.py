@@ -4,14 +4,15 @@ from datetime import date
 from .models import (
     Driver, Vehicle, City, Route,
     Vendor, Client, Expense,
-    VehicleMaintenance, ClientRate
+    VehicleMaintenance, ClientRate, DriverSalary
 )
 
 from .forms import (
     DriverForm, VehicleForm,
     CityForm, RouteForm,
     VendorForm, ClientForm,
-    ExpenseForm, ClientRateForm
+    ExpenseForm, ClientRateForm,
+    DriverSalaryForm
 )
 
 from .utils import calculate_distance
@@ -336,3 +337,34 @@ def maintenance_add(request):
     return render(request, "maintenance/maintenance_form.html", {
         "vehicles": vehicles
     })
+
+
+# ================= SALARY =================
+from django.shortcuts import get_object_or_404
+
+def salary_list(request):
+    salaries = DriverSalary.objects.select_related("driver").order_by("-month")
+    return render(request, "salary/salary_list.html", {"salaries": salaries})
+
+
+def salary_add(request):
+    form = DriverSalaryForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        form.save()
+        return redirect("salary_list")
+    return render(request, "salary/salary_form.html", {"form": form})
+
+
+def salary_edit(request, salary_id):
+    salary = get_object_or_404(DriverSalary, id=salary_id)
+    form = DriverSalaryForm(request.POST or None, instance=salary)
+    if request.method == "POST" and form.is_valid():
+        form.save()
+        return redirect("salary_list")
+    return render(request, "salary/salary_form.html", {"form": form, "salary": salary})
+
+
+def salary_delete(request, salary_id):
+    salary = get_object_or_404(DriverSalary, id=salary_id)
+    salary.delete()
+    return redirect("salary_list")
