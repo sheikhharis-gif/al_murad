@@ -643,6 +643,14 @@ body {
     margin-bottom: 1.5rem;
 }
 
+.login-company-name {
+    color: #fff;
+    font-size: 1.05rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    margin: 0 0 0.5rem;
+}
+
 .login-left h1 {
     font-size: 2.9rem;
     font-weight: 900;
