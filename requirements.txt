@@ -1,4 +1,4 @@
-Django==6.0
+Django==5.2.16
 openpyxl==3.1.5
 reportlab==4.4.7
 xhtml2pdf==0.2.17
