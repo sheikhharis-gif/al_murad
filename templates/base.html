@@ -33,35 +33,108 @@
             </a>
 
             <div class="nav-section-label">Operations</div>
-            <a href="{% url 'trip_list' %}" class="sidebar-link {% if request.resolver_match.url_name == 'trip_list' or request.resolver_match.url_name == 'trip_add' or request.resolver_match.url_name == 'trip_edit' %}active{% endif %}">
-                <i class="bi bi-signpost-split-fill"></i> Trips
-            </a>
-            <a href="{% url 'job_list' %}" class="sidebar-link {% if request.resolver_match.url_name == 'job_list' or request.resolver_match.url_name == 'job_add' or request.resolver_match.url_name == 'job_edit' %}active{% endif %}">
-                <i class="bi bi-briefcase-fill"></i> Job Orders
-            </a>
-            <a href="{% url 'expense_list' %}" class="sidebar-link {% if request.resolver_match.url_name == 'expense_list' or request.resolver_match.url_name == 'expense_sheet' %}active{% endif %}">
-                <i class="bi bi-cash-stack"></i> Expenses
-            </a>
+
+            <div class="sidebar-group {% if request.resolver_match.url_name == 'trip_list' or request.resolver_match.url_name == 'trip_add' or request.resolver_match.url_name == 'trip_edit' %}open active-group{% endif %}">
+                <button type="button" class="sidebar-link sidebar-group-toggle">
+                    <i class="bi bi-signpost-split-fill"></i>
+                    <span>Trips</span>
+                    <i class="bi bi-chevron-right toggle-arrow"></i>
+                </button>
+                <div class="sidebar-submenu">
+                    <a href="{% url 'trip_list' %}" class="submenu-link {% if request.resolver_match.url_name == 'trip_list' %}active{% endif %}"><i class="bi bi-list-ul"></i> All Trips</a>
+                    <a href="{% url 'trip_add' %}" class="submenu-link {% if request.resolver_match.url_name == 'trip_add' %}active{% endif %}"><i class="bi bi-plus-circle"></i> Add New Trip</a>
+                </div>
+            </div>
+
+            <div class="sidebar-group {% if request.resolver_match.url_name == 'job_list' or request.resolver_match.url_name == 'job_add' or request.resolver_match.url_name == 'job_edit' %}open active-group{% endif %}">
+                <button type="button" class="sidebar-link sidebar-group-toggle">
+                    <i class="bi bi-briefcase-fill"></i>
+                    <span>Job Orders</span>
+                    <i class="bi bi-chevron-right toggle-arrow"></i>
+                </button>
+                <div class="sidebar-submenu">
+                    <a href="{% url 'job_list' %}" class="submenu-link {% if request.resolver_match.url_name == 'job_list' %}active{% endif %}"><i class="bi bi-list-ul"></i> All Job Orders</a>
+                    <a href="{% url 'job_add' %}" class="submenu-link {% if request.resolver_match.url_name == 'job_add' %}active{% endif %}"><i class="bi bi-plus-circle"></i> Assign New Vehicle</a>
+                </div>
+            </div>
+
+            <div class="sidebar-group {% if request.resolver_match.url_name == 'expense_list' or request.resolver_match.url_name == 'expense_sheet' or request.resolver_match.url_name == 'expense_edit' %}open active-group{% endif %}">
+                <button type="button" class="sidebar-link sidebar-group-toggle">
+                    <i class="bi bi-cash-stack"></i>
+                    <span>Expenses</span>
+                    <i class="bi bi-chevron-right toggle-arrow"></i>
+                </button>
+                <div class="sidebar-submenu">
+                    <a href="{% url 'expense_list' %}" class="submenu-link {% if request.resolver_match.url_name == 'expense_list' %}active{% endif %}"><i class="bi bi-list-ul"></i> All Expenses</a>
+                    <a href="{% url 'expense_sheet' %}" class="submenu-link {% if request.resolver_match.url_name == 'expense_sheet' %}active{% endif %}"><i class="bi bi-plus-circle"></i> Log New Expense</a>
+                </div>
+            </div>
 
             <div class="nav-section-label">Fleet</div>
-            <a href="{% url 'vehicle_list' %}" class="sidebar-link {% if request.resolver_match.url_name == 'vehicle_list' or request.resolver_match.url_name == 'vehicle_add' or request.resolver_match.url_name == 'vehicle_edit' %}active{% endif %}">
-                <i class="bi bi-truck-front-fill"></i> Vehicles
-            </a>
-            <a href="{% url 'driver_list' %}" class="sidebar-link {% if request.resolver_match.url_name == 'driver_list' or request.resolver_match.url_name == 'driver_add' or request.resolver_match.url_name == 'driver_edit' %}active{% endif %}">
-                <i class="bi bi-person-badge-fill"></i> Drivers
-            </a>
-            <a href="{% url 'maintenance_list' %}" class="sidebar-link {% if request.resolver_match.url_name == 'maintenance_list' or request.resolver_match.url_name == 'maintenance_add' %}active{% endif %}">
-                <i class="bi bi-wrench-adjustable-circle-fill"></i> Maintenance
-                {% if critical_vehicles %}<span class="badge-count">{{ critical_vehicles|length }}</span>{% endif %}
-            </a>
+
+            <div class="sidebar-group {% if request.resolver_match.url_name == 'vehicle_list' or request.resolver_match.url_name == 'vehicle_add' or request.resolver_match.url_name == 'vehicle_edit' %}open active-group{% endif %}">
+                <button type="button" class="sidebar-link sidebar-group-toggle">
+                    <i class="bi bi-truck-front-fill"></i>
+                    <span>Vehicles</span>
+                    <i class="bi bi-chevron-right toggle-arrow"></i>
+                </button>
+                <div class="sidebar-submenu">
+                    <a href="{% url 'vehicle_list' %}" class="submenu-link {% if request.resolver_match.url_name == 'vehicle_list' %}active{% endif %}"><i class="bi bi-list-ul"></i> All Vehicles</a>
+                    <a href="{% url 'vehicle_add' %}" class="submenu-link {% if request.resolver_match.url_name == 'vehicle_add' %}active{% endif %}"><i class="bi bi-plus-circle"></i> Add New Vehicle</a>
+                </div>
+            </div>
+
+            <div class="sidebar-group {% if request.resolver_match.url_name == 'driver_list' or request.resolver_match.url_name == 'driver_add' or request.resolver_match.url_name == 'driver_edit' %}open active-group{% endif %}">
+                <button type="button" class="sidebar-link sidebar-group-toggle">
+                    <i class="bi bi-person-badge-fill"></i>
+                    <span>Drivers</span>
+                    <i class="bi bi-chevron-right toggle-arrow"></i>
+                </button>
+                <div class="sidebar-submenu">
+                    <a href="{% url 'driver_list' %}" class="submenu-link {% if request.resolver_match.url_name == 'driver_list' %}active{% endif %}"><i class="bi bi-list-ul"></i> All Drivers</a>
+                    <a href="{% url 'driver_add' %}" class="submenu-link {% if request.resolver_match.url_name == 'driver_add' %}active{% endif %}"><i class="bi bi-plus-circle"></i> Register New Driver</a>
+                </div>
+            </div>
+
+            <div class="sidebar-group {% if request.resolver_match.url_name == 'maintenance_list' or request.resolver_match.url_name == 'maintenance_add' %}open active-group{% endif %}">
+                <button type="button" class="sidebar-link sidebar-group-toggle">
+                    <i class="bi bi-wrench-adjustable-circle-fill"></i>
+                    <span>Maintenance</span>
+                    {% if critical_vehicles %}<span class="badge-count">{{ critical_vehicles|length }}</span>{% endif %}
+                    <i class="bi bi-chevron-right toggle-arrow"></i>
+                </button>
+                <div class="sidebar-submenu">
+                    <a href="{% url 'maintenance_list' %}" class="submenu-link {% if request.resolver_match.url_name == 'maintenance_list' %}active{% endif %}"><i class="bi bi-list-ul"></i> Service Logs</a>
+                    <a href="{% url 'maintenance_add' %}" class="submenu-link {% if request.resolver_match.url_name == 'maintenance_add' %}active{% endif %}"><i class="bi bi-plus-circle"></i> Schedule Maintenance</a>
+                </div>
+            </div>
 
             <div class="nav-section-label">Masters</div>
-            <a href="{% url 'client_list' %}" class="sidebar-link {% if request.resolver_match.url_name == 'client_list' or request.resolver_match.url_name == 'client_add' %}active{% endif %}">
-                <i class="bi bi-building"></i> Clients
-            </a>
-            <a href="{% url 'vendor_list' %}" class="sidebar-link {% if request.resolver_match.url_name == 'vendor_list' or request.resolver_match.url_name == 'vendor_add' %}active{% endif %}">
-                <i class="bi bi-shop"></i> Vendors
-            </a>
+
+            <div class="sidebar-group {% if request.resolver_match.url_name == 'client_list' or request.resolver_match.url_name == 'client_add' or request.resolver_match.url_name == 'client_edit' or request.resolver_match.url_name == 'client_rates' %}open active-group{% endif %}">
+                <button type="button" class="sidebar-link sidebar-group-toggle">
+                    <i class="bi bi-building"></i>
+                    <span>Clients</span>
+                    <i class="bi bi-chevron-right toggle-arrow"></i>
+                </button>
+                <div class="sidebar-submenu">
+                    <a href="{% url 'client_list' %}" class="submenu-link {% if request.resolver_match.url_name == 'client_list' %}active{% endif %}"><i class="bi bi-list-ul"></i> All Clients</a>
+                    <a href="{% url 'client_add' %}" class="submenu-link {% if request.resolver_match.url_name == 'client_add' %}active{% endif %}"><i class="bi bi-plus-circle"></i> Add New Client</a>
+                </div>
+            </div>
+
+            <div class="sidebar-group {% if request.resolver_match.url_name == 'vendor_list' or request.resolver_match.url_name == 'vendor_add' or request.resolver_match.url_name == 'vendor_edit' %}open active-group{% endif %}">
+                <button type="button" class="sidebar-link sidebar-group-toggle">
+                    <i class="bi bi-shop"></i>
+                    <span>Vendors</span>
+                    <i class="bi bi-chevron-right toggle-arrow"></i>
+                </button>
+                <div class="sidebar-submenu">
+                    <a href="{% url 'vendor_list' %}" class="submenu-link {% if request.resolver_match.url_name == 'vendor_list' %}active{% endif %}"><i class="bi bi-list-ul"></i> All Vendors</a>
+                    <a href="{% url 'vendor_add' %}" class="submenu-link {% if request.resolver_match.url_name == 'vendor_add' %}active{% endif %}"><i class="bi bi-plus-circle"></i> Register New Vendor</a>
+                </div>
+            </div>
+
             <a href="{% url 'locations_master' %}" class="sidebar-link {% if request.resolver_match.url_name == 'locations_master' %}active{% endif %}">
                 <i class="bi bi-geo-alt-fill"></i> Cities & Routes
             </a>
