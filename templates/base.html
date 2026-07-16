@@ -184,9 +184,36 @@
         }
 
         .top-tabs .nav-link.active {
-            background: rgba(37, 99, 235, 0.16);
-            color: var(--accent-color);
+            background: rgba(37, 99, 235, 0.19);
+            color: #1d4ed8;
             box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.18);
+        }
+
+        .top-tabs .dropdown-menu {
+            background: #ffffff;
+            border: 1px solid rgba(226, 232, 240, 0.95);
+            border-radius: 1rem;
+            box-shadow: 0 28px 65px rgba(15, 23, 42, 0.08);
+            min-width: 220px;
+            padding: 0.4rem 0;
+        }
+
+        .top-tabs .dropdown-item {
+            color: #0f172a;
+            padding: 0.9rem 1.25rem;
+            border-radius: 0.8rem;
+            transition: background 0.2s ease, color 0.2s ease;
+            font-weight: 600;
+        }
+
+        .top-tabs .dropdown-item:hover {
+            background: rgba(37, 99, 235, 0.08);
+            color: #1d4ed8;
+        }
+
+        .top-tabs .dropdown-item i {
+            margin-right: 0.75rem;
+            font-size: 0.95rem;
         }
 
         .content-body {
@@ -378,10 +405,10 @@
                             Trips
                         </a>
                         <ul class="dropdown-menu shadow-sm" aria-labelledby="tripsDropdown">
-                            <li><a class="dropdown-item" href="{% url 'trip_list' %}">Trip List</a></li>
-                            <li><a class="dropdown-item" href="{% url 'trips_excel' %}">Export Excel</a></li>
-                            <li><a class="dropdown-item" href="{% url 'trips_pdf' %}">Export PDF</a></li>
-                            <li><a class="dropdown-item" href="{% url 'trip_add' %}">Add Trip</a></li>
+                            <li><a class="dropdown-item" href="{% url 'trip_list' %}" target="_blank" rel="noopener"><i class="bi bi-list-task"></i>Trip List</a></li>
+                            <li><a class="dropdown-item" href="{% url 'trips_excel' %}" target="_blank" rel="noopener"><i class="bi bi-file-earmark-excel"></i>Export Excel</a></li>
+                            <li><a class="dropdown-item" href="{% url 'trips_pdf' %}" target="_blank" rel="noopener"><i class="bi bi-file-earmark-pdf"></i>Export PDF</a></li>
+                            <li><a class="dropdown-item" href="{% url 'trip_add' %}" target="_blank" rel="noopener"><i class="bi bi-plus-circle"></i>Add Trip</a></li>
                         </ul>
                     </div>
 
@@ -390,8 +417,8 @@
                             Jobs
                         </a>
                         <ul class="dropdown-menu shadow-sm" aria-labelledby="jobsDropdown">
-                            <li><a class="dropdown-item" href="{% url 'job_list' %}">Job Orders</a></li>
-                            <li><a class="dropdown-item" href="{% url 'job_add' %}">Create Job</a></li>
+                            <li><a class="dropdown-item" href="{% url 'job_list' %}" target="_blank" rel="noopener"><i class="bi bi-card-list"></i>Job Orders</a></li>
+                            <li><a class="dropdown-item" href="{% url 'job_add' %}" target="_blank" rel="noopener"><i class="bi bi-plus-circle"></i>Create Job</a></li>
                         </ul>
                     </div>
 
@@ -400,13 +427,13 @@
                             Masters
                         </a>
                         <ul class="dropdown-menu shadow-sm" aria-labelledby="mastersDropdown">
-                            <li><a class="dropdown-item" href="{% url 'client_list' %}">Clients</a></li>
-                            <li><a class="dropdown-item" href="{% url 'vendor_list' %}">Vendors</a></li>
-                            <li><a class="dropdown-item" href="{% url 'vehicle_list' %}">Vehicles</a></li>
-                            <li><a class="dropdown-item" href="{% url 'driver_list' %}">Drivers</a></li>
-                            <li><a class="dropdown-item" href="{% url 'expense_list' %}">Expenses</a></li>
-                            <li><a class="dropdown-item" href="{% url 'maintenance_list' %}">Maintenance</a></li>
-                            <li><a class="dropdown-item" href="{% url 'locations_master' %}">Cities & Routes</a></li>
+                            <li><a class="dropdown-item" href="{% url 'client_list' %}" target="_blank" rel="noopener"><i class="bi bi-people-fill"></i>Clients</a></li>
+                            <li><a class="dropdown-item" href="{% url 'vendor_list' %}" target="_blank" rel="noopener"><i class="bi bi-shop"></i>Vendors</a></li>
+                            <li><a class="dropdown-item" href="{% url 'vehicle_list' %}" target="_blank" rel="noopener"><i class="bi bi-truck"></i>Vehicles</a></li>
+                            <li><a class="dropdown-item" href="{% url 'driver_list' %}" target="_blank" rel="noopener"><i class="bi bi-person-badge"></i>Drivers</a></li>
+                            <li><a class="dropdown-item" href="{% url 'expense_list' %}" target="_blank" rel="noopener"><i class="bi bi-cash-stack"></i>Expenses</a></li>
+                            <li><a class="dropdown-item" href="{% url 'maintenance_list' %}" target="_blank" rel="noopener"><i class="bi bi-wrench-adjustable-circle"></i>Maintenance</a></li>
+                            <li><a class="dropdown-item" href="{% url 'locations_master' %}" target="_blank" rel="noopener"><i class="bi bi-geo-alt-fill"></i>Cities & Routes</a></li>
                         </ul>
                     </div>
 
