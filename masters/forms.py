@@ -132,6 +132,7 @@ class ClientForm(forms.ModelForm):
             "poc": forms.TextInput(attrs={"class": "form-control"}),
             "ntn": forms.TextInput(attrs={"class": "form-control"}),
             "address": forms.Textarea(attrs={"class": "form-control", "rows": 3}),
+            "billing_company": forms.TextInput(attrs={"class": "form-control"}),
         }
 
 ################ EXPENSE & RATES ################

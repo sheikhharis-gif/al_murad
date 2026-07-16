@@ -49,6 +49,7 @@
                         <th class="ps-4">Company Name</th>
                         <th>Point of Contact (POC)</th>
                         <th>Tax Info (NTN)</th>
+                        <th>Billing Company</th>
                         <th class="text-end pe-4">Management</th>
                     </tr>
                 </thead>
@@ -74,6 +75,9 @@
                                 <i class="bi bi-shield-check me-1"></i> {{ c.ntn }}
                             </span>
                         </td>
+                        <td>
+                            <span class="text-dark small">{{ c.billing_company|default:"---" }}</span>
+                        </td>
                         <td class="text-end pe-4">
                             <div class="d-flex justify-content-end gap-2">
                                 <a href="{% url 'client_rates' c.id %}" class="btn btn-sm btn-outline-primary fw-bold px-3 rounded-pill" title="View Specialized Rates">
@@ -96,7 +100,7 @@
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="4" class="text-center py-5">
+                        <td colspan="5" class="text-center py-5">
                             <div class="py-4">
                                 <i class="bi bi-inbox display-1 text-muted opacity-25"></i>
                                 <h5 class="text-muted mt-3">No clients registered yet.</h5>

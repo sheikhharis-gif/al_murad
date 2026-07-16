@@ -51,12 +51,18 @@ class Vehicle(models.Model):
     ]
     
     VEHICLE_TYPES = [
+        ("Mini Truck", "Mini Truck"),
         ("Suzuki Dry", "Suzuki Dry"), ("Suzuki Reefer", "Suzuki Reefer"),
         ("Shahzore Dry", "Shahzore Dry"), ("Shahzore Reefer", "Shahzore Reefer"),
+        ("10ft Dry", "10ft Dry"), ("10ft Reefer", "10ft Reefer"),
         ("14ft Dry", "14ft Dry"), ("14ft Reefer", "14ft Reefer"),
         ("16ft Dry", "16ft Dry"), ("16ft Reefer", "16ft Reefer"),
+        ("17ft Dry", "17ft Dry"), ("17ft Reefer", "17ft Reefer"),
         ("18ft Dry", "18ft Dry"), ("18ft Reefer", "18ft Reefer"),
         ("20ft Dry", "20ft Dry"), ("20ft Reefer", "20ft Reefer"),
+        ("22ft Dry", "22ft Dry"), ("22ft Reefer", "22ft Reefer"),
+        ("24ft Dry", "24ft Dry"), ("24ft Reefer", "24ft Reefer"),
+        ("34ft Dry", "34ft Dry"), ("34ft Reefer", "34ft Reefer"),
         ("40ft Dry", "40ft Dry"), ("40ft Reefer", "40ft Reefer"),
         ("45ft Dry", "45ft Dry"), ("45ft Reefer", "45ft Reefer"),
         ("50ft Dry", "50ft Dry"), ("50ft Reefer", "50ft Reefer"),
@@ -65,6 +71,7 @@ class Vehicle(models.Model):
     WHEELER = [
         ("2x2", "2x2"), ("2x4", "2x4"), ("2x8", "2x8"),
         ("6x8", "6x8"), ("6x12", "6x12"), ("6x16", "6x16"),
+        ("6", "6 Wheeler"), ("14", "14 Wheeler"),
     ]
 
     # ForeignKey to Vendor
@@ -205,6 +212,7 @@ class Client(models.Model):
     poc = models.CharField(max_length=100)
     ntn = models.CharField(max_length=20, unique=True)
     address = models.TextField()
+    billing_company = models.CharField(max_length=150, blank=True)
     is_active = models.BooleanField(default=True)
 
     def __str__(self):
