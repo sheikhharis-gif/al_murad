@@ -372,15 +372,45 @@
             <div class="top-tabs px-3">
                 <nav class="nav align-items-center flex-wrap">
                     <a class="nav-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}" href="{% url 'dashboard' %}">Dashboard</a>
-                    <a class="nav-link {% if request.resolver_match.url_name == 'job_list' %}active{% endif %}" href="{% url 'job_list' %}">Job Orders</a>
-                    <a class="nav-link {% if request.resolver_match.url_name == 'trip_list' %}active{% endif %}" href="{% url 'trip_list' %}">Trip Logs</a>
-                    <a class="nav-link {% if request.resolver_match.url_name == 'expense_list' %}active{% endif %}" href="{% url 'expense_list' %}">Expenses</a>
+
+                    <div class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle {% if request.resolver_match.url_name == 'trip_list' or request.resolver_match.url_name == 'trip_add' or request.resolver_match.url_name == 'trips_excel' or request.resolver_match.url_name == 'trips_pdf' %}active{% endif %}" href="#" id="tripsDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            Trips
+                        </a>
+                        <ul class="dropdown-menu shadow-sm" aria-labelledby="tripsDropdown">
+                            <li><a class="dropdown-item" href="{% url 'trip_list' %}">Trip List</a></li>
+                            <li><a class="dropdown-item" href="{% url 'trips_excel' %}">Export Excel</a></li>
+                            <li><a class="dropdown-item" href="{% url 'trips_pdf' %}">Export PDF</a></li>
+                            <li><a class="dropdown-item" href="{% url 'trip_add' %}">Add Trip</a></li>
+                        </ul>
+                    </div>
+
+                    <div class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle {% if request.resolver_match.url_name == 'job_list' or request.resolver_match.url_name == 'job_add' %}active{% endif %}" href="#" id="jobsDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            Jobs
+                        </a>
+                        <ul class="dropdown-menu shadow-sm" aria-labelledby="jobsDropdown">
+                            <li><a class="dropdown-item" href="{% url 'job_list' %}">Job Orders</a></li>
+                            <li><a class="dropdown-item" href="{% url 'job_add' %}">Create Job</a></li>
+                        </ul>
+                    </div>
+
+                    <div class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle {% if request.resolver_match.url_name == 'client_list' or request.resolver_match.url_name == 'vendor_list' or request.resolver_match.url_name == 'vehicle_list' or request.resolver_match.url_name == 'driver_list' or request.resolver_match.url_name == 'expense_list' or request.resolver_match.url_name == 'maintenance_list' or request.resolver_match.url_name == 'locations_master' %}active{% endif %}" href="#" id="mastersDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            Masters
+                        </a>
+                        <ul class="dropdown-menu shadow-sm" aria-labelledby="mastersDropdown">
+                            <li><a class="dropdown-item" href="{% url 'client_list' %}">Clients</a></li>
+                            <li><a class="dropdown-item" href="{% url 'vendor_list' %}">Vendors</a></li>
+                            <li><a class="dropdown-item" href="{% url 'vehicle_list' %}">Vehicles</a></li>
+                            <li><a class="dropdown-item" href="{% url 'driver_list' %}">Drivers</a></li>
+                            <li><a class="dropdown-item" href="{% url 'expense_list' %}">Expenses</a></li>
+                            <li><a class="dropdown-item" href="{% url 'maintenance_list' %}">Maintenance</a></li>
+                            <li><a class="dropdown-item" href="{% url 'locations_master' %}">Cities & Routes</a></li>
+                        </ul>
+                    </div>
+
                     <a class="nav-link {% if request.resolver_match.url_name == 'maintenance_list' %}active{% endif %}" href="{% url 'maintenance_list' %}">Maintenance</a>
-                    <a class="nav-link {% if request.resolver_match.url_name == 'client_list' %}active{% endif %}" href="{% url 'client_list' %}">Clients</a>
-                    <a class="nav-link {% if request.resolver_match.url_name == 'vendor_list' %}active{% endif %}" href="{% url 'vendor_list' %}">Vendors</a>
-                    <a class="nav-link {% if request.resolver_match.url_name == 'vehicle_list' %}active{% endif %}" href="{% url 'vehicle_list' %}">Vehicles</a>
-                    <a class="nav-link {% if request.resolver_match.url_name == 'driver_list' %}active{% endif %}" href="{% url 'driver_list' %}">Drivers</a>
-                    <a class="nav-link {% if request.resolver_match.url_name == 'locations_master' %}active{% endif %}" href="{% url 'locations_master' %}">Cities & Routes</a>
                 </nav>
             </div>
 
