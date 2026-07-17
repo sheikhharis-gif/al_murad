@@ -44,6 +44,7 @@ class Command(BaseCommand):
         created_drivers = 0
         existing_drivers = 0
         created_salaries = 0
+        updated_salaries = 0
         skipped_blank = 0
 
         def num(val):
@@ -88,33 +89,45 @@ class Command(BaseCommand):
                 created_drivers += 1
             else:
                 existing_drivers += 1
+                if not driver.employee_id:
+                    driver.save()  # backfill Employee ID for drivers created before that field existed
+
+            salary_fields = {
+                "emp_id": emp_id,
+                "designation": designation,
+                "present_days": int(num(present_days)),
+                "absent_days": int(num(absent_days)),
+                "sundays": int(num(sundays)),
+                "base_salary": num(base_salary),
+                "per_day_rate": num(per_day_rate),
+                "earned_base_salary": num(earned_base_salary),
+                "attendance_allowance": num(attendance_allowance),
+                "total_gross_salary": num(total_gross_salary),
+                "previous_advance": num(previous_advance),
+                "new_advance_taken": num(new_advance_taken),
+                "advance_deduction": num(advance_deduction),
+                "net_payable_salary": num(net_payable_salary),
+                "status": status or "Active",
+            }
 
             salary, s_created = DriverSalary.objects.get_or_create(
                 driver=driver,
                 month=salary_month,
-                defaults={
-                    "emp_id": emp_id,
-                    "designation": designation,
-                    "present_days": int(num(present_days)),
-                    "absent_days": int(num(absent_days)),
-                    "sundays": int(num(sundays)),
-                    "base_salary": num(base_salary),
-                    "per_day_rate": num(per_day_rate),
-                    "earned_base_salary": num(earned_base_salary),
-                    "attendance_allowance": num(attendance_allowance),
-                    "total_gross_salary": num(total_gross_salary),
-                    "previous_advance": num(previous_advance),
-                    "new_advance_taken": num(new_advance_taken),
-                    "advance_deduction": num(advance_deduction),
-                    "net_payable_salary": num(net_payable_salary),
-                    "status": status or "Active",
-                    "paid": False,
-                },
+                defaults={**salary_fields, "paid": False},
             )
             if s_created:
                 created_salaries += 1
+            else:
+                # Refresh sheet-derived fields on records created before this data was
+                # available (e.g. by an older version of this command), without
+                # touching "paid" since that's a manual toggle the user may have set.
+                for field, value in salary_fields.items():
+                    setattr(salary, field, value)
+                salary.save()
+                updated_salaries += 1
 
         self.stdout.write(self.style.SUCCESS(
             f"Drivers created: {created_drivers}, already existed: {existing_drivers}, "
-            f"salary records created: {created_salaries}, blank/non-driver rows skipped: {skipped_blank}"
+            f"salary records created: {created_salaries}, updated: {updated_salaries}, "
+            f"blank/non-driver rows skipped: {skipped_blank}"
         ))

@@ -18,8 +18,12 @@ class Command(BaseCommand):
         amg_job_ids = list(amg_jobs.values_list("job_number", flat=True))
         amg_vehicle_ids = list(amg_jobs.values_list("vehicle_id", flat=True).distinct())
 
-        trips_deleted = Trip.objects.filter(job__in=amg_job_ids).delete()[0]
-        jobs_deleted = amg_jobs.delete()[0]
+        trips_qs = Trip.objects.filter(job__in=amg_job_ids)
+        trips_deleted = trips_qs.count()
+        trips_qs.delete()
+
+        jobs_deleted = amg_jobs.count()
+        amg_jobs.delete()
 
         vehicles_deleted = 0
         for vid in amg_vehicle_ids:
@@ -28,10 +32,14 @@ class Command(BaseCommand):
                 v.delete()
                 vehicles_deleted += 1
 
-        clients_deleted = Client.objects.filter(poc="Imported POC").delete()[0]
+        clients_qs = Client.objects.filter(poc="Imported POC")
+        clients_deleted = clients_qs.count()
+        clients_qs.delete()
 
+        test_drivers = Driver.objects.filter(cnic__startswith="TEST-EMP")
+        drivers_deleted = test_drivers.count()
         salary_count_before = DriverSalary.objects.filter(driver__cnic__startswith="TEST-EMP").count()
-        drivers_deleted = Driver.objects.filter(cnic__startswith="TEST-EMP").delete()[0]
+        test_drivers.delete()
 
         backfilled = 0
         for d in Driver.objects.filter(employee_id="").order_by("id"):
