@@ -32,6 +32,12 @@
                     </div>
                     <div class="card-body p-4 pt-2">
                         <div class="row g-3">
+                            {% if driver %}
+                            <div class="col-md-6">
+                                <label class="form-label small fw-bold text-muted">Employee ID</label>
+                                <input type="text" class="form-control" value="{{ driver.employee_id }}" disabled>
+                            </div>
+                            {% endif %}
                             <div class="col-md-6">
                                 <label class="form-label small fw-bold text-muted">Full Name</label>
                                 {{ form.name }}

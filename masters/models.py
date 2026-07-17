@@ -3,6 +3,7 @@ from django.db import models
 
 # ================= DRIVER =================
 class Driver(models.Model):
+    employee_id = models.CharField("Employee ID", max_length=20, blank=True, editable=False)
     name = models.CharField("Driver Name", max_length=100)
     father_name = models.CharField("Father Name", max_length=100)
     address = models.TextField("Address")
@@ -17,6 +18,12 @@ class Driver(models.Model):
     reference2_mobile = models.CharField(max_length=20, blank=True)
     joining_date = models.DateField("Joining Date")
     is_active = models.BooleanField(default=True)
+
+    def save(self, *args, **kwargs):
+        if not self.employee_id:
+            count = Driver.objects.exclude(employee_id="").count()
+            self.employee_id = f"ALMRD-{count + 1:04d}"
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return self.name

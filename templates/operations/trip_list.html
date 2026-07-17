@@ -142,7 +142,9 @@
                         <th class="py-3">Date & Bilty #</th>
                         <th class="py-3">Vehicle Details</th>
                         <th class="py-3">Route & Distance</th>
-                        <th class="text-end py-3">Revenue (Rs)</th>
+                        <th class="text-end py-3">Weight (Tons)</th>
+                        <th class="text-end py-3">Rate</th>
+                        <th class="text-end py-3">Freight (Rs)</th>
                         <th class="text-end py-3">Total Exp (Rs)</th>
                         <th class="text-end py-3">Net Profit (Rs)</th>
                         <th class="text-center pe-4 py-3">Action</th>
@@ -177,12 +179,9 @@
                                 <small class="text-muted" style="font-size: 0.75rem;"><i class="bi bi-speedometer me-1"></i>{{ t.route.distance_km }} KMs</small>
                             </div>
                         </td>
-                        <td class="text-end fw-bold text-success">
-                            {{ t.freight|floatformat:0 }}
-                            <div class="text-muted small fw-normal" style="font-size: 0.7rem;">
-                                {{ t.weight }} Tons x {{ t.rate|floatformat:0 }}
-                            </div>
-                        </td>
+                        <td class="text-end fw-semibold">{{ t.weight }}</td>
+                        <td class="text-end fw-semibold">{{ t.rate|floatformat:0 }}</td>
+                        <td class="text-end fw-bold text-success">{{ t.freight|floatformat:0 }}</td>
                         <td class="text-end fw-bold text-danger">
                             {% if t.expenses.all %}
                                 {{ t.expenses.all.0.total_expense|floatformat:0 }}
@@ -215,7 +214,7 @@
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="8" class="text-center py-5">
+                        <td colspan="10" class="text-center py-5">
                             <i class="bi bi-truck-flatbed display-4 text-muted opacity-25"></i>
                             <p class="text-muted mt-2">No trips recorded yet matching selected criteria.</p>
                         </td>
