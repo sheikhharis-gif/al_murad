@@ -51,7 +51,7 @@ class Trip(models.Model):
     weight = models.DecimalField(max_digits=10, decimal_places=2)
     rate = models.DecimalField(max_digits=10, decimal_places=2)
     detention = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-    freight = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    freight = models.DecimalField(max_digits=12, decimal_places=2, default=0, editable=False)
 
     def save(self, *args, **kwargs):
         # Driver ka koi zikr nahi, sirf vehicle fetch ho raha hai
@@ -60,6 +60,9 @@ class Trip(models.Model):
         if not self.trip_no:
             count = Trip.objects.filter(job=self.job).count()
             self.trip_no = str(count + 1)
+
+        # Freight = Rate + Detention (if any). Weight is not multiplied in.
+        self.freight = self.rate + self.detention
 
         super().save(*args, **kwargs)
 

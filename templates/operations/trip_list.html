@@ -192,14 +192,8 @@
                                 -
                             {% endif %}
                         </td>
-                        <td class="text-end fw-bold {% if t.expenses.all %}{% with exp=t.expenses.all.0.total_expense %}{% if t.freight > exp %}text-info{% else %}text-danger{% endif %}{% endwith %}{% else %}text-info{% endif %}">
-                            {% if t.expenses.all %}
-                                {% with exp=t.expenses.all.0.total_expense %}
-                                    Rs {{ t.freight|floatformat:0 }}
-                                {% endwith %}
-                            {% else %}
-                                Rs {{ t.freight|floatformat:0 }}
-                            {% endif %}
+                        <td class="text-end fw-bold {% if t.net_total >= 0 %}text-info{% else %}text-danger{% endif %}">
+                            Rs {{ t.net_total|floatformat:0 }}
                         </td>
                         <td class="text-center pe-4">
                             <div class="btn-group shadow-sm rounded-pill overflow-hidden bg-light p-1">

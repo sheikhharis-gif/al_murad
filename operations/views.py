@@ -243,6 +243,16 @@ def trip_list(request):
     net_profit = Decimal(str(total_freight)) - Decimal(str(total_expense))
     pl_percentage = (net_profit / Decimal(str(total_freight)) * 100) if total_freight > 0 else 0
 
+    # Per-trip Total = Freight - that trip's own expenses
+    expense_by_trip = {
+        row["trip_id"]: row["total"]
+        for row in Expense.objects.filter(trip_id__in=trip_ids)
+        .values("trip_id")
+        .annotate(total=Sum("total_expense"))
+    }
+    for t in trips:
+        t.net_total = t.freight - Decimal(str(expense_by_trip.get(t.id, 0)))
+
     clients = Client.objects.filter(is_active=True).order_by("name")
     jobs = Job.objects.all().order_by("-job_date")
     vehicles = Vehicle.objects.all().order_by("vehicle_number")

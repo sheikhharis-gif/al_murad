@@ -47,7 +47,7 @@ class TripForm(forms.ModelForm):
         # In fields mein se vehicle aur driver nikal diye gaye hain
         fields = [
             "job", "client", "trip_date", "route",
-            "bilty_number", "weight", "rate", "detention", "freight",
+            "bilty_number", "weight", "rate", "detention",
         ]
         widgets = {
             "trip_date": forms.DateInput(attrs={"class": "form-control", "type": "date"}),
@@ -55,7 +55,6 @@ class TripForm(forms.ModelForm):
             "weight": forms.NumberInput(attrs={"class": "form-control", "placeholder": "0.00"}),
             "rate": forms.NumberInput(attrs={"class": "form-control", "placeholder": "0.00"}),
             "detention": forms.NumberInput(attrs={"class": "form-control", "placeholder": "0.00"}),
-            "freight": forms.NumberInput(attrs={"class": "form-control", "placeholder": "0.00"}),
         }
 
     def __init__(self, *args, **kwargs):
