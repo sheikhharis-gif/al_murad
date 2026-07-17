@@ -346,10 +346,46 @@ from django.http import HttpResponse
 from django.template.loader import get_template
 from xhtml2pdf import pisa
 
+SALARY_SORT_FIELDS = {
+    "emp_id": "Emp ID",
+    "driver__name": "Employee Name",
+    "month": "Month",
+    "present_days": "Present Days",
+    "absent_days": "Absent Days",
+    "sundays": "Sundays",
+    "base_salary": "Base Salary",
+    "per_day_rate": "Per Day Rate",
+    "earned_base_salary": "Earned Base Salary",
+    "attendance_allowance": "Attendance Allowance",
+    "total_gross_salary": "Total Gross Salary",
+    "previous_advance": "Previous Advance",
+    "new_advance_taken": "New Advance Taken",
+    "advance_deduction": "Advance Deduction",
+    "net_payable_salary": "Net Payable",
+    "status": "Status",
+    "paid": "Paid",
+}
+
 def salary_list(request):
-    salaries = DriverSalary.objects.select_related("driver").order_by("-month")
+    sort_by = request.GET.get("sort_by", "month")
+    order = request.GET.get("order", "desc")
+    if sort_by not in SALARY_SORT_FIELDS:
+        sort_by = "month"
+    if order not in ("asc", "desc"):
+        order = "desc"
+
+    order_field = sort_by if order == "asc" else f"-{sort_by}"
+    salaries = DriverSalary.objects.select_related("driver").order_by(order_field)
     total_payout = salaries.aggregate(total=Sum("net_payable_salary"))["total"] or 0
-    return render(request, "salary/salary_list.html", {"salaries": salaries, "total_payout": total_payout})
+
+    context = {
+        "salaries": salaries,
+        "total_payout": total_payout,
+        "sort_fields": SALARY_SORT_FIELDS,
+        "sort_by": sort_by,
+        "order": order,
+    }
+    return render(request, "salary/salary_list.html", context)
 
 
 def salary_slip_pdf(request, salary_id):

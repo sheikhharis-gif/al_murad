@@ -114,26 +114,36 @@
         </div>
     </div>
     <div class="col-sm-6 col-xl-3">
-        <div class="stat-card">
-            <div class="stat-icon green"><i class="bi bi-check-circle-fill"></i></div>
-            <div>
-                <p class="stat-label">Completed Trips</p>
-                <p class="stat-value">{{ completed_jobs_count }}</p>
-                <p class="stat-sub">Jobs back to base</p>
+        <a href="{% url 'completed_job_list' %}" class="stat-card-link">
+            <div class="stat-card">
+                <div class="stat-icon green"><i class="bi bi-check-circle-fill"></i></div>
+                <div>
+                    <p class="stat-label">Completed Trips</p>
+                    <p class="stat-value">{{ completed_jobs_count }}</p>
+                    <p class="stat-sub">Jobs back to base</p>
+                </div>
             </div>
-        </div>
+        </a>
     </div>
     <div class="col-sm-6 col-xl-3">
-        <div class="stat-card">
-            <div class="stat-icon amber"><i class="bi bi-clock-history"></i></div>
-            <div>
-                <p class="stat-label">On Process Trips</p>
-                <p class="stat-value">{{ on_process_jobs_count }}</p>
-                <p class="stat-sub">Currently on road</p>
+        <a href="{% url 'job_list' %}" class="stat-card-link">
+            <div class="stat-card">
+                <div class="stat-icon amber"><i class="bi bi-clock-history"></i></div>
+                <div>
+                    <p class="stat-label">On Process Trips</p>
+                    <p class="stat-value">{{ on_process_jobs_count }}</p>
+                    <p class="stat-sub">Currently on road</p>
+                </div>
             </div>
-        </div>
+        </a>
     </div>
 </div>
+
+<style>
+    .stat-card-link { text-decoration: none; color: inherit; display: block; transition: transform 0.15s ease; }
+    .stat-card-link:hover { transform: translateY(-3px); }
+    .stat-card-link:hover .stat-card { box-shadow: 0 8px 20px rgba(0,0,0,0.1); }
+</style>
 
 <div class="row g-4 mb-4">
     <div class="col-lg-8">
