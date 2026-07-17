@@ -74,34 +74,40 @@
 
 <div class="row g-4 mb-4">
     <div class="col-sm-6 col-xl-3">
-        <div class="stat-card">
-            <div class="stat-icon blue"><i class="bi bi-signpost-split-fill"></i></div>
-            <div>
-                <p class="stat-label">Total Trips</p>
-                <p class="stat-value">{{ total_trips }}</p>
-                <p class="stat-sub">All recorded trips</p>
+        <a href="{% url 'trip_list' %}" class="stat-card-link">
+            <div class="stat-card">
+                <div class="stat-icon blue"><i class="bi bi-signpost-split-fill"></i></div>
+                <div>
+                    <p class="stat-label">Total Trips</p>
+                    <p class="stat-value">{{ total_trips }}</p>
+                    <p class="stat-sub">All recorded trips</p>
+                </div>
             </div>
-        </div>
+        </a>
     </div>
     <div class="col-sm-6 col-xl-3">
-        <div class="stat-card">
-            <div class="stat-icon green"><i class="bi bi-truck-front-fill"></i></div>
-            <div>
-                <p class="stat-label">Fleet Size</p>
-                <p class="stat-value">{{ total_vehicles }}</p>
-                <p class="stat-sub">Active vehicles</p>
+        <a href="{% url 'vehicle_list' %}" class="stat-card-link">
+            <div class="stat-card">
+                <div class="stat-icon green"><i class="bi bi-truck-front-fill"></i></div>
+                <div>
+                    <p class="stat-label">Fleet Size</p>
+                    <p class="stat-value">{{ total_vehicles }}</p>
+                    <p class="stat-sub">Active vehicles</p>
+                </div>
             </div>
-        </div>
+        </a>
     </div>
     <div class="col-sm-6 col-xl-3">
-        <div class="stat-card">
-            <div class="stat-icon amber"><i class="bi bi-person-badge-fill"></i></div>
-            <div>
-                <p class="stat-label">Drivers</p>
-                <p class="stat-value">{{ total_drivers }}</p>
-                <p class="stat-sub">Registered drivers</p>
+        <a href="{% url 'driver_list' %}" class="stat-card-link">
+            <div class="stat-card">
+                <div class="stat-icon amber"><i class="bi bi-person-badge-fill"></i></div>
+                <div>
+                    <p class="stat-label">Drivers</p>
+                    <p class="stat-value">{{ total_drivers }}</p>
+                    <p class="stat-sub">Registered drivers</p>
+                </div>
             </div>
-        </div>
+        </a>
     </div>
     <div class="col-sm-6 col-xl-3">
         <div class="stat-card highlight">
