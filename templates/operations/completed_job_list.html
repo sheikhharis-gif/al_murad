@@ -93,7 +93,15 @@
                             <span class="badge rounded-pill bg-success px-3">
                                 <i class="bi bi-check-circle me-1"></i> Job Completed
                             </span>
-                            <div class="small text-muted mt-1">{{ job.completion_date|date:"d M, Y H:i" }}</div>
+                            <div class="small text-muted mt-1 mb-1">{{ job.completion_date|date:"d M, Y H:i" }}</div>
+                            <form method="post" action="{% url 'job_update_status' job.job_number %}" class="mt-1">
+                                {% csrf_token %}
+                                <select name="status" class="form-select form-select-sm status-select" onchange="this.form.submit()" title="Update Status">
+                                    {% for value, label in job.STATUS_CHOICES %}
+                                        <option value="{{ value }}" {% if job.status == value %}selected{% endif %}>{{ label }}</option>
+                                    {% endfor %}
+                                </select>
+                            </form>
                         </td>
                         <td class="text-end pe-4">
                             <div class="d-flex justify-content-end gap-2">
@@ -144,6 +152,7 @@
     .custom-table tbody tr:hover { background-color: #f8fafc; transition: all 0.2s ease; }
     .extra-small { font-size: 0.7rem; }
     .btn-outline-success:hover { background-color: #198754; color: white; }
+    .status-select { font-size: 0.75rem; padding: 0.2rem 1.5rem 0.2rem 0.5rem; width: auto; min-width: 130px; }
 </style>
 
 <script>

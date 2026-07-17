@@ -58,6 +58,8 @@ def dashboard(request):
     total_trips = Trip.objects.count()
     total_vehicles = Vehicle.objects.count()
     total_drivers = Driver.objects.count()
+    completed_jobs_count = Job.objects.filter(status="completed").count()
+    on_process_jobs_count = Job.objects.filter(status__in=["in_progress", "returning"]).count()
     total_freight = Trip.objects.aggregate(total=Sum("freight"))["total"] or 0
     total_expense = Expense.objects.aggregate(total=Sum("total_expense"))["total"] or 0
     profit = total_freight - Decimal(total_expense)
@@ -118,6 +120,8 @@ def dashboard(request):
         "total_trips": total_trips,
         "total_vehicles": total_vehicles,
         "total_drivers": total_drivers,
+        "completed_jobs_count": completed_jobs_count,
+        "on_process_jobs_count": on_process_jobs_count,
         "total_freight": total_freight,
         "total_expense": total_expense,
         "profit": profit,
@@ -161,6 +165,17 @@ def job_complete(request, job_id):
     job = get_object_or_404(Job, job_number=job_id)
     job.status = "completed"
     job.save()
+    return redirect("job_list")
+
+def job_update_status(request, job_id):
+    job = get_object_or_404(Job, job_number=job_id)
+    new_status = request.POST.get("status")
+    valid_statuses = dict(Job.STATUS_CHOICES)
+    if request.method == "POST" and new_status in valid_statuses:
+        job.status = new_status
+        job.save()
+    if job.status == "completed":
+        return redirect("completed_job_list")
     return redirect("job_list")
 
 def job_add(request):

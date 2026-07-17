@@ -113,6 +113,26 @@
             </div>
         </div>
     </div>
+    <div class="col-sm-6 col-xl-3">
+        <div class="stat-card">
+            <div class="stat-icon green"><i class="bi bi-check-circle-fill"></i></div>
+            <div>
+                <p class="stat-label">Completed Trips</p>
+                <p class="stat-value">{{ completed_jobs_count }}</p>
+                <p class="stat-sub">Jobs back to base</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <div class="stat-card">
+            <div class="stat-icon amber"><i class="bi bi-clock-history"></i></div>
+            <div>
+                <p class="stat-label">On Process Trips</p>
+                <p class="stat-value">{{ on_process_jobs_count }}</p>
+                <p class="stat-sub">Currently on road</p>
+            </div>
+        </div>
+    </div>
 </div>
 
 <div class="row g-4 mb-4">

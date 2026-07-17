@@ -106,18 +106,26 @@
                         </td>
                         <td>
                             {% if job.status == 'in_progress' %}
-                                <span class="badge rounded-pill bg-warning text-dark px-3">
+                                <span class="badge rounded-pill bg-warning text-dark px-3 mb-1 d-inline-block">
                                     <i class="bi bi-clock-history me-1"></i> On Road
                                 </span>
                             {% elif job.status == 'completed' %}
-                                <span class="badge rounded-pill bg-success px-3">
+                                <span class="badge rounded-pill bg-success px-3 mb-1 d-inline-block">
                                     <i class="bi bi-check-circle me-1"></i> Back to Base
                                 </span>
                             {% else %}
-                                <span class="badge rounded-pill bg-secondary px-3">
+                                <span class="badge rounded-pill bg-secondary px-3 mb-1 d-inline-block">
                                     {{ job.get_status_display }}
                                 </span>
                             {% endif %}
+                            <form method="post" action="{% url 'job_update_status' job.job_number %}" class="mt-1">
+                                {% csrf_token %}
+                                <select name="status" class="form-select form-select-sm status-select" onchange="this.form.submit()" title="Update Status">
+                                    {% for value, label in job.STATUS_CHOICES %}
+                                        <option value="{{ value }}" {% if job.status == value %}selected{% endif %}>{{ label }}</option>
+                                    {% endfor %}
+                                </select>
+                            </form>
                         </td>
                         <td class="text-end pe-4">
                             <div class="d-flex justify-content-end gap-2">
@@ -184,5 +192,6 @@
     .extra-small { font-size: 0.7rem; }
     /* Success highlight for invoice button */
     .btn-outline-success:hover { background-color: #198754; color: white; }
+    .status-select { font-size: 0.75rem; padding: 0.2rem 1.5rem 0.2rem 0.5rem; width: auto; min-width: 130px; }
 </style>
 {% endblock %}

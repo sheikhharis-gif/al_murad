@@ -20,6 +20,7 @@ urlpatterns = [
     path("jobs/edit/<int:job_id>/", views.job_edit, name="job_edit"),
     path("jobs/delete/<int:job_id>/", views.job_delete, name="job_delete"),
     path("jobs/complete/<int:job_id>/", views.job_complete, name="job_complete"),
+    path("jobs/update-status/<int:job_id>/", views.job_update_status, name="job_update_status"),
     # Job ke andar ki saari trips dekhne ke liye (Optional par behtar hai)
     path("jobs/<int:job_id>/view-trips/", views.job_view_trips, name="job_view_trips"),
 
