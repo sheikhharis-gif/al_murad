@@ -3,21 +3,29 @@
 {% block content %}
 <div class="container-fluid py-4">
 
-    <div class="d-flex justify-content-between align-items-center mb-4">
+    <div class="d-flex justify-content-between align-items-center mb-4 no-print flex-wrap gap-2">
         <div>
             <h3 class="fw-bold text-dark mb-1">
                 <i class="bi bi-cash-coin text-primary me-2"></i>Salary Report
             </h3>
             <p class="text-muted small mb-0">Monthly payroll: attendance, base salary, allowances, advances and net payable.</p>
         </div>
-        <div>
+        <div class="d-flex gap-2">
+            <button type="button" onclick="window.print()" class="btn btn-outline-dark px-4 shadow-sm fw-bold rounded-3">
+                <i class="bi bi-printer-fill me-2"></i>Print Whole Summary
+            </button>
             <a href="{% url 'salary_add' %}" class="btn btn-primary px-4 shadow-sm fw-bold rounded-3">
                 <i class="bi bi-plus-circle-fill me-2"></i>Add Salary Entry
             </a>
         </div>
     </div>
 
-    <div class="row g-3 mb-4">
+    <div class="print-title d-none">
+        <h3 class="fw-bold text-center mb-0">AL MURAD LOGISTICS</h3>
+        <p class="text-center text-muted mb-4">Salary Report Summary</p>
+    </div>
+
+    <div class="row g-3 mb-4 no-print">
         <div class="col-md-3">
             <div class="card border-0 shadow-sm rounded-4 p-3 border-start border-primary border-4">
                 <div class="d-flex align-items-center">
@@ -47,7 +55,7 @@
     </div>
 
     <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
-        <div class="card-header bg-white border-0 py-3 px-4 d-flex justify-content-between align-items-center border-bottom">
+        <div class="card-header bg-white border-0 py-3 px-4 d-flex justify-content-between align-items-center border-bottom no-print">
             <h5 class="fw-bold mb-0 text-dark">Salary Engine</h5>
             <div class="input-group w-auto">
                 <span class="input-group-text bg-light border-0"><i class="bi bi-search"></i></span>
@@ -55,61 +63,58 @@
             </div>
         </div>
 
-        <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0 custom-salary-table text-nowrap">
+        <div class="table-wrap">
+            <table class="table table-hover align-middle mb-0 custom-salary-table">
                 <thead class="bg-light">
                     <tr class="text-muted small text-uppercase fw-bold">
-                        <th class="ps-4">Emp ID</th>
-                        <th>Employee Name</th>
-                        <th>Designation</th>
+                        <th class="ps-3">Emp ID</th>
+                        <th>Employee</th>
                         <th>Month</th>
-                        <th class="text-end">Present</th>
-                        <th class="text-end">Absent</th>
-                        <th class="text-end">Sundays</th>
+                        <th class="text-center">Attendance</th>
                         <th class="text-end">Base Salary</th>
-                        <th class="text-end">Per Day Rate</th>
-                        <th class="text-end">Earned Base</th>
-                        <th class="text-end">Attendance Allowance</th>
-                        <th class="text-end">Total Gross</th>
-                        <th class="text-end">Previous Advance</th>
-                        <th class="text-end">New Advance</th>
-                        <th class="text-end">Advance Deduction</th>
+                        <th class="text-end">Allowance &amp; Gross</th>
+                        <th class="text-end">Advances</th>
                         <th class="text-end">Net Payable</th>
                         <th class="text-center">Status</th>
-                        <th class="text-center">Paid</th>
-                        <th class="text-end pe-4">Actions</th>
+                        <th class="text-center no-print">Actions</th>
                     </tr>
                 </thead>
                 <tbody id="salaryTableBody">
                     {% for s in salaries %}
                     <tr>
-                        <td class="ps-4 fw-semibold">{{ s.emp_id|default:"---" }}</td>
+                        <td class="ps-3 fw-semibold">{{ s.emp_id|default:"---" }}</td>
                         <td>
                             <div class="d-flex align-items-center">
                                 <div class="avatar-circle me-2 bg-primary-subtle text-primary fw-bold">
                                     {{ s.driver.name|slice:":1"|upper }}
                                 </div>
-                                <span class="fw-bold text-dark">{{ s.driver.name }}</span>
+                                <div>
+                                    <div class="fw-bold text-dark">{{ s.driver.name }}</div>
+                                    <div class="text-muted stack-line">{{ s.designation }}</div>
+                                </div>
                             </div>
                         </td>
-                        <td>{{ s.designation }}</td>
-                        <td>{{ s.month|date:"F Y" }}</td>
-                        <td class="text-end">{{ s.present_days }}</td>
-                        <td class="text-end">{{ s.absent_days }}</td>
-                        <td class="text-end">{{ s.sundays }}</td>
-                        <td class="text-end">{{ s.base_salary|floatformat:0 }}</td>
-                        <td class="text-end">{{ s.per_day_rate|floatformat:0 }}</td>
-                        <td class="text-end">{{ s.earned_base_salary|floatformat:0 }}</td>
-                        <td class="text-end">{{ s.attendance_allowance|floatformat:0 }}</td>
-                        <td class="text-end fw-semibold">{{ s.total_gross_salary|floatformat:0 }}</td>
-                        <td class="text-end">{{ s.previous_advance|floatformat:0 }}</td>
-                        <td class="text-end">{{ s.new_advance_taken|floatformat:0 }}</td>
-                        <td class="text-end">{{ s.advance_deduction|floatformat:0 }}</td>
+                        <td>{{ s.month|date:"M Y" }}</td>
+                        <td class="text-center stack-line">
+                            P: {{ s.present_days }} &nbsp; A: {{ s.absent_days }} &nbsp; S: {{ s.sundays }}
+                        </td>
+                        <td class="text-end stack-line">
+                            Base: {{ s.base_salary|floatformat:0 }}<br>
+                            /day: {{ s.per_day_rate|floatformat:0 }}<br>
+                            Earned: {{ s.earned_base_salary|floatformat:0 }}
+                        </td>
+                        <td class="text-end stack-line">
+                            Allow: {{ s.attendance_allowance|floatformat:0 }}<br>
+                            Gross: {{ s.total_gross_salary|floatformat:0 }}
+                        </td>
+                        <td class="text-end stack-line">
+                            Prev: {{ s.previous_advance|floatformat:0 }}<br>
+                            New: {{ s.new_advance_taken|floatformat:0 }}<br>
+                            Ded: {{ s.advance_deduction|floatformat:0 }}
+                        </td>
                         <td class="text-end fw-bold text-success">Rs {{ s.net_payable_salary|floatformat:0 }}</td>
                         <td class="text-center">
-                            <span class="badge bg-info-subtle text-info-emphasis rounded-pill px-2">{{ s.status }}</span>
-                        </td>
-                        <td class="text-center">
+                            <span class="badge bg-info-subtle text-info-emphasis rounded-pill px-2 d-block mb-1">{{ s.status }}</span>
                             {% if s.paid %}
                                 <span class="badge bg-success-subtle text-success rounded-pill px-2 fw-bold">
                                     <i class="bi bi-check-circle-fill me-1"></i>Paid
@@ -120,8 +125,11 @@
                                 </span>
                             {% endif %}
                         </td>
-                        <td class="text-end pe-4">
+                        <td class="text-center no-print">
                             <div class="btn-group shadow-sm rounded-2 overflow-hidden bg-white border">
+                                <a href="{% url 'salary_slip_pdf' s.id %}" class="btn btn-sm btn-white text-primary border-end" title="Print Salary Slip">
+                                    <i class="bi bi-printer"></i>
+                                </a>
                                 <a href="{% url 'salary_edit' s.id %}" class="btn btn-sm btn-white text-warning border-end" title="Edit Entry">
                                     <i class="bi bi-pencil-square"></i>
                                 </a>
@@ -133,7 +141,7 @@
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="19" class="text-center py-5">
+                        <td colspan="10" class="text-center py-5">
                             <div class="py-4 text-muted">
                                 <i class="bi bi-cash-coin display-1 opacity-25"></i>
                                 <h5 class="mt-3">No salary records found.</h5>
@@ -149,29 +157,43 @@
 </div>
 
 <style>
+    /* No internal horizontal scrollbar - table fits the page width */
+    .table-wrap { width: 100%; overflow-x: visible; }
+    .custom-salary-table { width: 100%; table-layout: fixed; }
     .custom-salary-table thead th {
-        font-size: 0.72rem;
-        padding: 1rem 0.75rem;
+        font-size: 0.68rem;
+        padding: 0.85rem 0.5rem;
         background-color: #f8fafc;
+        white-space: normal;
     }
     .custom-salary-table tbody td {
-        padding: 0.85rem 0.75rem;
+        padding: 0.6rem 0.5rem;
         border-bottom: 1px solid #f1f5f9;
-        font-size: 0.85rem;
+        font-size: 0.78rem;
+        word-break: break-word;
     }
+    .stack-line { font-size: 0.7rem; line-height: 1.5; }
     .btn-white { background-color: #fff; border: none; }
     .btn-white:hover { background-color: #f8fafc; }
     .avatar-circle {
-        width: 32px;
-        height: 32px;
+        width: 28px;
+        height: 28px;
         border-radius: 50%;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 0.9rem;
+        font-size: 0.8rem;
         flex-shrink: 0;
     }
     .custom-salary-table tr:hover { background-color: #fcfcfc; }
+
+    @media print {
+        .no-print, .app-navbar, nav, .main-nav { display: none !important; }
+        .print-title { display: block !important; }
+        body { background: #fff !important; }
+        .card { box-shadow: none !important; border: none !important; }
+        @page { size: landscape; margin: 1cm; }
+    }
 </style>
 
 <script>

@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        @page { size: A4; margin: 1.5cm; }
+        body { font-family: Helvetica, Arial, sans-serif; font-size: 11px; color: #333; line-height: 1.4; }
+
+        .header-box { background-color: #f8f9fa; text-align: center; padding: 15px; border: 2px solid #333; margin-bottom: 15px; }
+        .title { font-size: 22px; font-weight: bold; text-transform: uppercase; letter-spacing: 2px; }
+        .subtitle { font-size: 11px; color: #666; margin-top: 4px; }
+
+        .info-table { width: 100%; margin-bottom: 15px; border-collapse: collapse; }
+        .info-table td { padding: 5px; border: 1px solid #eee; }
+        .label { font-weight: bold; background-color: #f2f2f2; width: 22%; color: #555; }
+        .value { width: 28%; padding-left: 8px; }
+
+        .section-header { background-color: #444; color: white; padding: 6px 10px; font-size: 12px; font-weight: bold; margin-top: 18px; border-radius: 3px; }
+
+        .data-table { width: 100%; margin-top: 5px; border-collapse: collapse; }
+        .data-table th { background-color: #f2f2f2; color: #333; padding: 7px; border: 1px solid #333; text-align: left; font-size: 10px; }
+        .data-table td { padding: 7px; border: 1px solid #ddd; text-align: right; }
+        .data-table td.left { text-align: left; }
+
+        .summary-table { width: 60%; margin-top: 15px; margin-left: 40%; border-collapse: collapse; border: 2px solid #333; }
+        .summary-table td { padding: 8px; border: 1px solid #333; }
+        .net-row { background-color: #FFD700; font-weight: bold; font-size: 14px; }
+
+        .status-badge { padding: 3px 10px; border-radius: 10px; font-size: 10px; font-weight: bold; }
+        .paid { background-color: #d1e7dd; color: #0f5132; }
+        .pending { background-color: #fff3cd; color: #664d03; }
+
+        .sign-row { margin-top: 60px; width: 100%; }
+        .sign-box { width: 45%; display: inline-block; border-top: 1px solid #333; padding-top: 5px; font-size: 10px; text-align: center; }
+        .clearfix { clear: both; }
+    </style>
+</head>
+<body>
+
+    <div class="header-box">
+        <div class="title">AL MURAD LOGISTICS</div>
+        <div class="subtitle">Salary Slip - {{ s.month|date:"F Y" }} - Generated on {{ issue_date|date:"d-M-Y" }}</div>
+    </div>
+
+    <table class="info-table">
+        <tr>
+            <td class="label">Emp ID</td><td class="value">{{ s.emp_id|default:s.driver.employee_id }}</td>
+            <td class="label">Employee Name</td><td class="value">{{ s.driver.name }}</td>
+        </tr>
+        <tr>
+            <td class="label">Designation</td><td class="value">{{ s.designation }}</td>
+            <td class="label">CNIC #</td><td class="value">{{ s.driver.cnic }}</td>
+        </tr>
+        <tr>
+            <td class="label">Salary Month</td><td class="value">{{ s.month|date:"F Y" }}</td>
+            <td class="label">Status</td>
+            <td class="value">
+                <span class="status-badge {% if s.paid %}paid{% else %}pending{% endif %}">
+                    {% if s.paid %}PAID{% else %}PENDING{% endif %}
+                </span>
+            </td>
+        </tr>
+    </table>
+
+    <div class="section-header">ATTENDANCE</div>
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th class="left">Present Days</th>
+                <th class="left">Absent Days</th>
+                <th class="left">Sundays</th>
+                <th class="left">Employment Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td class="left">{{ s.present_days }}</td>
+                <td class="left">{{ s.absent_days }}</td>
+                <td class="left">{{ s.sundays }}</td>
+                <td class="left">{{ s.status }}</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <div class="section-header">SALARY BREAKDOWN</div>
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th class="left">Base Salary</th>
+                <th class="left">Per Day Rate</th>
+                <th class="left">Earned Base Salary</th>
+                <th class="left">Attendance Allowance</th>
+                <th class="left">Total Gross Salary</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td class="left">Rs {{ s.base_salary|floatformat:0 }}</td>
+                <td class="left">Rs {{ s.per_day_rate|floatformat:0 }}</td>
+                <td class="left">Rs {{ s.earned_base_salary|floatformat:0 }}</td>
+                <td class="left">Rs {{ s.attendance_allowance|floatformat:0 }}</td>
+                <td class="left">Rs {{ s.total_gross_salary|floatformat:0 }}</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <div class="section-header">ADVANCES</div>
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th class="left">Previous Advance</th>
+                <th class="left">New Advance Taken</th>
+                <th class="left">Advance Deduction</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td class="left">Rs {{ s.previous_advance|floatformat:0 }}</td>
+                <td class="left">Rs {{ s.new_advance_taken|floatformat:0 }}</td>
+                <td class="left">Rs {{ s.advance_deduction|floatformat:0 }}</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <table class="summary-table">
+        <tr class="net-row">
+            <td>NET PAYABLE SALARY</td>
+            <td>Rs {{ s.net_payable_salary|floatformat:0 }}</td>
+        </tr>
+    </table>
+
+    <div class="clearfix"></div>
+
+    <div class="sign-row">
+        <div class="sign-box" style="margin-right: 8%;">Employee Signature</div>
+        <div class="sign-box">Authorized Signatory</div>
+    </div>
+
+</body>
+</html>

@@ -41,5 +41,6 @@ urlpatterns = [
     path("salary/add/", views.salary_add, name="salary_add"),
     path("salary/edit/<int:salary_id>/", views.salary_edit, name="salary_edit"),
     path("salary/delete/<int:salary_id>/", views.salary_delete, name="salary_delete"),
+    path("salary/slip/<int:salary_id>/", views.salary_slip_pdf, name="salary_slip_pdf"),
 
 ]

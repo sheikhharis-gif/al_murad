@@ -342,11 +342,32 @@ def maintenance_add(request):
 
 # ================= SALARY =================
 from django.shortcuts import get_object_or_404
+from django.http import HttpResponse
+from django.template.loader import get_template
+from xhtml2pdf import pisa
 
 def salary_list(request):
     salaries = DriverSalary.objects.select_related("driver").order_by("-month")
     total_payout = salaries.aggregate(total=Sum("net_payable_salary"))["total"] or 0
     return render(request, "salary/salary_list.html", {"salaries": salaries, "total_payout": total_payout})
+
+
+def salary_slip_pdf(request, salary_id):
+    salary = get_object_or_404(DriverSalary.objects.select_related("driver"), id=salary_id)
+
+    template = get_template("salary/salary_slip_pdf.html")
+    html = template.render({"s": salary, "issue_date": date.today()})
+
+    response = HttpResponse(content_type="application/pdf")
+    response["Content-Disposition"] = (
+        f'attachment; filename="Salary_Slip_{salary.emp_id or salary.driver.employee_id}_'
+        f'{salary.month.strftime("%b-%Y")}.pdf"'
+    )
+
+    pisa_status = pisa.CreatePDF(html, dest=response)
+    if pisa_status.err:
+        return HttpResponse("PDF banane mein masla hua", status=400)
+    return response
 
 
 def salary_add(request):
