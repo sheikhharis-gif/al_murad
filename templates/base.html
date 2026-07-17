@@ -102,11 +102,12 @@
                 </li>
 
                 <li class="nav-item dropdown">
-                    <a href="#" class="nav-link dropdown-toggle {% if request.resolver_match.url_name == 'job_list' or request.resolver_match.url_name == 'job_add' or request.resolver_match.url_name == 'job_edit' %}active{% endif %}" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                    <a href="#" class="nav-link dropdown-toggle {% if request.resolver_match.url_name == 'job_list' or request.resolver_match.url_name == 'completed_job_list' or request.resolver_match.url_name == 'job_add' or request.resolver_match.url_name == 'job_edit' %}active{% endif %}" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                         <i class="bi bi-briefcase-fill"></i> Job Orders
                     </a>
                     <ul class="dropdown-menu">
-                        <li><a class="dropdown-item" href="{% url 'job_list' %}"><i class="bi bi-list-ul me-2"></i>All Job Orders</a></li>
+                        <li><a class="dropdown-item" href="{% url 'job_list' %}"><i class="bi bi-list-ul me-2"></i>Active Job Orders</a></li>
+                        <li><a class="dropdown-item" href="{% url 'completed_job_list' %}"><i class="bi bi-check-circle me-2"></i>Completed Jobs</a></li>
                         <li><a class="dropdown-item" href="{% url 'job_add' %}"><i class="bi bi-plus-circle me-2"></i>Assign New Vehicle</a></li>
                     </ul>
                 </li>

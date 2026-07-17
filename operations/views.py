@@ -150,8 +150,18 @@ def _normalize_amg_cell(value):
 
 # ================= JOBS =================
 def job_list(request):
-    jobs = Job.objects.all().order_by("-job_date")
+    jobs = Job.objects.exclude(status="completed").order_by("-job_date")
     return render(request, "operations/job_list.html", {"jobs": jobs})
+
+def completed_job_list(request):
+    jobs = Job.objects.filter(status="completed").order_by("-completion_date")
+    return render(request, "operations/completed_job_list.html", {"jobs": jobs})
+
+def job_complete(request, job_id):
+    job = get_object_or_404(Job, job_number=job_id)
+    job.status = "completed"
+    job.save()
+    return redirect("job_list")
 
 def job_add(request):
     form = JobForm(request.POST or None)

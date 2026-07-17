@@ -2,49 +2,34 @@
 
 {% block content %}
 <div class="container-fluid py-4">
-    
-        <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
+
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
         <div>
-            <h3 class="fw-bold text-dark mb-0">Voyage Management</h3>
+            <h3 class="fw-bold text-dark mb-0">Completed Jobs</h3>
             <nav aria-label="breadcrumb">
                 <ol class="breadcrumb mb-0">
                     <li class="breadcrumb-item small"><a href="{% url 'dashboard' %}">Dashboard</a></li>
-                    <li class="breadcrumb-item small active" aria-current="page">Operational Jobs</li>
+                    <li class="breadcrumb-item small"><a href="{% url 'job_list' %}">Operational Jobs</a></li>
+                    <li class="breadcrumb-item small active" aria-current="page">Completed Jobs</li>
                 </ol>
             </nav>
         </div>
         <div class="d-flex flex-wrap gap-2 align-items-center">
-            <div class="btn-group shadow-sm rounded-3">
-                <button type="button" class="btn btn-secondary rounded-start-3 px-4 py-2">
-                    <i class="bi bi-menu-button-wide me-2"></i>Quick Actions
-                </button>
-                <button type="button" class="btn btn-secondary dropdown-toggle dropdown-toggle-split rounded-end-3" data-bs-toggle="dropdown" aria-expanded="false">
-                    <span class="visually-hidden">Toggle Dropdown</span>
-                </button>
-                <ul class="dropdown-menu dropdown-menu-end shadow-lg rounded-4">
-                    <li><a class="dropdown-item" href="{% url 'job_add' %}" target="_blank" rel="noopener"><i class="bi bi-plus-circle me-2"></i>Create Job</a></li>
-                    <li><a class="dropdown-item" href="{% url 'job_list' %}" target="_blank" rel="noopener"><i class="bi bi-card-list me-2"></i>Open Job Orders</a></li>
-                    <li><a class="dropdown-item" href="{% url 'dashboard' %}" target="_blank" rel="noopener"><i class="bi bi-speedometer2 me-2"></i>Open Dashboard</a></li>
-                </ul>
-            </div>
-            <a href="{% url 'completed_job_list' %}" class="btn btn-outline-success px-4 shadow-sm fw-bold rounded-3">
-                <i class="bi bi-check-circle me-2"></i>Completed Jobs
-            </a>
-            <a href="{% url 'job_add' %}" class="btn btn-outline-primary px-4 shadow-sm fw-bold rounded-3">
-                <i class="bi bi-plus-lg me-2"></i>Assign New Vehicle (Job)
+            <a href="{% url 'job_list' %}" class="btn btn-outline-primary px-4 shadow-sm fw-bold rounded-3">
+                <i class="bi bi-arrow-left me-2"></i>Back to Active Voyages
             </a>
         </div>
     </div>
 
     <div class="row g-3 mb-4">
         <div class="col-md-4">
-            <div class="card border-0 shadow-sm rounded-4 p-3 border-start border-primary border-4">
+            <div class="card border-0 shadow-sm rounded-4 p-3 border-start border-success border-4">
                 <div class="d-flex align-items-center">
-                    <div class="bg-primary-subtle p-3 rounded-circle me-3">
-                        <i class="bi bi-truck text-primary fs-4"></i>
+                    <div class="bg-success-subtle p-3 rounded-circle me-3">
+                        <i class="bi bi-check-circle-fill text-success fs-4"></i>
                     </div>
                     <div>
-                        <h6 class="text-muted small mb-1">Active / On-Process Voyages</h6>
+                        <h6 class="text-muted small mb-1">Completed Voyages</h6>
                         <h4 class="fw-bold mb-0">{{ jobs.count }}</h4>
                     </div>
                 </div>
@@ -54,13 +39,13 @@
 
     <div class="card border-0 shadow-sm rounded-4">
         <div class="card-header bg-white border-0 py-3 px-4 d-flex justify-content-between align-items-center border-bottom">
-            <h5 class="fw-bold mb-0">Operational Register</h5>
+            <h5 class="fw-bold mb-0">Completed Job Register</h5>
             <div class="input-group w-auto">
                 <span class="input-group-text bg-light border-0"><i class="bi bi-search"></i></span>
                 <input type="text" id="jobSearch" class="form-control bg-light border-0 small" placeholder="Search vehicle or job #...">
             </div>
         </div>
-        
+
         <div class="table-responsive" style="min-height: 400px;">
             <table class="table table-hover align-middle mb-0 custom-table">
                 <thead class="bg-light">
@@ -68,7 +53,7 @@
                         <th class="ps-4">Job Info</th>
                         <th>Vehicle Details</th>
                         <th>Trip Summary</th>
-                        <th>Status</th>
+                        <th>Completed On</th>
                         <th class="text-end pe-4">Actions</th>
                     </tr>
                 </thead>
@@ -105,45 +90,21 @@
                             </div>
                         </td>
                         <td>
-                            {% if job.status == 'in_progress' %}
-                                <span class="badge rounded-pill bg-warning text-dark px-3">
-                                    <i class="bi bi-clock-history me-1"></i> On Road
-                                </span>
-                            {% elif job.status == 'completed' %}
-                                <span class="badge rounded-pill bg-success px-3">
-                                    <i class="bi bi-check-circle me-1"></i> Back to Base
-                                </span>
-                            {% else %}
-                                <span class="badge rounded-pill bg-secondary px-3">
-                                    {{ job.get_status_display }}
-                                </span>
-                            {% endif %}
+                            <span class="badge rounded-pill bg-success px-3">
+                                <i class="bi bi-check-circle me-1"></i> Job Completed
+                            </span>
+                            <div class="small text-muted mt-1">{{ job.completion_date|date:"d M, Y H:i" }}</div>
                         </td>
                         <td class="text-end pe-4">
                             <div class="d-flex justify-content-end gap-2">
                                 <a href="{% url 'job_invoice_pdf' job.job_number %}" class="btn btn-sm btn-outline-success rounded-pill px-3 shadow-sm" title="Download Detailed Trip Sheet">
                                     <i class="bi bi-file-earmark-pdf-fill me-1"></i> Trip Sheet
                                 </a>
-
-                                <a href="{% url 'trip_add' %}?job={{ job.job_number }}" class="btn btn-sm btn-outline-primary rounded-pill px-3 shadow-sm">
-                                    <i class="bi bi-plus-circle me-1"></i> Add Trip
-                                </a>
-
-                                <a href="{% url 'job_complete' job.job_number %}" class="btn btn-sm btn-success rounded-pill px-3 shadow-sm" title="Mark this job as completed" onclick="return confirm('Mark Job #{{ job.job_number }} as Completed? It will move to the Completed Jobs page.')">
-                                    <i class="bi bi-check2-circle me-1"></i> Complete Trip
-                                </a>
-
                                 <div class="dropdown">
                                     <button class="btn btn-light btn-sm rounded-circle shadow-sm border" type="button" data-bs-toggle="dropdown">
                                         <i class="bi bi-three-dots-vertical"></i>
                                     </button>
                                     <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0 rounded-3">
-                                        <li>
-                                            <a class="dropdown-item py-2" href="{% url 'job_invoice_pdf' job.job_number %}">
-                                                <i class="bi bi-printer me-2 text-success"></i> Print Trip Sheet
-                                            </a>
-                                        </li>
-                                        <li><hr class="dropdown-divider"></li>
                                         <li>
                                             <a class="dropdown-item py-2" href="{% url 'job_edit' job.job_number %}">
                                                 <i class="bi bi-pencil-square me-2 text-warning"></i> Edit Voyage
@@ -163,9 +124,8 @@
                     {% empty %}
                     <tr>
                         <td colspan="5" class="text-center py-5">
-                            <i class="bi bi-folder2-open display-4 text-muted opacity-25"></i>
-                            <h5 class="text-muted mt-3">No active voyages found.</h5>
-                            <a href="{% url 'job_add' %}" class="btn btn-sm btn-primary mt-2">Assign First Vehicle</a>
+                            <i class="bi bi-check2-all display-4 text-muted opacity-25"></i>
+                            <h5 class="text-muted mt-3">No completed voyages yet.</h5>
                         </td>
                     </tr>
                     {% endfor %}
@@ -180,9 +140,19 @@
     .custom-table tbody td { padding: 1rem 0.75rem; border-bottom: 1px solid #f1f5f9; }
     .bg-primary-subtle { background-color: rgba(13, 110, 253, 0.1); }
     .bg-info-subtle { background-color: rgba(13, 202, 240, 0.1); }
+    .bg-success-subtle { background-color: rgba(25, 135, 84, 0.1); }
     .custom-table tbody tr:hover { background-color: #f8fafc; transition: all 0.2s ease; }
     .extra-small { font-size: 0.7rem; }
-    /* Success highlight for invoice button */
     .btn-outline-success:hover { background-color: #198754; color: white; }
 </style>
+
+<script>
+    document.getElementById('jobSearch').addEventListener('keyup', function() {
+        let value = this.value.toLowerCase();
+        let rows = document.querySelectorAll('#jobTableBody tr');
+        rows.forEach(row => {
+            row.style.display = (row.innerText.toLowerCase().indexOf(value) > -1) ? "" : "none";
+        });
+    });
+</script>
 {% endblock %}
