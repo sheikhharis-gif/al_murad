@@ -33,8 +33,9 @@ from masters.models import (
     Vendor,
     Vehicle,
     MaintenanceJob,
+    PartsInventory,
 )
-from masters.forms import MaintenanceJobForm, MaintenancePartFormSet
+from masters.forms import MaintenanceJobForm, MaintenancePartFormSet, PartsInventoryForm
 
 # ================= DASHBOARD =================
 @login_required
@@ -648,6 +649,48 @@ def maintenance_delete(request, job_id):
     job = get_object_or_404(MaintenanceJob, id=job_id)
     job.delete()
     return redirect("maintenance_list")
+
+
+# ================= WORKSHOP: PARTS INVENTORY =================
+def parts_inventory_list(request):
+    parts = PartsInventory.objects.all()
+    reorder_count = sum(1 for p in parts if p.status == "REORDER")
+    total_value = parts.aggregate(total=Sum("total_value"))["total"] or 0
+    return render(request, "maintenance/parts_inventory_list.html", {
+        "parts": parts,
+        "reorder_count": reorder_count,
+        "total_value": total_value,
+    })
+
+
+def parts_inventory_add(request):
+    if request.method == "POST":
+        form = PartsInventoryForm(request.POST)
+        if form.is_valid():
+            form.save()
+            return redirect("parts_inventory_list")
+    else:
+        form = PartsInventoryForm()
+    return render(request, "maintenance/parts_inventory_form.html", {"form": form})
+
+
+def parts_inventory_edit(request, part_id):
+    part = get_object_or_404(PartsInventory, id=part_id)
+    if request.method == "POST":
+        form = PartsInventoryForm(request.POST, instance=part)
+        if form.is_valid():
+            form.save()
+            return redirect("parts_inventory_list")
+    else:
+        form = PartsInventoryForm(instance=part)
+    return render(request, "maintenance/parts_inventory_form.html", {"form": form, "part": part})
+
+
+def parts_inventory_delete(request, part_id):
+    part = get_object_or_404(PartsInventory, id=part_id)
+    part.delete()
+    return redirect("parts_inventory_list")
+
 
 def job_view_trips(request, job_id):
     job = get_object_or_404(Job, id=job_id)

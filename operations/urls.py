@@ -30,6 +30,12 @@ urlpatterns = [
     path("maintenance/edit/<int:job_id>/", views.maintenance_edit, name="maintenance_edit"),
     path("maintenance/delete/<int:job_id>/", views.maintenance_delete, name="maintenance_delete"),
 
+    # --- PARTS INVENTORY (WORKSHOP) ---
+    path("maintenance/parts/", views.parts_inventory_list, name="parts_inventory_list"),
+    path("maintenance/parts/add/", views.parts_inventory_add, name="parts_inventory_add"),
+    path("maintenance/parts/edit/<int:part_id>/", views.parts_inventory_edit, name="parts_inventory_edit"),
+    path("maintenance/parts/delete/<int:part_id>/", views.parts_inventory_delete, name="parts_inventory_delete"),
+
     # --- PDF GENERATION (UPDATED) ---
     # Purana Trip PDF band, ab Job-based Invoice chalayenge
     path("jobs/invoice/<int:job_id>/", views.job_invoice_pdf, name="job_invoice_pdf"),

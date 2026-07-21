@@ -5,6 +5,7 @@ from .models import (
     Client,
     MaintenanceJob,
     MaintenancePart,
+    PartsInventory,
     Vendor,
     Expense,
     City,
@@ -64,3 +65,19 @@ class MaintenanceJobAdmin(admin.ModelAdmin):
     list_filter = ("status", "maintenance_type", "vendor_payment_status")
     search_fields = ("job_id", "vehicle__vehicle_number")
     inlines = [MaintenancePartInline]
+
+
+# ================= WORKSHOP: PARTS INVENTORY =================
+@admin.register(PartsInventory)
+class PartsInventoryAdmin(admin.ModelAdmin):
+    list_display = (
+        "part_id",
+        "part_name",
+        "category",
+        "stock_level",
+        "reorder_point",
+        "remaining_stock",
+        "status",
+    )
+    list_filter = ("category",)
+    search_fields = ("part_id", "part_name")

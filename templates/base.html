@@ -165,13 +165,14 @@
 
                 {% if not is_expense_only %}
                 <li class="nav-item dropdown">
-                    <a href="#" class="nav-link dropdown-toggle {% if request.resolver_match.url_name == 'maintenance_list' or request.resolver_match.url_name == 'maintenance_add' or request.resolver_match.url_name == 'maintenance_edit' %}active{% endif %}" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                    <a href="#" class="nav-link dropdown-toggle {% if request.resolver_match.url_name == 'maintenance_list' or request.resolver_match.url_name == 'maintenance_add' or request.resolver_match.url_name == 'maintenance_edit' or request.resolver_match.url_name == 'parts_inventory_list' or request.resolver_match.url_name == 'parts_inventory_add' or request.resolver_match.url_name == 'parts_inventory_edit' %}active{% endif %}" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                         <i class="bi bi-wrench-adjustable-circle-fill"></i> Maintenance
                         {% if critical_vehicles %}<span class="badge-count">{{ critical_vehicles|length }}</span>{% endif %}
                     </a>
                     <ul class="dropdown-menu">
                         <li><a class="dropdown-item" href="{% url 'maintenance_list' %}"><i class="bi bi-list-ul me-2"></i>Maintenance Log</a></li>
                         <li><a class="dropdown-item" href="{% url 'maintenance_add' %}"><i class="bi bi-plus-circle me-2"></i>New Maintenance Job</a></li>
+                        <li><a class="dropdown-item" href="{% url 'parts_inventory_list' %}"><i class="bi bi-box-seam me-2"></i>Parts Inventory</a></li>
                     </ul>
                 </li>
                 {% endif %}

@@ -220,12 +220,29 @@ class MaintenanceJobForm(forms.ModelForm):
 MaintenancePartFormSet = inlineformset_factory(
     MaintenanceJob,
     MaintenancePart,
-    fields=["part_used", "quantity_used", "part_source"],
+    fields=["part_used", "quantity_used", "part_source", "inventory_item"],
     widgets={
         "part_used": forms.TextInput(attrs={"class": "form-control", "placeholder": "Part name"}),
         "quantity_used": forms.NumberInput(attrs={"class": "form-control", "min": "1"}),
         "part_source": forms.Select(attrs={"class": "form-select"}),
+        "inventory_item": forms.Select(attrs={"class": "form-select"}),
     },
     extra=1,
     can_delete=True,
 )
+
+
+from .models import PartsInventory
+
+
+class PartsInventoryForm(forms.ModelForm):
+    class Meta:
+        model = PartsInventory
+        fields = ["part_name", "category", "stock_level", "reorder_point", "unit_cost"]
+        widgets = {
+            "part_name": forms.TextInput(attrs={"class": "form-control", "placeholder": "e.g. Break Oil Guard"}),
+            "category": forms.Select(attrs={"class": "form-select"}),
+            "stock_level": forms.NumberInput(attrs={"class": "form-control", "min": "0"}),
+            "reorder_point": forms.NumberInput(attrs={"class": "form-control", "min": "0"}),
+            "unit_cost": forms.NumberInput(attrs={"class": "form-control", "min": "0", "step": "0.01"}),
+        }

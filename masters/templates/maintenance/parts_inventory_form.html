@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+
+            <div class="d-flex align-items-center justify-content-between mb-4 pb-2 border-bottom">
+                <h3 class="fw-bold text-dark mb-0">
+                    <i class="bi bi-box-seam text-primary me-2"></i>{% if part %}Edit{% else %}New{% endif %} Part
+                    {% if part %}<span class="badge bg-dark ms-2 font-monospace">{{ part.part_id }}</span>{% endif %}
+                </h3>
+                <a href="{% url 'parts_inventory_list' %}" class="btn btn-outline-secondary btn-sm rounded-pill px-3">
+                    <i class="bi bi-arrow-left me-1"></i> Back to Inventory
+                </a>
+            </div>
+
+            <div class="card border-0 shadow-sm rounded-4">
+                <div class="card-body p-4 p-md-5">
+                    <form method="post" novalidate>
+                        {% csrf_token %}
+                        <div class="row g-4">
+                            <div class="col-md-8">
+                                <label class="form-label fw-bold text-secondary">Part Name</label>
+                                {{ form.part_name }}
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold text-secondary">Category</label>
+                                {{ form.category }}
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold text-secondary">Stock Level</label>
+                                {{ form.stock_level }}
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold text-secondary">Reorder Point</label>
+                                {{ form.reorder_point }}
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold text-secondary">Unit Cost</label>
+                                {{ form.unit_cost }}
+                            </div>
+                        </div>
+
+                        {% if part %}
+                        <hr class="my-4 opacity-25">
+                        <div class="row g-4 text-center">
+                            <div class="col-md-4">
+                                <div class="text-muted small">Total Value</div>
+                                <div class="fw-bold fs-5">{{ part.total_value|floatformat:0 }}</div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="text-muted small">Total Used</div>
+                                <div class="fw-bold fs-5">{{ part.total_used }}</div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="text-muted small">Remaining Stock</div>
+                                <div class="fw-bold fs-5">{{ part.remaining_stock }}</div>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        <hr class="my-4 opacity-25">
+                        <div class="d-flex justify-content-end gap-3">
+                            <a href="{% url 'parts_inventory_list' %}" class="btn btn-light px-4 border rounded-pill">Cancel</a>
+                            <button type="submit" class="btn btn-primary px-5 rounded-pill shadow-sm">
+                                <i class="bi bi-save me-2"></i>Save Part
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .form-control, .form-select {
+        padding: 0.7rem 1rem;
+        border: 1px solid #dee2e6;
+        border-radius: 10px;
+        width: 100%;
+    }
+
+    .form-control:focus, .form-select:focus {
+        background-color: #fff !important;
+        border-color: #0d6efd;
+        box-shadow: 0 0 0 4px rgba(13, 110, 253, 0.1);
+    }
+
+    .form-label {
+        font-size: 0.85rem;
+        margin-bottom: 0.5rem;
+    }
+</style>
+{% endblock %}

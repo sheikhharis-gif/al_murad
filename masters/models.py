@@ -218,9 +218,65 @@ class MaintenancePart(models.Model):
     part_used = models.CharField(max_length=150)
     quantity_used = models.PositiveIntegerField(default=1)
     part_source = models.CharField(max_length=10, choices=SOURCE_CHOICES, default="OWN")
+    inventory_item = models.ForeignKey(
+        "PartsInventory", on_delete=models.SET_NULL, null=True, blank=True, related_name="usages",
+        help_text="Link to a Parts Inventory row so 'Own Inventory' usage draws down its stock",
+    )
 
     def __str__(self):
         return f"{self.part_used} x{self.quantity_used}"
+
+
+# ================= WORKSHOP: PARTS INVENTORY =================
+class PartsInventory(models.Model):
+    CATEGORY_CHOICES = [
+        ("GREASE", "Grease"),
+        ("NUT_BOLT", "Nut Bolt"),
+        ("FLUID", "Fluid"),
+        ("SEAL", "Seal"),
+        ("PIPE", "Pipe"),
+        ("OTHER", "Other"),
+    ]
+
+    part_id = models.CharField(max_length=20, blank=True, editable=False, unique=True)
+    part_name = models.CharField("Part Name", max_length=150)
+    category = models.CharField(max_length=10, choices=CATEGORY_CHOICES, blank=True)
+    stock_level = models.PositiveIntegerField("Stock Level", default=0)
+    reorder_point = models.PositiveIntegerField("Reorder Point", default=0)
+    unit_cost = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    total_value = models.DecimalField(max_digits=12, decimal_places=2, default=0, editable=False)
+    total_used = models.PositiveIntegerField("Total Used", default=0, editable=False)
+    remaining_stock = models.IntegerField("Remaining Stock", default=0, editable=False)
+
+    def recalc_usage(self):
+        used = self.usages.filter(part_source="OWN").aggregate(total=models.Sum("quantity_used"))["total"] or 0
+        self.total_used = used
+        self.remaining_stock = self.stock_level - used
+
+    def save(self, *args, **kwargs):
+        is_new = self.pk is None
+        if not self.part_id:
+            count = PartsInventory.objects.count()
+            self.part_id = f"P{count + 1:03d}"
+        self.total_value = (self.stock_level or 0) * (self.unit_cost or 0)
+        if is_new:
+            # No MaintenancePart could reference this row before it has a pk.
+            self.total_used = 0
+            self.remaining_stock = self.stock_level
+        else:
+            self.recalc_usage()
+        super().save(*args, **kwargs)
+
+    @property
+    def status(self):
+        return "REORDER" if self.remaining_stock <= self.reorder_point else "GOOD"
+
+    def __str__(self):
+        return f"{self.part_id} - {self.part_name}"
+
+    class Meta:
+        verbose_name_plural = "Parts Inventory"
+        ordering = ["part_name"]
 # ================= CLIENT =================
 class Client(models.Model):
     name = models.CharField(max_length=100)

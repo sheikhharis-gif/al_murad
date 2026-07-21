@@ -13,6 +13,7 @@ RESTRICTED_GROUPS = {
     "Workshop Only": {
         "allowed": {
             "maintenance_list", "maintenance_add", "maintenance_edit", "maintenance_delete",
+            "parts_inventory_list", "parts_inventory_add", "parts_inventory_edit", "parts_inventory_delete",
             "logout",
         },
         "home": "maintenance_list",

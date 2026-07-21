@@ -91,18 +91,26 @@
                         <h6 class="fw-bold text-uppercase text-muted small mb-3">Parts Used</h6>
 
                         {{ formset.management_form }}
+                        <div class="row g-3 small text-muted fw-bold text-uppercase mb-1 d-none d-md-flex">
+                            <div class="col-md-4">Part Name</div>
+                            <div class="col-md-2">Qty</div>
+                            <div class="col-md-2">Source</div>
+                            <div class="col-md-3">Link to Inventory Item</div>
+                            <div class="col-md-1"></div>
+                        </div>
                         <div id="parts-formset">
                             {% for pform in formset %}
                             <div class="row g-3 align-items-center part-row mb-2">
                                 {% for hidden in pform.hidden_fields %}{{ hidden }}{% endfor %}
-                                <div class="col-md-5">{{ pform.part_used }}</div>
+                                <div class="col-md-4">{{ pform.part_used }}</div>
                                 <div class="col-md-2">{{ pform.quantity_used }}</div>
-                                <div class="col-md-3">{{ pform.part_source }}</div>
-                                <div class="col-md-2">
+                                <div class="col-md-2">{{ pform.part_source }}</div>
+                                <div class="col-md-3">{{ pform.inventory_item }}</div>
+                                <div class="col-md-1">
                                     {% if pform.instance.pk %}
                                     <div class="form-check">
                                         {{ pform.DELETE }}
-                                        <label class="form-check-label small text-danger">Remove</label>
+                                        <label class="form-check-label small text-danger">Del</label>
                                     </div>
                                     {% endif %}
                                 </div>
@@ -182,7 +190,7 @@
         });
         // A freshly added row has no saved instance yet, so no "Remove" checkbox is needed.
         const deleteCol = newRow.querySelector('.form-check');
-        if (deleteCol) deleteCol.closest('.col-md-2').innerHTML = '';
+        if (deleteCol) deleteCol.closest('.col-md-1').innerHTML = '';
 
         container.appendChild(newRow);
         totalForms.value = formNum + 1;
