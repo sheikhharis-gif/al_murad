@@ -16,7 +16,7 @@
 
 <nav class="app-navbar navbar navbar-expand-xl sticky-top">
     <div class="container-fluid px-3 px-xl-4">
-        <a href="{% url 'dashboard' %}" class="app-brand navbar-brand">
+        <a href="{% if is_expense_only %}{% url 'expense_list' %}{% else %}{% url 'dashboard' %}{% endif %}" class="app-brand navbar-brand">
             <img src="{% static 'images/amglogo.png' %}" alt="Al Murad">
             <span class="brand-text">
                 <span class="name">Al Murad</span>
@@ -25,6 +25,7 @@
         </a>
 
         <div class="d-flex align-items-center gap-2 order-xl-3">
+            {% if not is_expense_only %}
             <div class="dropdown">
                 <button class="icon-btn" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                     <i class="bi bi-bell"></i>
@@ -57,6 +58,7 @@
                     {% endfor %}
                 </ul>
             </div>
+            {% endif %}
 
             <div class="dropdown">
                 <button class="icon-btn" type="button" data-bs-toggle="dropdown" aria-expanded="false">
@@ -67,7 +69,9 @@
                         <strong style="font-size:0.9rem;">{% if user.is_authenticated %}{{ user.username }}{% endif %}</strong>
                         <div style="font-size:0.78rem;color:#64748b;">Al Murad Logistics</div>
                     </li>
+                    {% if not is_expense_only %}
                     <li><a class="dropdown-item" href="{% url 'maintenance_list' %}"><i class="bi bi-wrench me-2"></i>Maintenance</a></li>
+                    {% endif %}
                     <li><hr class="dropdown-divider"></li>
                     <li>
                         <form method="post" action="{% url 'logout' %}">
@@ -85,6 +89,7 @@
 
         <div class="collapse navbar-collapse order-xl-2" id="mainNavbar">
             <ul class="navbar-nav main-nav">
+                {% if not is_expense_only %}
                 <li class="nav-item">
                     <a href="{% url 'dashboard' %}" class="nav-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
                         <i class="bi bi-grid-1x2-fill"></i> Dashboard
@@ -111,6 +116,7 @@
                         <li><a class="dropdown-item" href="{% url 'job_add' %}"><i class="bi bi-plus-circle me-2"></i>Assign New Vehicle</a></li>
                     </ul>
                 </li>
+                {% endif %}
 
                 <li class="nav-item dropdown">
                     <a href="#" class="nav-link dropdown-toggle {% if request.resolver_match.url_name == 'expense_list' or request.resolver_match.url_name == 'expense_sheet' or request.resolver_match.url_name == 'expense_edit' %}active{% endif %}" role="button" data-bs-toggle="dropdown" aria-expanded="false">
@@ -122,6 +128,7 @@
                     </ul>
                 </li>
 
+                {% if not is_expense_only %}
                 <li class="nav-item dropdown">
                     <a href="#" class="nav-link dropdown-toggle {% if request.resolver_match.url_name == 'vehicle_list' or request.resolver_match.url_name == 'vehicle_add' or request.resolver_match.url_name == 'vehicle_edit' %}active{% endif %}" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                         <i class="bi bi-truck-front-fill"></i> Vehicles
@@ -188,6 +195,7 @@
                         <i class="bi bi-geo-alt-fill"></i> Cities & Routes
                     </a>
                 </li>
+                {% endif %}
             </ul>
         </div>
     </div>

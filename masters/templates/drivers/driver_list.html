@@ -39,7 +39,20 @@
                 </thead>
                 <tbody id="driverTableBody">
                     {% for d in drivers %}
-                    <tr>
+                    <tr class="driver-row" role="button"
+                        data-name="{{ d.name }}"
+                        data-employee-id="{{ d.employee_id|default:'---' }}"
+                        data-father-name="{{ d.father_name }}"
+                        data-mobile="{{ d.mobile }}"
+                        data-cnic="{{ d.cnic }}"
+                        data-cnic-expiry="{{ d.cnic_expiry|date:'d M Y' }}"
+                        data-license-number="{{ d.license_number }}"
+                        data-license-expiry="{{ d.license_expiry|date:'d M Y' }}"
+                        data-address="{{ d.address }}"
+                        data-joining-date="{{ d.joining_date|date:'d M Y' }}"
+                        data-reference1="{{ d.reference1_name }}{% if d.reference1_mobile %} ({{ d.reference1_mobile }}){% endif %}"
+                        data-reference2="{{ d.reference2_name }}{% if d.reference2_mobile %} ({{ d.reference2_mobile }}){% endif %}"
+                        data-status="{% if d.is_active %}Active{% else %}Inactive{% endif %}">
                         <td class="ps-4">
                             <div class="d-flex align-items-center">
                                 <div class="avatar-circle me-3 bg-primary-subtle text-primary fw-bold">
@@ -72,16 +85,16 @@
                         </td>
                         <td class="text-end pe-4">
                             <div class="btn-group shadow-sm rounded-2 overflow-hidden bg-white border">
-                                <a href="#" class="btn btn-sm btn-white text-primary border-end" title="View Profile">
+                                <button type="button" class="btn btn-sm btn-white text-primary border-end view-driver-btn" title="View Profile">
                                     <i class="bi bi-eye"></i>
-                                </a>
-                                
+                                </button>
+
                                 <a href="{% url 'driver_edit' d.id %}" class="btn btn-sm btn-white text-warning border-end" title="Edit Driver">
                                     <i class="bi bi-pencil-square"></i>
                                 </a>
 
-                                <a href="{% url 'driver_delete' d.id %}" 
-                                   class="btn btn-sm btn-white text-danger" 
+                                <a href="{% url 'driver_delete' d.id %}"
+                                   class="btn btn-sm btn-white text-danger"
                                    title="Delete Driver"
                                    onclick="return confirm('Kya aap waqai is Driver ko delete karna chahte hain?')">
                                     <i class="bi bi-trash"></i>
@@ -102,6 +115,70 @@
                     {% endfor %}
                 </tbody>
             </table>
+        </div>
+    </div>
+</div>
+
+<!-- Driver Detail Modal -->
+<div class="modal fade" id="driverDetailModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-4">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold" id="driverDetailName">Driver Detail</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body pt-2">
+                <div class="row gy-3 small">
+                    <div class="col-6">
+                        <div class="text-muted">Employee ID</div>
+                        <div class="fw-semibold" id="dd-employee-id"></div>
+                    </div>
+                    <div class="col-6">
+                        <div class="text-muted">Status</div>
+                        <div class="fw-semibold" id="dd-status"></div>
+                    </div>
+                    <div class="col-6">
+                        <div class="text-muted">Father Name</div>
+                        <div class="fw-semibold" id="dd-father-name"></div>
+                    </div>
+                    <div class="col-6">
+                        <div class="text-muted">Mobile</div>
+                        <div class="fw-semibold" id="dd-mobile"></div>
+                    </div>
+                    <div class="col-6">
+                        <div class="text-muted">CNIC</div>
+                        <div class="fw-semibold" id="dd-cnic"></div>
+                    </div>
+                    <div class="col-6">
+                        <div class="text-muted">CNIC Expiry</div>
+                        <div class="fw-semibold" id="dd-cnic-expiry"></div>
+                    </div>
+                    <div class="col-6">
+                        <div class="text-muted">License Number</div>
+                        <div class="fw-semibold" id="dd-license-number"></div>
+                    </div>
+                    <div class="col-6">
+                        <div class="text-muted">License Expiry</div>
+                        <div class="fw-semibold" id="dd-license-expiry"></div>
+                    </div>
+                    <div class="col-12">
+                        <div class="text-muted">Address</div>
+                        <div class="fw-semibold" id="dd-address"></div>
+                    </div>
+                    <div class="col-6">
+                        <div class="text-muted">Joining Date</div>
+                        <div class="fw-semibold" id="dd-joining-date"></div>
+                    </div>
+                    <div class="col-6">
+                        <div class="text-muted">Reference 1</div>
+                        <div class="fw-semibold" id="dd-reference1"></div>
+                    </div>
+                    <div class="col-6">
+                        <div class="text-muted">Reference 2</div>
+                        <div class="fw-semibold" id="dd-reference2"></div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -146,13 +223,42 @@
 </style>
 
 <script>
-    // Live Driver Filtering Logic
+    // Live Driver Search - filters as you type, matches any part of the name/CNIC/mobile (Ctrl+F style)
     document.getElementById('driverSearch').addEventListener('keyup', function() {
-        let value = this.value.toLowerCase();
-        let rows = document.querySelectorAll('#driverTableBody tr');
+        let value = this.value.trim().toLowerCase();
+        let rows = document.querySelectorAll('#driverTableBody tr.driver-row');
         rows.forEach(row => {
-            row.style.display = (row.innerText.toLowerCase().indexOf(value) > -1) ? "" : "none";
+            let name = (row.dataset.name || "").toLowerCase();
+            let cnic = (row.dataset.cnic || "").toLowerCase();
+            let mobile = (row.dataset.mobile || "").toLowerCase();
+            let matches = !value || name.includes(value) || cnic.includes(value) || mobile.includes(value);
+            row.style.display = matches ? "" : "none";
         });
+    });
+
+    // Driver Detail Modal - shows full profile for the clicked driver
+    const driverDetailModal = new bootstrap.Modal(document.getElementById('driverDetailModal'));
+
+    function openDriverDetail(row) {
+        document.getElementById('driverDetailName').textContent = row.dataset.name;
+        document.getElementById('dd-employee-id').textContent = row.dataset.employeeId || '---';
+        document.getElementById('dd-status').textContent = row.dataset.status;
+        document.getElementById('dd-father-name').textContent = row.dataset.fatherName || '---';
+        document.getElementById('dd-mobile').textContent = row.dataset.mobile || '---';
+        document.getElementById('dd-cnic').textContent = row.dataset.cnic || '---';
+        document.getElementById('dd-cnic-expiry').textContent = row.dataset.cnicExpiry || '---';
+        document.getElementById('dd-license-number').textContent = row.dataset.licenseNumber || '---';
+        document.getElementById('dd-license-expiry').textContent = row.dataset.licenseExpiry || '---';
+        document.getElementById('dd-address').textContent = row.dataset.address || '---';
+        document.getElementById('dd-joining-date').textContent = row.dataset.joiningDate || '---';
+        document.getElementById('dd-reference1').textContent = row.dataset.reference1 || '---';
+        document.getElementById('dd-reference2').textContent = row.dataset.reference2 || '---';
+        driverDetailModal.show();
+    }
+
+    document.querySelectorAll('#driverTableBody tr.driver-row').forEach(row => {
+        row.querySelector('.view-driver-btn').addEventListener('click', () => openDriverDetail(row));
+        row.addEventListener('dblclick', () => openDriverDetail(row));
     });
 </script>
 {% endblock %}

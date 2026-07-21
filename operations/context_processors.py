@@ -25,3 +25,13 @@ def fleet_alerts(request):
     ).distinct()[:10]
 
     return {"critical_vehicles": critical_vehicles}
+
+
+def access_flags(request):
+    """Expose role flags to templates, e.g. to hide nav links for restricted users."""
+    is_expense_only = (
+        request.user.is_authenticated
+        and not request.user.is_superuser
+        and request.user.groups.filter(name="Expense Only").exists()
+    )
+    return {"is_expense_only": is_expense_only}
