@@ -149,70 +149,78 @@ class Vehicle(models.Model):
     def __str__(self):
         return f"{self.vehicle_number} ({self.driver if self.driver else 'No Driver'})"
 
-# ================= VEHICLE MAINTENANCE (UPDATED WITH ALERTS) =================
-class VehicleMaintenance(models.Model):
-
-    MAINTENANCE_TYPE = [
+# ================= WORKSHOP: MAINTENANCE JOB =================
+class MaintenanceJob(models.Model):
+    MAINTENANCE_TYPES = [
         ("OIL", "Oil Change"),
-        ("TIRE", "Tire Change"),
-        ("BRAKE", "Brake Repair"),
-        ("OTHER", "General Service"),
+        ("WHEEL", "Wheel Service"),
+        ("BRAKE", "Brake Setting"),
+        ("ELECTRICAL", "Electrical"),
+        ("BODY", "Denting / Painting"),
+        ("GENERAL", "General Service"),
+        ("OTHER", "Other"),
+    ]
+    STATUS_CHOICES = [
+        ("PENDING", "Pending"),
+        ("IN_PROGRESS", "In Progress"),
+        ("COMPLETED", "Completed"),
+    ]
+    PAYMENT_STATUS_CHOICES = [
+        ("UNPAID", "Unpaid"),
+        ("PAID", "Paid"),
     ]
 
-    # KM LIMITS (AUTO LOGIC)
-    MAINTENANCE_LIMIT = {
-        "OIL": 1000,    # Oil change after 1000 km
-        "TIRE": 5000,   # Tire change after 5000 km
-        "BRAKE": 10000, # Brake repair after 10000 km
-        "OTHER": 3000,  # General service after 3000 km
-    }
+    job_id = models.CharField(max_length=20, blank=True, editable=False, unique=True)
+    vehicle = models.ForeignKey(Vehicle, on_delete=models.CASCADE, related_name="maintenance_jobs")
+    date = models.DateField()
+    maintenance_type = models.CharField(max_length=15, choices=MAINTENANCE_TYPES, default="GENERAL")
+    description = models.CharField(max_length=255, blank=True)
 
-    vehicle = models.ForeignKey(Vehicle, on_delete=models.CASCADE)
-    maintenance_type = models.CharField(max_length=10, choices=MAINTENANCE_TYPE)
+    odometer_km = models.PositiveIntegerField("Odometer (KM)", null=True, blank=True)
+    next_service_due_km = models.PositiveIntegerField("Next Service Due (KM)", null=True, blank=True)
 
-    change_date = models.DateField()
-    change_km = models.PositiveIntegerField()
+    spare_parts_vendor = models.CharField(max_length=100, blank=True)
+    spare_parts_cost = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    labor_cost = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    total_cost = models.DecimalField(max_digits=10, decimal_places=2, default=0, editable=False)
 
-    next_due_km = models.PositiveIntegerField(editable=False)
-    next_due_date = models.DateField(null=True, blank=True)
-    remarks = models.TextField(blank=True)
+    status = models.CharField(max_length=15, choices=STATUS_CHOICES, default="PENDING")
+
+    vendor_payment_status = models.CharField(
+        "Vendor Payment Status", max_length=10, choices=PAYMENT_STATUS_CHOICES, default="UNPAID"
+    )
+    payment_date = models.DateField(null=True, blank=True)
+    bill_ref = models.CharField("Payment Date / Bill Ref", max_length=50, blank=True)
+    unpaid_balance = models.DecimalField("Unpaid Balance (PKR)", max_digits=10, decimal_places=2, default=0)
 
     def save(self, *args, **kwargs):
-        # Calculation logic (Fixed for types)
-        limit = self.MAINTENANCE_LIMIT[self.maintenance_type]
-        self.next_due_km = int(self.change_km) + int(limit)
+        if not self.job_id:
+            count = MaintenanceJob.objects.count()
+            self.job_id = f"J{count + 1:03d}"
+        self.total_cost = (self.spare_parts_cost or 0) + (self.labor_cost or 0)
         super().save(*args, **kwargs)
 
-    def is_overdue(self):
-        """Check if vehicle has crossed KM limit"""
-        return self.vehicle.current_km >= self.next_due_km
+    def __str__(self):
+        return f"{self.job_id} - {self.vehicle.vehicle_number}"
 
-    def get_status(self):
-        """
-        Custom logic for Dashboard Alerts:
-        - OVERDUE (Red/Pulse): KM cross ho chuke hain ya Date guzar gayi hai.
-        - CRITICAL (Red): 7 din ya 100 KM reh gaye hain.
-        - WARNING (Yellow): 30 din reh gaye hain.
-        """
-        from datetime import date, timedelta
-        today = date.today()
-        
-        # 1. OVERDUE (Sabse Khatarnak - Red Alert)
-        if self.is_overdue() or (self.next_due_date and today > self.next_due_date):
-            return "OVERDUE"
-        
-        # 2. CRITICAL (1 Week left - Red Alert)
-        if self.next_due_date and today >= (self.next_due_date - timedelta(days=7)):
-            return "CRITICAL"
-            
-        # 3. WARNING (1 Month left - Yellow Alert)
-        if self.next_due_date and today >= (self.next_due_date - timedelta(days=30)):
-            return "WARNING"
-            
-        return "HEALTHY"
+    class Meta:
+        ordering = ["-date", "-id"]
+
+
+# ================= WORKSHOP: PARTS USED ON A JOB =================
+class MaintenancePart(models.Model):
+    SOURCE_CHOICES = [
+        ("OWN", "Own Inventory"),
+        ("VENDOR", "Direct Vendor Purchase"),
+    ]
+
+    job = models.ForeignKey(MaintenanceJob, on_delete=models.CASCADE, related_name="parts_used")
+    part_used = models.CharField(max_length=150)
+    quantity_used = models.PositiveIntegerField(default=1)
+    part_source = models.CharField(max_length=10, choices=SOURCE_CHOICES, default="OWN")
 
     def __str__(self):
-        return f"{self.vehicle.vehicle_number} - {self.maintenance_type}"	
+        return f"{self.part_used} x{self.quantity_used}"
 # ================= CLIENT =================
 class Client(models.Model):
     name = models.CharField(max_length=100)

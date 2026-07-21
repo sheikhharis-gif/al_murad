@@ -2,31 +2,57 @@
 
 {% block content %}
 <div class="container-fluid py-4">
-    
+
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
             <h3 class="fw-bold text-dark mb-1">
-                <i class="bi bi-tools text-primary me-2"></i>Vehicle Maintenance
+                <i class="bi bi-tools text-primary me-2"></i>Workshop &middot; Maintenance Log
             </h3>
-            <p class="text-muted small mb-0">Monitor service history and track upcoming maintenance schedules.</p>
+            <p class="text-muted small mb-0">Track every service job, spare parts used, and vendor payments.</p>
         </div>
-        <div>
+        <div class="d-flex gap-2">
             <a href="{% url 'maintenance_add' %}" class="btn btn-primary px-4 shadow-sm fw-bold rounded-3">
-                <i class="bi bi-plus-lg me-2"></i>Schedule Maintenance
+                <i class="bi bi-plus-lg me-2"></i>New Maintenance Job
             </a>
         </div>
     </div>
 
     <div class="row g-3 mb-4">
         <div class="col-md-4">
+            <div class="card border-0 shadow-sm rounded-4 p-3 border-start border-primary border-4">
+                <div class="d-flex align-items-center">
+                    <div class="bg-primary-subtle p-3 rounded-circle me-3">
+                        <i class="bi bi-clipboard2-data text-primary fs-4"></i>
+                    </div>
+                    <div>
+                        <h6 class="text-muted small mb-1">Total Jobs</h6>
+                        <h4 class="fw-bold mb-0">{{ records.count }}</h4>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
             <div class="card border-0 shadow-sm rounded-4 p-3 border-start border-warning border-4">
                 <div class="d-flex align-items-center">
                     <div class="bg-warning-subtle p-3 rounded-circle me-3">
-                        <i class="bi bi-calendar-event text-warning fs-4"></i>
+                        <i class="bi bi-hourglass-split text-warning fs-4"></i>
                     </div>
                     <div>
-                        <h6 class="text-muted small mb-1">Upcoming Services</h6>
-                        <h4 class="fw-bold mb-0">{{ records.count }}</h4>
+                        <h6 class="text-muted small mb-1">Pending / In Progress</h6>
+                        <h4 class="fw-bold mb-0">{{ pending_count }}</h4>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm rounded-4 p-3 border-start border-danger border-4">
+                <div class="d-flex align-items-center">
+                    <div class="bg-danger-subtle p-3 rounded-circle me-3">
+                        <i class="bi bi-cash-coin text-danger fs-4"></i>
+                    </div>
+                    <div>
+                        <h6 class="text-muted small mb-1">Unpaid Balance (PKR)</h6>
+                        <h4 class="fw-bold mb-0">{{ unpaid_total|floatformat:0 }}</h4>
                     </div>
                 </div>
             </div>
@@ -38,7 +64,7 @@
             <h5 class="fw-bold mb-0 text-dark">Service Logs</h5>
             <div class="input-group w-auto">
                 <span class="input-group-text bg-light border-0"><i class="bi bi-search"></i></span>
-                <input type="text" id="maintSearch" class="form-control bg-light border-0 small" placeholder="Search vehicle...">
+                <input type="text" id="maintSearch" class="form-control bg-light border-0 small" placeholder="Search job ID or vehicle...">
             </div>
         </div>
 
@@ -46,59 +72,93 @@
             <table class="table table-hover align-middle mb-0 custom-maint-table">
                 <thead class="bg-light">
                     <tr class="text-muted small text-uppercase fw-bold">
-                        <th class="ps-4">Vehicle</th>
-                        <th>Service Type</th>
-                        <th>Service Date</th>
-                        <th>Milestone (KM)</th>
-                        <th>Next Due Date</th>
-                        <th>Operational Remarks</th>
-                        <th class="text-end pe-4">Status</th>
+                        <th class="ps-4">Job ID</th>
+                        <th>Vehicle</th>
+                        <th>Date</th>
+                        <th>Type</th>
+                        <th>Description</th>
+                        <th class="text-end">Odometer</th>
+                        <th class="text-end">Next Due</th>
+                        <th>Parts Used</th>
+                        <th>Vendor</th>
+                        <th class="text-end">Total Cost</th>
+                        <th class="text-center">Status</th>
+                        <th class="text-center">Payment</th>
+                        <th class="text-end">Unpaid (PKR)</th>
+                        <th class="text-end pe-4">Actions</th>
                     </tr>
                 </thead>
                 <tbody id="maintTableBody">
                     {% for m in records %}
-                    <tr>
+                    <tr data-job="{{ m.job_id }}" data-vehicle="{{ m.vehicle.vehicle_number }}">
                         <td class="ps-4">
-                            <span class="badge bg-dark text-white rounded-2 px-2 py-1 font-monospace">
-                                {{ m.vehicle }}
+                            <span class="badge bg-dark text-white rounded-2 px-2 py-1 font-monospace">{{ m.job_id }}</span>
+                        </td>
+                        <td class="fw-semibold">{{ m.vehicle.vehicle_number }}</td>
+                        <td><span class="text-muted small">{{ m.date|date:"d-M-y" }}</span></td>
+                        <td>{{ m.get_maintenance_type_display }}</td>
+                        <td>
+                            <span class="text-truncate d-inline-block" style="max-width:160px;" title="{{ m.description }}">
+                                {{ m.description|default:"-" }}
                             </span>
                         </td>
+                        <td class="text-end">{{ m.odometer_km|default:"-" }}</td>
+                        <td class="text-end">{{ m.next_service_due_km|default:"-" }}</td>
                         <td>
-                            <div class="d-flex align-items-center text-dark fw-semibold">
-                                <i class="bi bi-gear-fill text-muted me-2 small"></i>
-                                {{ m.maintenance_type }}
+                            {% for p in m.parts_used.all %}
+                            <div class="small">
+                                {{ p.part_used }} <span class="text-muted">x{{ p.quantity_used }}</span>
+                                {% if p.part_source == "OWN" %}
+                                <span class="badge bg-success-subtle text-success rounded-pill px-2">Own Inventory</span>
+                                {% else %}
+                                <span class="badge bg-warning-subtle text-warning-emphasis rounded-pill px-2">Direct Vendor</span>
+                                {% endif %}
                             </div>
+                            {% empty %}
+                            <span class="text-muted small">-</span>
+                            {% endfor %}
                         </td>
-                        <td>
-                            <span class="text-muted small"><i class="bi bi-calendar3 me-1"></i> {{ m.change_date|date:"d M, Y" }}</span>
+                        <td class="small">{{ m.spare_parts_vendor|default:"-" }}</td>
+                        <td class="text-end fw-bold">{{ m.total_cost|floatformat:0 }}</td>
+                        <td class="text-center">
+                            {% if m.status == "COMPLETED" %}
+                            <span class="badge bg-success-subtle text-success rounded-pill px-3 py-1 fw-bold">Completed</span>
+                            {% elif m.status == "IN_PROGRESS" %}
+                            <span class="badge bg-info-subtle text-info-emphasis rounded-pill px-3 py-1 fw-bold">In Progress</span>
+                            {% else %}
+                            <span class="badge bg-warning-subtle text-warning-emphasis rounded-pill px-3 py-1 fw-bold">Pending</span>
+                            {% endif %}
                         </td>
-                        <td>
-                            <span class="fw-bold text-secondary">{{ m.change_km }} <small>KM</small></span>
+                        <td class="text-center">
+                            {% if m.vendor_payment_status == "PAID" %}
+                            <span class="badge bg-success-subtle text-success rounded-pill px-3 py-1 fw-bold">Paid</span>
+                            {% else %}
+                            <span class="badge bg-danger-subtle text-danger rounded-pill px-3 py-1 fw-bold">Unpaid</span>
+                            {% endif %}
                         </td>
-                        <td>
-                            <span class="badge bg-info-subtle text-info-emphasis rounded-pill px-3">
-                                {{ m.next_due_date|date:"d M, Y" }}
-                            </span>
-                        </td>
-                        <td>
-                            <p class="text-muted small mb-0 text-truncate" style="max-width: 180px;" title="{{ m.remarks }}">
-                                {{ m.remarks|default:"Standard service" }}
-                            </p>
-                        </td>
+                        <td class="text-end">{{ m.unpaid_balance|floatformat:0 }}</td>
                         <td class="text-end pe-4">
-                            <span class="text-success small fw-bold">
-                                <i class="bi bi-check-circle-fill me-1"></i> Completed
-                            </span>
+                            <div class="btn-group shadow-sm rounded-2 overflow-hidden bg-white border">
+                                <a href="{% url 'maintenance_edit' m.id %}" class="btn btn-sm btn-white text-warning border-end" title="Edit Job">
+                                    <i class="bi bi-pencil-square"></i>
+                                </a>
+                                <a href="{% url 'maintenance_delete' m.id %}"
+                                   class="btn btn-sm btn-white text-danger"
+                                   title="Delete Job"
+                                   onclick="return confirm('Is maintenance job ko delete karna hai?')">
+                                    <i class="bi bi-trash"></i>
+                                </a>
+                            </div>
                         </td>
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="7" class="text-center py-5">
+                        <td colspan="14" class="text-center py-5">
                             <div class="opacity-25 mb-3">
                                 <i class="bi bi-wrench-adjustable display-1"></i>
                             </div>
-                            <h5 class="text-muted">No maintenance records found.</h5>
-                            <p class="small text-muted">Achi performance ke liye regular maintenance record lazmi hai.</p>
+                            <h5 class="text-muted">No maintenance jobs logged yet.</h5>
+                            <p class="small text-muted">Naya maintenance job add karke shuru karein.</p>
                         </td>
                     </tr>
                     {% endfor %}
@@ -109,38 +169,45 @@
 </div>
 
 <style>
-    /* Professional Maintenance Layout */
     .custom-maint-table thead th {
-        font-size: 0.75rem;
-        padding: 1.1rem 0.75rem;
+        font-size: 0.72rem;
+        padding: 1rem 0.75rem;
         background-color: #f8fafc;
-        letter-spacing: 0.5px;
+        letter-spacing: 0.4px;
+        white-space: nowrap;
     }
 
     .custom-maint-table tbody td {
-        padding: 1.2rem 0.75rem;
+        padding: 0.9rem 0.75rem;
         border-bottom: 1px solid #f1f5f9;
+        vertical-align: middle;
     }
+
+    .btn-white { background-color: #fff; border: none; }
+    .btn-white:hover { background-color: #f8fafc; }
 
     .bg-info-subtle { background-color: #e0f2fe !important; }
     .text-info-emphasis { color: #0369a1 !important; }
+    .bg-warning-subtle { background-color: #fef3c7 !important; }
+    .text-warning-emphasis { color: #92400e !important; }
+    .bg-success-subtle { background-color: #dcfce7 !important; }
+    .bg-danger-subtle { background-color: #fee2e2 !important; }
 
-    .font-monospace { font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace !important; }
-    
-    /* Subtle Row Hover */
+    .font-monospace { font-family: 'SFMono-Regular', Consolas, monospace !important; }
+
     .custom-maint-table tbody tr:hover {
         background-color: #f9fafb;
-        cursor: default;
     }
 </style>
 
 <script>
-    // Real-time Filtering
     document.getElementById('maintSearch').addEventListener('keyup', function() {
-        let value = this.value.toLowerCase();
-        let rows = document.querySelectorAll('#maintTableBody tr');
+        let value = this.value.trim().toLowerCase();
+        let rows = document.querySelectorAll('#maintTableBody tr[data-job]');
         rows.forEach(row => {
-            row.style.display = (row.innerText.toLowerCase().indexOf(value) > -1) ? "" : "none";
+            let job = (row.dataset.job || "").toLowerCase();
+            let vehicle = (row.dataset.vehicle || "").toLowerCase();
+            row.style.display = (!value || job.includes(value) || vehicle.includes(value)) ? "" : "none";
         });
     });
 </script>

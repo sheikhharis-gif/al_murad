@@ -193,30 +193,32 @@
         <table class="table-pro">
             <thead>
                 <tr>
+                    <th>Job ID</th>
                     <th>Vehicle</th>
-                    <th class="text-center">Due Date</th>
+                    <th class="text-center">Date</th>
                     <th class="text-center">Status</th>
-                    <th class="text-end">Due KM</th>
+                    <th class="text-end">Next Due KM</th>
                 </tr>
             </thead>
             <tbody>
                 {% for m in upcoming_maintenance %}
-                {% with status=m.get_status %}
-                <tr class="{% if status == 'OVERDUE' %}table-danger{% endif %}">
+                <tr class="{% if m.status == 'PENDING' %}table-danger{% endif %}">
+                    <td class="fw-bold font-monospace">{{ m.job_id }}</td>
                     <td class="fw-bold">{{ m.vehicle }}</td>
-                    <td class="text-center">{{ m.next_due_date|date:"M j, Y" }}</td>
+                    <td class="text-center">{{ m.date|date:"M j, Y" }}</td>
                     <td class="text-center">
-                        {% if status == 'OVERDUE' %}
-                        <span class="badge bg-danger">Overdue</span>
+                        {% if m.status == 'PENDING' %}
+                        <span class="badge bg-danger">Pending</span>
+                        {% elif m.status == 'IN_PROGRESS' %}
+                        <span class="badge bg-warning-subtle text-warning-emphasis">In Progress</span>
                         {% else %}
-                        <span class="badge bg-success-subtle text-success">Safe</span>
+                        <span class="badge bg-success-subtle text-success">Completed</span>
                         {% endif %}
                     </td>
-                    <td class="text-end">{{ m.next_due_km }} KM</td>
+                    <td class="text-end">{{ m.next_service_due_km|default:"-" }} KM</td>
                 </tr>
-                {% endwith %}
                 {% empty %}
-                <tr><td colspan="4" class="text-center py-4 text-muted">No maintenance due at this time.</td></tr>
+                <tr><td colspan="5" class="text-center py-4 text-muted">No maintenance due at this time.</td></tr>
                 {% endfor %}
             </tbody>
         </table>

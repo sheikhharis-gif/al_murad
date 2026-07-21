@@ -29,9 +29,11 @@ def fleet_alerts(request):
 
 def access_flags(request):
     """Expose role flags to templates, e.g. to hide nav links for restricted users."""
-    is_expense_only = (
-        request.user.is_authenticated
-        and not request.user.is_superuser
-        and request.user.groups.filter(name="Expense Only").exists()
-    )
-    return {"is_expense_only": is_expense_only}
+    if not request.user.is_authenticated or request.user.is_superuser:
+        return {"is_expense_only": False, "is_workshop_only": False}
+
+    user_groups = set(request.user.groups.values_list("name", flat=True))
+    return {
+        "is_expense_only": "Expense Only" in user_groups,
+        "is_workshop_only": "Workshop Only" in user_groups,
+    }

@@ -1,5 +1,5 @@
 from datetime import date, timedelta
-from masters.models import Driver, VehicleMaintenance
+from masters.models import Driver, MaintenanceJob
 
 def license_expiry_alerts():
     today = date.today()
@@ -8,8 +8,6 @@ def license_expiry_alerts():
     return Driver.objects.filter(license_expiry__lte=warning_date)
 
 def oil_change_alerts():
-    today = date.today()
-    return VehicleMaintenance.objects.filter(
-        maintenance_type="OIL",
-        next_due_date__lte=today
-    )
+    return MaintenanceJob.objects.filter(
+        maintenance_type="OIL"
+    ).exclude(status="COMPLETED")

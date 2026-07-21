@@ -5,7 +5,7 @@ from datetime import date
 from .models import (
     Driver, Vehicle, City, Route,
     Vendor, Client, Expense,
-    VehicleMaintenance, ClientRate, DriverSalary
+    ClientRate, DriverSalary
 )
 
 from .forms import (
@@ -308,36 +308,6 @@ def expense_delete(request, expense_id):
     return redirect("expense_list")
 
 
-# ================= MAINTENANCE =================
-from django.shortcuts import render, redirect
-from .models import VehicleMaintenance
-from masters.models import Vehicle
-
-def maintenance_list(request):
-    # Use correct field 'change_date'
-    records = VehicleMaintenance.objects.all().order_by("-change_date")
-    return render(request, "maintenance/maintenance_list.html", {
-        "records": records
-    })
-
-
-def maintenance_add(request):
-    vehicles = Vehicle.objects.all()
-
-    if request.method == "POST":
-        VehicleMaintenance.objects.create(
-            vehicle_id=request.POST.get("vehicle"),
-            maintenance_type=request.POST.get("maintenance_type"),
-            change_date=request.POST.get("change_date"),
-            change_km=request.POST.get("change_km"),
-            next_due_date=request.POST.get("next_due_date") or None,
-            remarks=request.POST.get("remarks") or ""
-        )
-        return redirect("maintenance_list")
-
-    return render(request, "maintenance/maintenance_form.html", {
-        "vehicles": vehicles
-    })
 
 
 # ================= SALARY =================

@@ -177,48 +177,55 @@ class ClientRateForm(forms.ModelForm):
         }
 
 from django import forms
-from .models import Vehicle, VehicleMaintenance
+from django.forms import inlineformset_factory
+from .models import Vehicle, MaintenanceJob, MaintenancePart
 from datetime import date
 
-class MaintenanceForm(forms.ModelForm):
+
+class MaintenanceJobForm(forms.ModelForm):
     class Meta:
-        model = VehicleMaintenance
-        # Aapke model ke asli variables:
-        fields = ["vehicle", "maintenance_type", "change_date", "change_km", "remarks"]
-        
+        model = MaintenanceJob
+        fields = [
+            "vehicle", "date", "maintenance_type", "description",
+            "odometer_km", "next_service_due_km",
+            "spare_parts_vendor", "spare_parts_cost", "labor_cost",
+            "status", "vendor_payment_status", "payment_date", "bill_ref",
+            "unpaid_balance",
+        ]
         widgets = {
-            "vehicle": forms.Select(attrs={
-                "class": "form-select border-primary",
-                "style": "display: block !important; width: 100%;"
+            "vehicle": forms.Select(attrs={"class": "form-select"}),
+            "date": forms.DateInput(attrs={
+                "class": "form-control", "type": "date", "max": date.today().isoformat()
             }),
-            "maintenance_type": forms.Select(attrs={
-                "class": "form-select"
-            }),
-            "change_date": forms.DateInput(attrs={
-                "class": "form-control",
-                "type": "date",
-                "max": date.today().isoformat()
-            }),
-            "change_km": forms.NumberInput(attrs={
-                "class": "form-control",
-                "placeholder": "Enter KM Reading (e.g. 45000)",
-                "min": "0"
-            }),
-            "remarks": forms.Textarea(attrs={
-                "class": "form-control",
-                "rows": 2,
-                "placeholder": "Optional maintenance details..."
-            }),
+            "maintenance_type": forms.Select(attrs={"class": "form-select"}),
+            "description": forms.TextInput(attrs={"class": "form-control", "placeholder": "e.g. Break Setting"}),
+            "odometer_km": forms.NumberInput(attrs={"class": "form-control", "min": "0"}),
+            "next_service_due_km": forms.NumberInput(attrs={"class": "form-control", "min": "0"}),
+            "spare_parts_vendor": forms.TextInput(attrs={"class": "form-control", "placeholder": "e.g. AMG"}),
+            "spare_parts_cost": forms.NumberInput(attrs={"class": "form-control", "min": "0", "step": "0.01"}),
+            "labor_cost": forms.NumberInput(attrs={"class": "form-control", "min": "0", "step": "0.01"}),
+            "status": forms.Select(attrs={"class": "form-select"}),
+            "vendor_payment_status": forms.Select(attrs={"class": "form-select"}),
+            "payment_date": forms.DateInput(attrs={"class": "form-control", "type": "date"}),
+            "bill_ref": forms.TextInput(attrs={"class": "form-control", "placeholder": "Bill / reference #"}),
+            "unpaid_balance": forms.NumberInput(attrs={"class": "form-control", "min": "0", "step": "0.01"}),
         }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # Labels ko model variables ke sath map kiya:
-        self.fields['vehicle'].label = "Select Vehicle"
-        self.fields['maintenance_type'].label = "Type of Service"
-        self.fields['change_date'].label = "Service Date"
-        self.fields['change_km'].label = "Odometer Reading (KM)"
-        self.fields['remarks'].label = "Additional Notes"
-        
-        self.fields['vehicle'].queryset = Vehicle.objects.filter(is_active=True).order_by('vehicle_number')
-        self.fields['vehicle'].empty_label = "--- Choose Vehicle ---"
+        self.fields["vehicle"].queryset = Vehicle.objects.filter(is_active=True).order_by("vehicle_number")
+        self.fields["vehicle"].empty_label = "--- Choose Vehicle ---"
+
+
+MaintenancePartFormSet = inlineformset_factory(
+    MaintenanceJob,
+    MaintenancePart,
+    fields=["part_used", "quantity_used", "part_source"],
+    widgets={
+        "part_used": forms.TextInput(attrs={"class": "form-control", "placeholder": "Part name"}),
+        "quantity_used": forms.NumberInput(attrs={"class": "form-control", "min": "1"}),
+        "part_source": forms.Select(attrs={"class": "form-select"}),
+    },
+    extra=1,
+    can_delete=True,
+)

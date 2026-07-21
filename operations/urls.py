@@ -24,9 +24,11 @@ urlpatterns = [
     # Job ke andar ki saari trips dekhne ke liye (Optional par behtar hai)
     path("jobs/<int:job_id>/view-trips/", views.job_view_trips, name="job_view_trips"),
 
-    # --- MAINTENANCE ---
+    # --- MAINTENANCE (WORKSHOP) ---
     path("maintenance/", views.maintenance_list, name="maintenance_list"),
     path("maintenance/add/", views.maintenance_add, name="maintenance_add"),
+    path("maintenance/edit/<int:job_id>/", views.maintenance_edit, name="maintenance_edit"),
+    path("maintenance/delete/<int:job_id>/", views.maintenance_delete, name="maintenance_delete"),
 
     # --- PDF GENERATION (UPDATED) ---
     # Purana Trip PDF band, ab Job-based Invoice chalayenge

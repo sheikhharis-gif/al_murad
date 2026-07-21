@@ -3,7 +3,8 @@ from .models import (
     Driver,
     Vehicle,
     Client,
-    VehicleMaintenance,
+    MaintenanceJob,
+    MaintenancePart,
     Vendor,
     Expense,
     City,
@@ -43,15 +44,23 @@ class VehicleAdmin(admin.ModelAdmin):
     list_filter = ("vehicle_type", "vehicle_mode", "is_active")
 
 
-# ================= VEHICLE MAINTENANCE =================
-@admin.register(VehicleMaintenance)
-class VehicleMaintenanceAdmin(admin.ModelAdmin):
+# ================= WORKSHOP: MAINTENANCE JOB =================
+class MaintenancePartInline(admin.TabularInline):
+    model = MaintenancePart
+    extra = 1
+
+
+@admin.register(MaintenanceJob)
+class MaintenanceJobAdmin(admin.ModelAdmin):
     list_display = (
+        "job_id",
         "vehicle",
         "maintenance_type",
-        "change_km",
-        "next_due_km",
-        "change_date",
+        "date",
+        "status",
+        "total_cost",
+        "vendor_payment_status",
     )
-    list_filter = ("maintenance_type",)
-    search_fields = ("vehicle__vehicle_number",)
+    list_filter = ("status", "maintenance_type", "vendor_payment_status")
+    search_fields = ("job_id", "vehicle__vehicle_number")
+    inlines = [MaintenancePartInline]

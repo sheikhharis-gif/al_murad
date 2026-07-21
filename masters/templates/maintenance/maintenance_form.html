@@ -4,74 +4,121 @@
 <div class="container py-4">
     <div class="row justify-content-center">
         <div class="col-lg-10">
-            
+
             <div class="d-flex align-items-center justify-content-between mb-4 pb-2 border-bottom">
                 <h3 class="fw-bold text-dark mb-0">
-                    <i class="bi bi-tools text-primary me-2"></i>Add Maintenance Record
+                    <i class="bi bi-tools text-primary me-2"></i>{% if job %}Edit{% else %}New{% endif %} Maintenance Job
+                    {% if job %}<span class="badge bg-dark ms-2 font-monospace">{{ job.job_id }}</span>{% endif %}
                 </h3>
                 <a href="{% url 'maintenance_list' %}" class="btn btn-outline-secondary btn-sm rounded-pill px-3">
-                    <i class="bi bi-arrow-left me-1"></i> Back to History
+                    <i class="bi bi-arrow-left me-1"></i> Back to Log
                 </a>
             </div>
 
-            <div class="card border-0 shadow-sm rounded-4">
+            <div class="card border-0 shadow-sm rounded-4 mb-4">
                 <div class="card-body p-4 p-md-5">
                     <form method="post" novalidate>
                         {% csrf_token %}
 
+                        <h6 class="fw-bold text-uppercase text-muted small mb-3">Job Details</h6>
                         <div class="row g-4">
-                            <div class="col-md-6">
-                                <label for="vehicle" class="form-label fw-bold text-secondary">Select Vehicle</label>
-                                <div class="input-group">
-                                    <span class="input-group-text bg-light border-end-0"><i class="bi bi-truck"></i></span>
-                                    <select name="vehicle" id="vehicle" class="form-select border-start-0 ps-0" required>
-                                        {% for v in vehicles %}
-                                        <option value="{{ v.id }}">{{ v.vehicle_number }}</option>
-                                        {% endfor %}
-                                    </select>
-                                </div>
-                            </div>
-
-                            <div class="col-md-6">
-                                <label for="maintenance_type" class="form-label fw-bold text-secondary">Maintenance Type</label>
-                                <div class="input-group">
-                                    <span class="input-group-text bg-light border-end-0"><i class="bi bi-gear-wide-connected"></i></span>
-                                    <select name="maintenance_type" id="maintenance_type" class="form-select border-start-0 ps-0" required>
-                                        <option value="OIL">Oil Change</option>
-                                        <option value="TIRE">Tire Change</option>
-                                        <option value="BRAKE">Brake Repair</option>
-                                        <option value="OTHER">General Service</option>
-                                    </select>
-                                </div>
-                            </div>
-
                             <div class="col-md-4">
-                                <label for="change_date" class="form-label fw-bold text-secondary">Current Service Date</label>
-                                <input type="date" name="change_date" id="change_date" class="form-control bg-light" required>
+                                <label class="form-label fw-bold text-secondary">Vehicle</label>
+                                {{ form.vehicle }}
                             </div>
-
                             <div class="col-md-4">
-                                <label for="change_km" class="form-label fw-bold text-secondary">Current Odometer (KM)</label>
-                                <input type="number" name="change_km" id="change_km" class="form-control bg-light" placeholder="e.g. 45000" required>
+                                <label class="form-label fw-bold text-secondary">Date</label>
+                                {{ form.date }}
                             </div>
-
                             <div class="col-md-4">
-                                <label for="next_due_date" class="form-label fw-bold text-danger-emphasis">Next Due Date (Projected)</label>
-                                <input type="date" name="next_due_date" id="next_due_date" class="form-control border-danger-subtle bg-danger-subtle bg-opacity-10">
+                                <label class="form-label fw-bold text-secondary">Maintenance Type</label>
+                                {{ form.maintenance_type }}
                             </div>
 
                             <div class="col-12">
-                                <label for="remarks" class="form-label fw-bold text-secondary">Maintenance Remarks</label>
-                                <textarea name="remarks" id="remarks" class="form-control bg-light" rows="3" placeholder="Write any specific notes here..."></textarea>
+                                <label class="form-label fw-bold text-secondary">Description</label>
+                                {{ form.description }}
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold text-secondary">Odometer (KM)</label>
+                                {{ form.odometer_km }}
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold text-secondary">Next Service Due (KM)</label>
+                                {{ form.next_service_due_km }}
                             </div>
                         </div>
 
                         <hr class="my-4 opacity-25">
+                        <h6 class="fw-bold text-uppercase text-muted small mb-3">Cost & Vendor</h6>
+                        <div class="row g-4">
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold text-secondary">Spare Parts Vendor</label>
+                                {{ form.spare_parts_vendor }}
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold text-secondary">Spare Parts Cost</label>
+                                {{ form.spare_parts_cost }}
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold text-secondary">Labor Cost</label>
+                                {{ form.labor_cost }}
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label fw-bold text-secondary">Status</label>
+                                {{ form.status }}
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label fw-bold text-secondary">Vendor Payment Status</label>
+                                {{ form.vendor_payment_status }}
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label fw-bold text-secondary">Payment Date</label>
+                                {{ form.payment_date }}
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label fw-bold text-secondary">Bill Ref</label>
+                                {{ form.bill_ref }}
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold text-danger-emphasis">Unpaid Balance (PKR)</label>
+                                {{ form.unpaid_balance }}
+                            </div>
+                        </div>
+
+                        <hr class="my-4 opacity-25">
+                        <h6 class="fw-bold text-uppercase text-muted small mb-3">Parts Used</h6>
+
+                        {{ formset.management_form }}
+                        <div id="parts-formset">
+                            {% for pform in formset %}
+                            <div class="row g-3 align-items-center part-row mb-2">
+                                {% for hidden in pform.hidden_fields %}{{ hidden }}{% endfor %}
+                                <div class="col-md-5">{{ pform.part_used }}</div>
+                                <div class="col-md-2">{{ pform.quantity_used }}</div>
+                                <div class="col-md-3">{{ pform.part_source }}</div>
+                                <div class="col-md-2">
+                                    {% if pform.instance.pk %}
+                                    <div class="form-check">
+                                        {{ pform.DELETE }}
+                                        <label class="form-check-label small text-danger">Remove</label>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        <button type="button" id="add-part-row" class="btn btn-sm btn-outline-primary rounded-pill px-3 mt-1">
+                            <i class="bi bi-plus-lg me-1"></i>Add Another Part
+                        </button>
+
+                        <hr class="my-4 opacity-25">
 
                         <div class="d-flex justify-content-end gap-3">
-                            <button type="reset" class="btn btn-light px-4 border rounded-pill">Reset Form</button>
+                            <a href="{% url 'maintenance_list' %}" class="btn btn-light px-4 border rounded-pill">Cancel</a>
                             <button type="submit" class="btn btn-primary px-5 rounded-pill shadow-sm">
-                                <i class="bi bi-save me-2"></i>Save Maintenance Entry
+                                <i class="bi bi-save me-2"></i>Save Maintenance Job
                             </button>
                         </div>
                     </form>
@@ -82,23 +129,18 @@
 </div>
 
 <style>
-    /* Styling for the Maintenance Form */
     .form-control, .form-select {
-        padding: 0.75rem 1rem;
+        padding: 0.7rem 1rem;
         border: 1px solid #dee2e6;
         border-radius: 10px;
         transition: all 0.2s ease;
+        width: 100%;
     }
-    
+
     .form-control:focus, .form-select:focus {
         background-color: #fff !important;
         border-color: #0d6efd;
         box-shadow: 0 0 0 4px rgba(13, 110, 253, 0.1);
-    }
-
-    .input-group-text {
-        border-radius: 10px 0 0 10px;
-        color: #6c757d;
     }
 
     .form-label {
@@ -106,10 +148,44 @@
         margin-bottom: 0.5rem;
     }
 
-    /* Red highlight for Next Due Date to emphasize importance */
-    #next_due_date:focus {
-        border-color: #dc3545;
-        box-shadow: 0 0 0 4px rgba(220, 53, 69, 0.1);
+    .part-row {
+        background: #f8fafc;
+        border-radius: 10px;
+        padding: 0.6rem 0.5rem;
     }
 </style>
+
+<script>
+    document.getElementById('add-part-row').addEventListener('click', function () {
+        const container = document.getElementById('parts-formset');
+        const totalForms = document.getElementById('id_parts_used-TOTAL_FORMS');
+        const formNum = parseInt(totalForms.value, 10);
+        // Clone the last row - with extra=1, Django always appends a genuinely
+        // blank unbound form after every existing part, so it never carries an
+        // existing part's hidden id/pk into the clone.
+        const rows = container.querySelectorAll('.part-row');
+        const templateRow = rows[rows.length - 1];
+        const newRow = templateRow.cloneNode(true);
+
+        newRow.querySelectorAll('input, select').forEach(function (field) {
+            const name = field.getAttribute('name');
+            const id = field.getAttribute('id');
+            if (name) field.setAttribute('name', name.replace(/-\d+-/, '-' + formNum + '-'));
+            if (id) field.setAttribute('id', id.replace(/-\d+-/, '-' + formNum + '-'));
+            if (field.type === 'checkbox') {
+                field.checked = false;
+            } else if (field.type === 'hidden') {
+                field.value = '';
+            } else {
+                field.value = field.tagName === 'SELECT' ? field.options[0].value : '';
+            }
+        });
+        // A freshly added row has no saved instance yet, so no "Remove" checkbox is needed.
+        const deleteCol = newRow.querySelector('.form-check');
+        if (deleteCol) deleteCol.closest('.col-md-2').innerHTML = '';
+
+        container.appendChild(newRow);
+        totalForms.value = formNum + 1;
+    });
+</script>
 {% endblock %}

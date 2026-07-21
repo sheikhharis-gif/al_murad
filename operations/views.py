@@ -32,8 +32,9 @@ from masters.models import (
     Route,
     Vendor,
     Vehicle,
-    VehicleMaintenance,
+    MaintenanceJob,
 )
+from masters.forms import MaintenanceJobForm, MaintenancePartFormSet
 
 # ================= DASHBOARD =================
 @login_required
@@ -64,9 +65,7 @@ def dashboard(request):
     total_expense = Expense.objects.aggregate(total=Sum("total_expense"))["total"] or 0
     profit = total_freight - Decimal(total_expense)
 
-    upcoming_maintenance = VehicleMaintenance.objects.filter(
-        next_due_date__isnull=False
-    ).order_by("next_due_date")[:8]
+    upcoming_maintenance = MaintenanceJob.objects.exclude(status="COMPLETED").order_by("-date")[:8]
 
     six_months_ago = today - dt.timedelta(days=180)
     monthly_trips = (
@@ -599,28 +598,56 @@ def trip_delete(request, trip_id):
     trip.delete()
     return redirect("trip_list")
 
-# ================= MAINTENANCE =================
+# ================= MAINTENANCE (WORKSHOP) =================
 def maintenance_list(request):
-    records = VehicleMaintenance.objects.all().order_by("-change_date")
-    return render(request, "maintenance/maintenance_list.html", {"records": records})
+    records = MaintenanceJob.objects.select_related("vehicle").prefetch_related("parts_used")
+    total_cost = records.aggregate(total=Sum("total_cost"))["total"] or 0
+    unpaid_total = records.aggregate(total=Sum("unpaid_balance"))["total"] or 0
+    pending_count = records.exclude(status="COMPLETED").count()
+    return render(request, "maintenance/maintenance_list.html", {
+        "records": records,
+        "total_cost": total_cost,
+        "unpaid_total": unpaid_total,
+        "pending_count": pending_count,
+    })
+
 
 def maintenance_add(request):
-    vehicles = Vehicle.objects.all()
     if request.method == "POST":
-        try:
-            km = int(request.POST.get("change_km") or 0)
-        except:
-            km = 0
-        VehicleMaintenance.objects.create(
-            vehicle_id=request.POST.get("vehicle"),
-            maintenance_type=request.POST.get("maintenance_type"),
-            change_date=request.POST.get("change_date"),
-            change_km=km,
-            next_due_date=request.POST.get("next_due_date") or None,
-            remarks=request.POST.get("remarks") or "",
-        )
-        return redirect("maintenance_list")
-    return render(request, "maintenance/maintenance_form.html", {"vehicles": vehicles})
+        form = MaintenanceJobForm(request.POST)
+        if form.is_valid():
+            job = form.save()
+            formset = MaintenancePartFormSet(request.POST, instance=job)
+            if formset.is_valid():
+                formset.save()
+                return redirect("maintenance_list")
+        else:
+            formset = MaintenancePartFormSet(request.POST)
+    else:
+        form = MaintenanceJobForm()
+        formset = MaintenancePartFormSet()
+    return render(request, "maintenance/maintenance_form.html", {"form": form, "formset": formset})
+
+
+def maintenance_edit(request, job_id):
+    job = get_object_or_404(MaintenanceJob, id=job_id)
+    if request.method == "POST":
+        form = MaintenanceJobForm(request.POST, instance=job)
+        formset = MaintenancePartFormSet(request.POST, instance=job)
+        if form.is_valid() and formset.is_valid():
+            form.save()
+            formset.save()
+            return redirect("maintenance_list")
+    else:
+        form = MaintenanceJobForm(instance=job)
+        formset = MaintenancePartFormSet(instance=job)
+    return render(request, "maintenance/maintenance_form.html", {"form": form, "formset": formset, "job": job})
+
+
+def maintenance_delete(request, job_id):
+    job = get_object_or_404(MaintenanceJob, id=job_id)
+    job.delete()
+    return redirect("maintenance_list")
 
 def job_view_trips(request, job_id):
     job = get_object_or_404(Job, id=job_id)
