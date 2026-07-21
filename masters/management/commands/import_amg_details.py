@@ -198,7 +198,7 @@ class Command(BaseCommand):
 
             plate = clean(row[2])
             if not plate:
-                plate = f"PENDING-{sr_no}"
+                continue
             if plate in used_plates:
                 continue
             used_plates.add(plate)
