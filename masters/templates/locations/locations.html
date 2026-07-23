@@ -88,7 +88,7 @@
                         <div class="row g-3 align-items-end">
                             <div class="col-md-5">
                                 <label class="form-label small fw-bold text-muted">Starting Point</label>
-                                <select name="origin" class="form-select border-0 shadow-sm" required>
+                                <select name="origin" class="form-select border-0 shadow-sm searchable-select" required>
                                     <option value="">Select Origin</option>
                                     {% for c in cities %}
                                     <option value="{{ c.id }}">{{ c.name }}</option>
@@ -102,7 +102,7 @@
                             </div>
                             <div class="col-md-5">
                                 <label class="form-label small fw-bold text-muted">End Point</label>
-                                <select name="destination" class="form-select border-0 shadow-sm" required>
+                                <select name="destination" class="form-select border-0 shadow-sm searchable-select" required>
                                     <option value="">Select Destination</option>
                                     {% for c in cities %}
                                     <option value="{{ c.id }}">{{ c.name }}</option>

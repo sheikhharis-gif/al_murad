@@ -38,8 +38,8 @@ class TripForm(forms.ModelForm):
         widget=forms.Select(attrs={"class": "form-control"})
     )
     route = forms.ModelChoiceField(
-        queryset=None, 
-        widget=forms.Select(attrs={"class": "form-control"})
+        queryset=None,
+        widget=forms.Select(attrs={"class": "form-control searchable-select"})
     )
 
     class Meta:

@@ -34,12 +34,22 @@ class VehicleForm(forms.ModelForm):
         # 4. Dropdowns (is mein ab 'driver' bhi shamil hai)
         widgets.update({
             "vendor": forms.Select(attrs={"class": "form-select"}),
-            "driver": forms.Select(attrs={"class": "form-select"}), # Naya Driver Dropdown
+            "driver": forms.Select(attrs={"class": "form-select searchable-select"}), # Naya Driver Dropdown
             "vehicle_mode": forms.Select(attrs={"class": "form-select"}),
             "vehicle_type": forms.Select(attrs={"class": "form-select"}),
             "wheeler": forms.Select(attrs={"class": "form-select"}),
             "is_active": forms.CheckboxInput(attrs={"class": "form-check-input"}),
         })
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Only show active drivers when assigning one to a vehicle, A-Z (Driver.Meta.ordering).
+        active_drivers = Driver.objects.filter(is_active=True)
+        if self.instance and self.instance.pk and self.instance.driver_id:
+            # Keep the currently assigned driver selectable even if they've since gone inactive.
+            active_drivers = active_drivers | Driver.objects.filter(pk=self.instance.driver_id)
+        self.fields["driver"].queryset = active_drivers.distinct()
+        self.fields["driver"].empty_label = "--- No Driver Assigned ---"
 
 ################ DRIVERS ################
 
@@ -105,8 +115,8 @@ class RouteForm(forms.ModelForm):
         model = Route
         fields = "__all__"
         widgets = {
-            "origin": forms.Select(attrs={"class": "form-select"}),
-            "destination": forms.Select(attrs={"class": "form-select"}),
+            "origin": forms.Select(attrs={"class": "form-select searchable-select"}),
+            "destination": forms.Select(attrs={"class": "form-select searchable-select"}),
             "distance_km": forms.NumberInput(attrs={"class": "form-control"}),
         }
 
@@ -170,7 +180,7 @@ class ClientRateForm(forms.ModelForm):
         model = ClientRate
         fields = ["route", "rate", "fuel_price", "effective_date"]
         widgets = {
-            "route": forms.Select(attrs={"class": "form-select"}),
+            "route": forms.Select(attrs={"class": "form-select searchable-select"}),
             "rate": forms.NumberInput(attrs={"class": "form-control"}),
             "fuel_price": forms.NumberInput(attrs={"class": "form-control"}),
             "effective_date": forms.DateInput(attrs={"type": "date", "class": "form-control"}),

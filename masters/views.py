@@ -237,7 +237,7 @@ def client_rates(request, client_id):
     else:
         form = ClientRateForm()
 
-    rates = ClientRate.objects.filter(client=client)
+    rates = ClientRate.objects.filter(client=client).order_by("rate")
 
     return render(request, "clients/client_rates.html", {
         "client": client,

@@ -1,3 +1,4 @@
+import re
 from datetime import date, timedelta
 from django.db import models
 
@@ -21,12 +22,21 @@ class Driver(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.employee_id:
-            count = Driver.objects.exclude(employee_id="").count()
-            self.employee_id = f"ALMRD-{count + 1:04d}"
+            # Based on the highest existing number, not the row count, so a
+            # deleted driver in the middle can never cause a collision.
+            max_num = 0
+            for eid in Driver.objects.exclude(employee_id="").values_list("employee_id", flat=True):
+                match = re.search(r"(\d+)$", eid)
+                if match:
+                    max_num = max(max_num, int(match.group(1)))
+            self.employee_id = f"ALMRD-{max_num + 1:04d}"
         super().save(*args, **kwargs)
 
     def __str__(self):
         return self.name
+
+    class Meta:
+        ordering = ["name"]
 # ================= VENDOR =================
 class Vendor(models.Model):
     name = models.CharField(max_length=100)
@@ -367,6 +377,9 @@ class City(models.Model):
     def __str__(self):
         return f"{self.name} ({self.code})"
 
+    class Meta:
+        ordering = ["name"]
+
 
 # ================= ROUTE =================
 class Route(models.Model):
@@ -381,6 +394,9 @@ class Route(models.Model):
 
     def __str__(self):
         return self.route_code
+
+    class Meta:
+        ordering = ["origin__name", "destination__name"]
 
 
 # ================= DRIVER SALARY =================
