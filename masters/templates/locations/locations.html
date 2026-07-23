@@ -95,12 +95,16 @@
                         <div class="row g-3 align-items-end">
                             <div class="col-md-5">
                                 <label class="form-label small fw-bold text-muted">Starting Point</label>
-                                <select name="origin" class="form-select border-0 shadow-sm searchable-select" required>
-                                    <option value="">Select Origin</option>
-                                    {% for c in cities %}
-                                    <option value="{{ c.id }}">{{ c.name }}</option>
-                                    {% endfor %}
-                                </select>
+                                <div class="position-relative city-combo">
+                                    <input type="text" class="form-control border-0 shadow-sm city-combo-input" placeholder="Type to search origin..." autocomplete="off">
+                                    <div class="city-combo-results list-group shadow-sm"></div>
+                                    <select name="origin" class="d-none" required>
+                                        <option value="">Select Origin</option>
+                                        {% for c in cities %}
+                                        <option value="{{ c.id }}">{{ c.name }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
                             </div>
                             <div class="col-md-2 text-center pb-2 d-none d-md-block">
                                 <div class="bg-white rounded-circle shadow-sm d-inline-block p-2" style="width: 40px; height:40px;">
@@ -109,12 +113,16 @@
                             </div>
                             <div class="col-md-5">
                                 <label class="form-label small fw-bold text-muted">End Point</label>
-                                <select name="destination" class="form-select border-0 shadow-sm searchable-select" required>
-                                    <option value="">Select Destination</option>
-                                    {% for c in cities %}
-                                    <option value="{{ c.id }}">{{ c.name }}</option>
-                                    {% endfor %}
-                                </select>
+                                <div class="position-relative city-combo">
+                                    <input type="text" class="form-control border-0 shadow-sm city-combo-input" placeholder="Type to search destination..." autocomplete="off">
+                                    <div class="city-combo-results list-group shadow-sm"></div>
+                                    <select name="destination" class="d-none" required>
+                                        <option value="">Select Destination</option>
+                                        {% for c in cities %}
+                                        <option value="{{ c.id }}">{{ c.name }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
                             </div>
                             <div class="col-md-12 mt-4">
                                 <button class="btn btn-success w-100 fw-bold rounded-3 py-2 shadow-sm">
@@ -246,6 +254,60 @@
             drawRoute({{ first.origin.latitude }}, {{ first.origin.longitude }}, {{ first.destination.latitude }}, {{ first.destination.longitude }}, '{{ first.origin.name }}', '{{ first.destination.name }}');
         {% endwith %}
     {% endif %}
+
+    // Starting Point / End Point - Ctrl+F style: no list until you type,
+    // then only matching cities show up. Click a match or keep typing.
+    (function () {
+        document.querySelectorAll('.city-combo').forEach(function (combo) {
+            var input = combo.querySelector('.city-combo-input');
+            var resultsBox = combo.querySelector('.city-combo-results');
+            var select = combo.querySelector('select');
+            var options = Array.prototype.slice.call(select.options).filter(function (o) { return o.value; });
+
+            function hideResults() {
+                resultsBox.style.display = 'none';
+                resultsBox.innerHTML = '';
+            }
+
+            function renderResults(query) {
+                if (!query) { hideResults(); return; }
+                var q = query.toLowerCase();
+                var matches = options.filter(function (o) { return o.textContent.toLowerCase().includes(q); });
+                if (!matches.length) { hideResults(); return; }
+
+                resultsBox.innerHTML = '';
+                matches.forEach(function (o) {
+                    var item = document.createElement('button');
+                    item.type = 'button';
+                    item.className = 'list-group-item list-group-item-action';
+                    item.textContent = o.textContent;
+                    item.addEventListener('mousedown', function (e) {
+                        e.preventDefault();
+                        select.value = o.value;
+                        input.value = o.textContent;
+                        hideResults();
+                        select.dispatchEvent(new Event('change', { bubbles: true }));
+                    });
+                    resultsBox.appendChild(item);
+                });
+                resultsBox.style.display = 'block';
+            }
+
+            input.addEventListener('input', function () {
+                select.value = '';
+                renderResults(input.value);
+            });
+            input.addEventListener('focus', function () {
+                input.select();
+            });
+            input.addEventListener('blur', function () {
+                setTimeout(hideResults, 150);
+            });
+
+            var preselected = options.filter(function (o) { return o.selected; })[0];
+            if (preselected) input.value = preselected.textContent;
+        });
+    })();
 </script>
 
 <style>
@@ -272,5 +334,23 @@
     }
     .min-height-20 { min-height: 20px; }
     #routeMap { z-index: 1; }
+
+    .city-combo-results {
+        display: none;
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        z-index: 1050;
+        max-height: 220px;
+        overflow-y: auto;
+        border-radius: 10px;
+        margin-top: 4px;
+    }
+    .city-combo-results .list-group-item {
+        text-align: left;
+        font-size: 0.9rem;
+        border-color: #eef2f7;
+    }
 </style>
 {% endblock %}
