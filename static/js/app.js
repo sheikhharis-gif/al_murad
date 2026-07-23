@@ -71,6 +71,11 @@
 
         textInput.addEventListener('input', syncFromText);
         textInput.addEventListener('change', syncFromText);
+        // One click selects whatever name is already there, so typing
+        // immediately replaces it instead of the user having to delete first.
+        textInput.addEventListener('focus', function () {
+            textInput.select();
+        });
     }
 
     window.enhanceSearchableSelects = function () {
