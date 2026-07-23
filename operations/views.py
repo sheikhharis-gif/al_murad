@@ -153,9 +153,29 @@ def _normalize_amg_cell(value):
     return value
 
 # ================= JOBS =================
+JOB_SORT_FIELDS = {
+    "job_number": "Job Number",
+    "job_date": "Job Date",
+    "vehicle__vehicle_number": "Vehicle Number",
+    "status": "Status",
+}
+
 def job_list(request):
-    jobs = Job.objects.exclude(status="completed").order_by("-job_date")
-    return render(request, "operations/job_list.html", {"jobs": jobs})
+    sort_by = request.GET.get("sort_by", "job_date")
+    order = request.GET.get("order", "desc")
+    if sort_by not in JOB_SORT_FIELDS:
+        sort_by = "job_date"
+    if order not in ("asc", "desc"):
+        order = "desc"
+    order_field = sort_by if order == "asc" else f"-{sort_by}"
+
+    jobs = Job.objects.exclude(status="completed").order_by(order_field)
+    return render(request, "operations/job_list.html", {
+        "jobs": jobs,
+        "sort_fields": JOB_SORT_FIELDS,
+        "sort_by": sort_by,
+        "order": order,
+    })
 
 def completed_job_list(request):
     jobs = Job.objects.filter(status="completed").order_by("-completion_date")

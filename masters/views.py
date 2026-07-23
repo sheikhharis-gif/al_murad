@@ -19,10 +19,37 @@ from .forms import (
 from .utils import calculate_distance
 
 
+def _sorted_queryset(request, queryset, sort_fields, default_sort, default_order="asc"):
+    sort_by = request.GET.get("sort_by", default_sort)
+    order = request.GET.get("order", default_order)
+    if sort_by not in sort_fields:
+        sort_by = default_sort
+    if order not in ("asc", "desc"):
+        order = default_order
+    order_field = sort_by if order == "asc" else f"-{sort_by}"
+    return queryset.order_by(order_field), sort_by, order
+
+
 # ================= DRIVERS =================
+DRIVER_SORT_FIELDS = {
+    "name": "Driver Name",
+    "employee_id": "Employee ID",
+    "mobile": "Mobile Number",
+    "cnic": "CNIC",
+    "joining_date": "Joining Date",
+    "is_active": "Status",
+}
+
 def driver_list(request):
-    drivers = Driver.objects.all()
-    return render(request, "drivers/driver_list.html", {"drivers": drivers})
+    drivers, sort_by, order = _sorted_queryset(
+        request, Driver.objects.all(), DRIVER_SORT_FIELDS, "name"
+    )
+    return render(request, "drivers/driver_list.html", {
+        "drivers": drivers,
+        "sort_fields": DRIVER_SORT_FIELDS,
+        "sort_by": sort_by,
+        "order": order,
+    })
 
 
 def driver_add(request):
@@ -57,21 +84,35 @@ from .forms import VehicleForm
 # ================= VEHICLES =================
 from datetime import date, timedelta # Ye line file mein sab se upar honi chahiye
 
+VEHICLE_SORT_FIELDS = {
+    "vehicle_number": "Vehicle Number",
+    "driver__name": "Driver Name",
+    "vendor__name": "Vendor Name",
+    "vehicle_type": "Vehicle Type",
+    "current_location": "Current Location",
+    "is_active": "Status",
+}
+
 # 1. List dikhane ke liye (UPDATED FOR ALERTS)
 def vehicle_list(request):
-    vehicles = Vehicle.objects.all()
-    
+    vehicles, sort_by, order = _sorted_queryset(
+        request, Vehicle.objects.all(), VEHICLE_SORT_FIELDS, "vehicle_number"
+    )
+
     # --- YEH LOGIC ADD KI HAI ALERTS KE LIYE ---
     today = date.today()
     warning_date = today + timedelta(days=15)
-    
+
     context = {
         "vehicles": vehicles,
         "today": today,          # HTML mein isi naam se comparison ho raha hai
         "warning_date": warning_date,
+        "sort_fields": VEHICLE_SORT_FIELDS,
+        "sort_by": sort_by,
+        "order": order,
     }
     # ------------------------------------------
-    
+
     return render(request, "vehicle/vehicle_list.html", context)
 
 # 2. Naya vehicle register karne ke liye
@@ -154,9 +195,22 @@ def locations_master(request):
     })
 
 # ================= VENDORS =================
+VENDOR_SORT_FIELDS = {
+    "name": "Vendor Name",
+    "phone": "Phone",
+    "poc": "Point of Contact",
+}
+
 def vendor_list(request):
-    vendors = Vendor.objects.all()
-    return render(request, "vendors/vendor_list.html", {"vendors": vendors})
+    vendors, sort_by, order = _sorted_queryset(
+        request, Vendor.objects.all(), VENDOR_SORT_FIELDS, "name"
+    )
+    return render(request, "vendors/vendor_list.html", {
+        "vendors": vendors,
+        "sort_fields": VENDOR_SORT_FIELDS,
+        "sort_by": sort_by,
+        "order": order,
+    })
 
 def vendor_add(request):
     form = VendorForm(request.POST or None)
@@ -191,9 +245,22 @@ from .models import Client, ClientRate, Expense
 from .forms import ClientForm, ClientRateForm, ExpenseForm
 
 # ================= CLIENTS =================
+CLIENT_SORT_FIELDS = {
+    "name": "Company Name",
+    "poc": "Point of Contact",
+    "ntn": "NTN",
+    "billing_company": "Billing Company",
+}
+
 def client_list(request):
+    clients, sort_by, order = _sorted_queryset(
+        request, Client.objects.all(), CLIENT_SORT_FIELDS, "name"
+    )
     return render(request, "clients/client_list.html", {
-        "clients": Client.objects.all()
+        "clients": clients,
+        "sort_fields": CLIENT_SORT_FIELDS,
+        "sort_by": sort_by,
+        "order": order,
     })
 
 def client_add(request):
@@ -284,10 +351,22 @@ def expense_sheet(request):
 
 
 # ================= EXPENSE LIST =================
+EXPENSE_SORT_FIELDS = {
+    "date": "Date",
+    "total_expense": "Total Amount",
+    "fuel_amount": "Fuel Amount",
+    "toll_tax": "Toll Tax",
+}
+
 def expense_list(request):
-    expenses = Expense.objects.all().order_by("-date")
+    expenses, sort_by, order = _sorted_queryset(
+        request, Expense.objects.all(), EXPENSE_SORT_FIELDS, "date", default_order="desc"
+    )
     return render(request, "expenses/expense_list.html", {
-        "expenses": expenses
+        "expenses": expenses,
+        "sort_fields": EXPENSE_SORT_FIELDS,
+        "sort_by": sort_by,
+        "order": order,
     })
 # ================= EXPENSE EDIT & DELETE =================
 
