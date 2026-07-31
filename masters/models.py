@@ -370,9 +370,15 @@ class Expense(models.Model):
 # ================= CITY =================
 class City(models.Model):
     name = models.CharField(max_length=100)
-    code = models.CharField(max_length=10, unique=True)
+    code = models.CharField(max_length=3, unique=True)
     latitude = models.DecimalField(max_digits=9, decimal_places=6)
     longitude = models.DecimalField(max_digits=9, decimal_places=6)
+
+    def save(self, *args, **kwargs):
+        # All city entries are stored in CAPITALS.
+        self.name = (self.name or "").strip().upper()
+        self.code = (self.code or "").strip().upper()
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.name} ({self.code})"
@@ -385,10 +391,12 @@ class City(models.Model):
 class Route(models.Model):
     origin = models.ForeignKey(City, on_delete=models.CASCADE, related_name="routes_from")
     destination = models.ForeignKey(City, on_delete=models.CASCADE, related_name="routes_to")
-    distance_km = models.PositiveIntegerField()
-    route_code = models.CharField(max_length=20, blank=True)
+    distance_km = models.PositiveIntegerField("KMs")
+    tt_hours = models.DecimalField("TT Hours", max_digits=5, decimal_places=1, null=True, blank=True)
+    route_code = models.CharField(max_length=20, blank=True, editable=False)
 
     def save(self, *args, **kwargs):
+        # Route code auto-merges from the two city codes, e.g. ISB-KHI.
         self.route_code = f"{self.origin.code}-{self.destination.code}"
         super().save(*args, **kwargs)
 

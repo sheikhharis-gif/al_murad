@@ -1,3 +1,4 @@
+from django.contrib import messages
 from django.shortcuts import render, redirect
 from django.db.models import Sum
 from datetime import date
@@ -15,8 +16,6 @@ from .forms import (
     ExpenseForm, ClientRateForm,
     DriverSalaryForm
 )
-
-from .utils import calculate_distance
 
 
 def _sorted_queryset(request, queryset, sort_fields, default_sort, default_order="asc"):
@@ -155,38 +154,49 @@ def locations_master(request):
             # Safe conversion: agar khali ho toh None ya 0 jaye
             lat = request.POST.get("latitude") or 0
             lng = request.POST.get("longitude") or 0
-            
-            City.objects.create(
-                name=request.POST.get("city_name"),
-                code=request.POST.get("city_code"),
-                latitude=lat,
-                longitude=lng
-            )
+            city_name = (request.POST.get("city_name") or "").strip()
+            city_code = (request.POST.get("city_code") or "").strip()
+
+            if not city_name or not city_code:
+                messages.error(request, "City name and code are both required.")
+            elif len(city_code) > 3:
+                messages.error(request, "City code cannot be more than 3 characters.")
+            elif City.objects.filter(code__iexact=city_code).exists():
+                messages.error(request, f"City code '{city_code.upper()}' is already registered.")
+            else:
+                # Model's save() uppercases name/code automatically.
+                City.objects.create(
+                    name=city_name,
+                    code=city_code,
+                    latitude=lat,
+                    longitude=lng
+                )
+                messages.success(request, f"City '{city_name.upper()}' registered successfully.")
             return redirect("locations_master")
 
-        # ---- ADD ROUTE (AUTO DISTANCE) ----
+        # ---- ADD ROUTE (MANUAL KMs & TT HOURS) ----
         if "add_route" in request.POST:
             origin_id = request.POST.get("origin")
             dest_id = request.POST.get("destination")
+            distance_km = request.POST.get("distance_km")
+            tt_hours = request.POST.get("tt_hours") or None
 
-            if origin_id and dest_id:
+            if not origin_id or not dest_id:
+                messages.error(request, "Please select both Origin and Destination.")
+            elif origin_id == dest_id:
+                messages.error(request, "Origin and Destination cannot be the same city.")
+            elif not distance_km:
+                messages.error(request, "Please enter the distance in KMs.")
+            else:
                 origin = City.objects.get(id=origin_id)
                 destination = City.objects.get(id=dest_id)
-
-                # Check karein ke lat/lng mojood hain
-                if origin.latitude and destination.latitude:
-                    distance = calculate_distance(
-                        origin.latitude, origin.longitude,
-                        destination.latitude, destination.longitude
-                    )
-                else:
-                    distance = 0  # Default agar coordinates na hon
-
                 Route.objects.create(
                     origin=origin,
                     destination=destination,
-                    distance_km=distance
+                    distance_km=distance_km,
+                    tt_hours=tt_hours,
                 )
+                messages.success(request, f"Route {origin.code}-{destination.code} registered successfully.")
             return redirect("locations_master")
 
     return render(request, "locations/locations.html", {
