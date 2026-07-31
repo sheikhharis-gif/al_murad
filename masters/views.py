@@ -190,6 +190,8 @@ def locations_master(request):
                 messages.error(request, "Origin and Destination cannot be the same city.")
             elif not distance_km:
                 messages.error(request, "Please enter the distance in KMs.")
+            elif Route.objects.filter(origin_id=origin_id, destination_id=dest_id).exists():
+                messages.error(request, "This route already exists.")
             else:
                 origin = City.objects.get(id=origin_id)
                 destination = City.objects.get(id=dest_id)
@@ -241,6 +243,48 @@ def city_delete(request, city_id):
             messages.error(
                 request,
                 f"Cannot delete '{city.name}' - a route using this city has active trips. "
+                "Remove those trips first."
+            )
+    return redirect("locations_master")
+
+
+def route_edit(request, route_id):
+    route = get_object_or_404(Route, id=route_id)
+    if request.method == "POST":
+        origin_id = request.POST.get("origin")
+        dest_id = request.POST.get("destination")
+        distance_km = request.POST.get("distance_km")
+        tt_hours = request.POST.get("tt_hours") or None
+
+        if not origin_id or not dest_id:
+            messages.error(request, "Please select both Origin and Destination.")
+        elif origin_id == dest_id:
+            messages.error(request, "Origin and Destination cannot be the same city.")
+        elif not distance_km:
+            messages.error(request, "Please enter the distance in KMs.")
+        elif Route.objects.exclude(id=route.id).filter(origin_id=origin_id, destination_id=dest_id).exists():
+            messages.error(request, "This route already exists.")
+        else:
+            route.origin = City.objects.get(id=origin_id)
+            route.destination = City.objects.get(id=dest_id)
+            route.distance_km = distance_km
+            route.tt_hours = tt_hours
+            route.save()
+            messages.success(request, f"Route {route.route_code} updated successfully.")
+    return redirect("locations_master")
+
+
+def route_delete(request, route_id):
+    route = get_object_or_404(Route, id=route_id)
+    if request.method == "POST":
+        try:
+            code = route.route_code
+            route.delete()
+            messages.success(request, f"Route '{code}' deleted successfully.")
+        except ProtectedError:
+            messages.error(
+                request,
+                f"Cannot delete route '{route.route_code}' - it has active trips. "
                 "Remove those trips first."
             )
     return redirect("locations_master")
