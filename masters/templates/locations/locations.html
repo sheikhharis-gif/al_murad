@@ -233,7 +233,10 @@
 
 <script>
     // Edit City modal - prefill name/code and point the form at that city's edit URL.
-    (function () {
+    // Waits for DOMContentLoaded because bootstrap.bundle.min.js is loaded at the
+    // bottom of base.html, after this block - calling `new bootstrap.Modal(...)`
+    // any earlier throws (bootstrap not defined yet) and silently kills this script.
+    document.addEventListener('DOMContentLoaded', function () {
         const modalEl = document.getElementById('cityEditModal');
         if (!modalEl) return;
         const modal = new bootstrap.Modal(modalEl);
@@ -245,7 +248,7 @@
                 modal.show();
             });
         });
-    })();
+    });
 
     // City list search - all registered cities show by default;
     // typing narrows the list down to matching names live.

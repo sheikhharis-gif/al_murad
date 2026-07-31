@@ -162,6 +162,8 @@ def locations_master(request):
                 messages.error(request, "City name and code are both required.")
             elif len(city_code) > 3:
                 messages.error(request, "City code cannot be more than 3 characters.")
+            elif City.objects.filter(name__iexact=city_name).exists():
+                messages.error(request, f"City '{city_name.upper()}' is already registered.")
             elif City.objects.filter(code__iexact=city_code).exists():
                 messages.error(request, f"City code '{city_code.upper()}' is already registered.")
             else:
@@ -216,6 +218,8 @@ def city_edit(request, city_id):
             messages.error(request, "City name and code are both required.")
         elif len(city_code) > 3:
             messages.error(request, "City code cannot be more than 3 characters.")
+        elif City.objects.exclude(id=city.id).filter(name__iexact=city_name).exists():
+            messages.error(request, f"City '{city_name.upper()}' is already registered.")
         elif City.objects.exclude(id=city.id).filter(code__iexact=city_code).exists():
             messages.error(request, f"City code '{city_code.upper()}' is already registered.")
         else:
