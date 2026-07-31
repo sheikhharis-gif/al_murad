@@ -35,6 +35,8 @@ urlpatterns = [
     path("expenses/delete/<int:expense_id>/", views.expense_delete, name="expense_delete"),
     
     path("locations/", views.locations_master, name="locations_master"),
+    path("locations/city/<int:city_id>/edit/", views.city_edit, name="city_edit"),
+    path("locations/city/<int:city_id>/delete/", views.city_delete, name="city_delete"),
 
     # SALARY
     path("salary/", views.salary_list, name="salary_list"),

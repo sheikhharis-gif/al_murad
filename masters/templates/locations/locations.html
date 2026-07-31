@@ -59,17 +59,37 @@
                             <thead class="sticky-top bg-white">
                                 <tr class="text-muted small text-uppercase">
                                     <th>City Name</th>
-                                    <th class="text-end">Code</th>
+                                    <th>Code</th>
+                                    <th class="text-end">Actions</th>
                                 </tr>
                             </thead>
                             <tbody id="cityListBody">
                                 {% for c in cities %}
                                 <tr class="city-row" data-name="{{ c.name|lower }}" style="display:none;">
                                     <td class="fw-bold text-dark">{{ c.name }}</td>
-                                    <td class="text-end"><span class="badge bg-secondary-subtle text-secondary px-3">{{ c.code }}</span></td>
+                                    <td><span class="badge bg-secondary-subtle text-secondary px-3">{{ c.code }}</span></td>
+                                    <td class="text-end">
+                                        <div class="btn-group btn-group-sm shadow-sm rounded-2 overflow-hidden bg-white border">
+                                            <button type="button"
+                                                class="btn btn-sm btn-white text-warning border-end edit-city-btn"
+                                                data-edit-url="{% url 'city_edit' c.id %}"
+                                                data-city-name="{{ c.name }}"
+                                                data-city-code="{{ c.code }}"
+                                                title="Edit City">
+                                                <i class="bi bi-pencil-square"></i>
+                                            </button>
+                                            <form method="post" action="{% url 'city_delete' c.id %}" class="d-inline">
+                                                {% csrf_token %}
+                                                <button type="submit" class="btn btn-sm btn-white text-danger" title="Delete City"
+                                                    onclick="return confirm('Delete city {{ c.name }}? This cannot be undone.')">
+                                                    <i class="bi bi-trash"></i>
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </td>
                                 </tr>
                                 {% empty %}
-                                <tr><td colspan="2" class="text-center py-4 text-muted">No cities found.</td></tr>
+                                <tr><td colspan="3" class="text-center py-4 text-muted">No cities found.</td></tr>
                                 {% endfor %}
                             </tbody>
                         </table>
@@ -179,10 +199,54 @@
     </div>
 </div>
 
+<!-- Edit City Modal -->
+<div class="modal fade" id="cityEditModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-4">
+            <form method="post" id="cityEditForm" action="">
+                {% csrf_token %}
+                <div class="modal-header border-0 pb-0">
+                    <h5 class="modal-title fw-bold">Edit City</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body pt-2">
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold">City Name</label>
+                        <input type="text" name="city_name" id="editCityName" class="form-control text-uppercase" style="text-transform:uppercase;" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold">Code (max 3)</label>
+                        <input type="text" name="city_code" id="editCityCode" class="form-control text-uppercase" style="text-transform:uppercase;" maxlength="3" required>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-light border" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-dark fw-bold">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <script>
+    // Edit City modal - prefill name/code and point the form at that city's edit URL.
+    (function () {
+        const modalEl = document.getElementById('cityEditModal');
+        if (!modalEl) return;
+        const modal = new bootstrap.Modal(modalEl);
+        document.querySelectorAll('.edit-city-btn').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                document.getElementById('cityEditForm').action = this.dataset.editUrl;
+                document.getElementById('editCityName').value = this.dataset.cityName;
+                document.getElementById('editCityCode').value = this.dataset.cityCode;
+                modal.show();
+            });
+        });
+    })();
+
     // City list search - Ctrl+F style: nothing shown until you type, then
     // only cities matching what you've typed appear.
     (function () {

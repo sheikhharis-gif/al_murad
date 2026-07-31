@@ -1,6 +1,7 @@
 from django.contrib import messages
 from django.shortcuts import render, redirect
 from django.db.models import Sum
+from django.db.models.deletion import ProtectedError
 from datetime import date
 
 from .models import (
@@ -203,6 +204,42 @@ def locations_master(request):
         "cities": cities,
         "routes": routes
     })
+
+
+def city_edit(request, city_id):
+    city = get_object_or_404(City, id=city_id)
+    if request.method == "POST":
+        city_name = (request.POST.get("city_name") or "").strip()
+        city_code = (request.POST.get("city_code") or "").strip()
+
+        if not city_name or not city_code:
+            messages.error(request, "City name and code are both required.")
+        elif len(city_code) > 3:
+            messages.error(request, "City code cannot be more than 3 characters.")
+        elif City.objects.exclude(id=city.id).filter(code__iexact=city_code).exists():
+            messages.error(request, f"City code '{city_code.upper()}' is already registered.")
+        else:
+            city.name = city_name
+            city.code = city_code
+            city.save()
+            messages.success(request, f"City '{city.name}' updated successfully.")
+    return redirect("locations_master")
+
+
+def city_delete(request, city_id):
+    city = get_object_or_404(City, id=city_id)
+    if request.method == "POST":
+        try:
+            name = city.name
+            city.delete()
+            messages.success(request, f"City '{name}' deleted successfully.")
+        except ProtectedError:
+            messages.error(
+                request,
+                f"Cannot delete '{city.name}' - a route using this city has active trips. "
+                "Remove those trips first."
+            )
+    return redirect("locations_master")
 
 # ================= VENDORS =================
 VENDOR_SORT_FIELDS = {
