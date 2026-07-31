@@ -65,7 +65,7 @@
                             </thead>
                             <tbody id="cityListBody">
                                 {% for c in cities %}
-                                <tr class="city-row" data-name="{{ c.name|lower }}" style="display:none;">
+                                <tr class="city-row" data-name="{{ c.name|lower }}">
                                     <td class="fw-bold text-dark">{{ c.name }}</td>
                                     <td><span class="badge bg-secondary-subtle text-secondary px-3">{{ c.code }}</span></td>
                                     <td class="text-end">
@@ -94,7 +94,7 @@
                             </tbody>
                         </table>
                     </div>
-                    <div id="cityNoSearch" class="text-center text-muted small py-3">Type above to search registered cities.</div>
+                    <div id="cityNoSearch" class="text-center text-muted small py-3" style="display:none;">No matching city found.</div>
                 </div>
             </div>
         </div>
@@ -247,8 +247,8 @@
         });
     })();
 
-    // City list search - Ctrl+F style: nothing shown until you type, then
-    // only cities matching what you've typed appear.
+    // City list search - all registered cities show by default;
+    // typing narrows the list down to matching names live.
     (function () {
         const box = document.getElementById('citySearchBox');
         const rows = document.querySelectorAll('#cityListBody tr.city-row');
@@ -258,14 +258,17 @@
         box.addEventListener('keyup', function () {
             const q = this.value.trim().toLowerCase();
             if (!q) {
-                rows.forEach(row => row.style.display = 'none');
-                noSearch.style.display = '';
+                rows.forEach(row => row.style.display = '');
+                noSearch.style.display = 'none';
                 return;
             }
-            noSearch.style.display = 'none';
+            let anyMatch = false;
             rows.forEach(row => {
-                row.style.display = row.dataset.name.includes(q) ? '' : 'none';
+                const matches = row.dataset.name.includes(q);
+                row.style.display = matches ? '' : 'none';
+                if (matches) anyMatch = true;
             });
+            noSearch.style.display = anyMatch ? 'none' : '';
         });
     })();
 
