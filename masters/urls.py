@@ -15,12 +15,15 @@ urlpatterns = [
     path("vehicles/edit/<int:vehicle_id>/", views.vehicle_edit, name="vehicle_edit"),
     path("vehicles/delete/<int:vehicle_id>/", views.vehicle_delete, name="vehicle_delete"),
 
-    # VEHICLE TYPE & WHEELER (admin-extensible registries)
-    path("vehicles/config/", views.vehicle_type_config, name="vehicle_type_config"),
-    path("vehicles/config/type/<int:type_id>/edit/", views.vehicle_type_edit, name="vehicle_type_edit"),
-    path("vehicles/config/type/<int:type_id>/delete/", views.vehicle_type_delete, name="vehicle_type_delete"),
-    path("vehicles/config/wheeler/<int:wheeler_id>/edit/", views.wheeler_edit, name="wheeler_edit"),
-    path("vehicles/config/wheeler/<int:wheeler_id>/delete/", views.wheeler_delete, name="wheeler_delete"),
+    # VEHICLE TYPE (admin-extensible registry) - own menu entry
+    path("vehicles/types/", views.vehicle_type_list, name="vehicle_type_list"),
+    path("vehicles/types/<int:type_id>/edit/", views.vehicle_type_edit, name="vehicle_type_edit"),
+    path("vehicles/types/<int:type_id>/delete/", views.vehicle_type_delete, name="vehicle_type_delete"),
+
+    # WHEELER (admin-extensible registry) - own menu entry
+    path("vehicles/wheelers/", views.wheeler_list, name="wheeler_list"),
+    path("vehicles/wheelers/<int:wheeler_id>/edit/", views.wheeler_edit, name="wheeler_edit"),
+    path("vehicles/wheelers/<int:wheeler_id>/delete/", views.wheeler_delete, name="wheeler_delete"),
 
     # VENDORS 
     path("vendors/", views.vendor_list, name="vendor_list"),

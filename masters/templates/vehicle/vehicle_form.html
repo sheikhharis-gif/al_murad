@@ -195,9 +195,14 @@
                     </a>
                 </div>
 
-                <a href="{% url 'vehicle_type_config' %}" class="btn btn-outline-secondary btn-sm w-100">
-                    <i class="bi bi-gear me-1"></i>Manage Vehicle Types & Wheelers
-                </a>
+                <div class="d-flex gap-2">
+                    <a href="{% url 'vehicle_type_list' %}" class="btn btn-outline-secondary btn-sm w-100">
+                        <i class="bi bi-truck-front me-1"></i>Vehicle Types
+                    </a>
+                    <a href="{% url 'wheeler_list' %}" class="btn btn-outline-secondary btn-sm w-100">
+                        <i class="bi bi-life-preserver me-1"></i>Wheelers
+                    </a>
+                </div>
             </div>
         </div>
     </form>

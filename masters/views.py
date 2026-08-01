@@ -151,34 +151,20 @@ def vehicle_delete(request, vehicle_id):
     return redirect("vehicle_list")
 
 
-# ================= VEHICLE TYPE & WHEELER (admin-extensible registries) =================
-def vehicle_type_config(request):
+# ================= VEHICLE TYPE (admin-extensible registry) =================
+def vehicle_type_list(request):
     vehicle_types = VehicleType.objects.all()
-    wheelers = Wheeler.objects.all()
 
     if request.method == "POST":
-        if "add_type" in request.POST:
-            form = VehicleTypeForm(request.POST)
-            if form.is_valid():
-                form.save()
-                messages.success(request, f"Vehicle Type '{form.instance.name}' registered successfully.")
-            else:
-                messages.error(request, "Could not register that Vehicle Type - it may already exist.")
-        elif "add_wheeler" in request.POST:
-            form = WheelerForm(request.POST)
-            if form.is_valid():
-                form.save()
-                messages.success(request, f"Wheeler '{form.instance.name}' registered successfully.")
-            else:
-                messages.error(request, "Could not register that Wheeler - it may already exist.")
-        return redirect("vehicle_type_config")
+        form = VehicleTypeForm(request.POST)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f"Vehicle Type '{form.instance.name}' registered successfully.")
+        else:
+            messages.error(request, "Could not register that Vehicle Type - it may already exist.")
+        return redirect("vehicle_type_list")
 
-    return render(request, "vehicle/vehicle_type_config.html", {
-        "vehicle_types": vehicle_types,
-        "wheelers": wheelers,
-        "type_form": VehicleTypeForm(),
-        "wheeler_form": WheelerForm(),
-    })
+    return render(request, "vehicle/vehicle_type_list.html", {"vehicle_types": vehicle_types})
 
 
 def vehicle_type_edit(request, type_id):
@@ -190,7 +176,7 @@ def vehicle_type_edit(request, type_id):
             messages.success(request, f"Vehicle Type updated to '{vtype.name}'.")
         else:
             messages.error(request, "That Vehicle Type name is already registered.")
-    return redirect("vehicle_type_config")
+    return redirect("vehicle_type_list")
 
 
 def vehicle_type_delete(request, type_id):
@@ -202,7 +188,23 @@ def vehicle_type_delete(request, type_id):
             messages.success(request, f"Vehicle Type '{name}' deleted successfully.")
         except ProtectedError:
             messages.error(request, f"Cannot delete '{vtype.name}' - it's still assigned to a vehicle.")
-    return redirect("vehicle_type_config")
+    return redirect("vehicle_type_list")
+
+
+# ================= WHEELER (admin-extensible registry) =================
+def wheeler_list(request):
+    wheelers = Wheeler.objects.all()
+
+    if request.method == "POST":
+        form = WheelerForm(request.POST)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f"Wheeler '{form.instance.name}' registered successfully.")
+        else:
+            messages.error(request, "Could not register that Wheeler - it may already exist.")
+        return redirect("wheeler_list")
+
+    return render(request, "vehicle/wheeler_list.html", {"wheelers": wheelers})
 
 
 def wheeler_edit(request, wheeler_id):
@@ -214,7 +216,7 @@ def wheeler_edit(request, wheeler_id):
             messages.success(request, f"Wheeler updated to '{wheeler.name}'.")
         else:
             messages.error(request, "That Wheeler name is already registered.")
-    return redirect("vehicle_type_config")
+    return redirect("wheeler_list")
 
 
 def wheeler_delete(request, wheeler_id):
@@ -226,7 +228,7 @@ def wheeler_delete(request, wheeler_id):
             messages.success(request, f"Wheeler '{name}' deleted successfully.")
         except ProtectedError:
             messages.error(request, f"Cannot delete '{wheeler.name}' - it's still assigned to a vehicle.")
-    return redirect("vehicle_type_config")
+    return redirect("wheeler_list")
 
 
 # ================= LOCATIONS (CITY + ROUTE) =================
