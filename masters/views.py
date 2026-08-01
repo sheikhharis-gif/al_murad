@@ -5,13 +5,14 @@ from django.db.models.deletion import ProtectedError
 from datetime import date
 
 from .models import (
-    Driver, Vehicle, City, Route,
+    Driver, Vehicle, VehicleType, Wheeler, City, Route,
     Vendor, Client, Expense,
     ClientRate, DriverSalary
 )
 
 from .forms import (
-    DriverForm, VehicleForm,
+    DriverForm, VehicleForm, VehicleTyreFormSet,
+    VehicleTypeForm, WheelerForm,
     CityForm, RouteForm,
     VendorForm, ClientForm,
     ExpenseForm, ClientRateForm,
@@ -79,7 +80,6 @@ def driver_delete(request, driver_id):
 
 from django.shortcuts import render, redirect, get_object_or_404
 from .models import Vehicle
-from .forms import VehicleForm
 
 # ================= VEHICLES =================
 from datetime import date, timedelta # Ye line file mein sab se upar honi chahiye
@@ -88,8 +88,9 @@ VEHICLE_SORT_FIELDS = {
     "vehicle_number": "Vehicle Number",
     "driver__name": "Driver Name",
     "vendor__name": "Vendor Name",
-    "vehicle_type": "Vehicle Type",
-    "current_location": "Current Location",
+    "vehicle_type__name": "Vehicle Type",
+    "wheeler__name": "Wheeler",
+    "current_location__name": "Current Location",
     "is_active": "Status",
 }
 
@@ -119,30 +120,115 @@ def vehicle_list(request):
 def vehicle_add(request):
     # Agar data POST hai toh form fill hoga, warna khali form
     form = VehicleForm(request.POST or None)
-    if request.method == "POST" and form.is_valid():
-        form.save()
+    tyre_formset = VehicleTyreFormSet(request.POST or None, prefix="tyres")
+    if request.method == "POST" and form.is_valid() and tyre_formset.is_valid():
+        vehicle = form.save()
+        tyre_formset.instance = vehicle
+        tyre_formset.save()
         return redirect("vehicle_list")
-    
+
     # IMPORTANT: Template ka naam "vehicle_form.html" hona chahiye
-    return render(request, "vehicle/vehicle_form.html", {"form": form})
+    return render(request, "vehicle/vehicle_form.html", {"form": form, "tyre_formset": tyre_formset})
 
 # 3. Vehicle Edit karne ke liye
 def vehicle_edit(request, vehicle_id):
     vehicle = get_object_or_404(Vehicle, id=vehicle_id)
     # Instance pass karna zaroori hai taake purana data nazar aaye
     form = VehicleForm(request.POST or None, instance=vehicle)
-    
-    if request.method == "POST" and form.is_valid():
+    tyre_formset = VehicleTyreFormSet(request.POST or None, instance=vehicle, prefix="tyres")
+
+    if request.method == "POST" and form.is_valid() and tyre_formset.is_valid():
         form.save()
+        tyre_formset.save()
         return redirect("vehicle_list")
-        
-    return render(request, "vehicle/vehicle_form.html", {"form": form, "vehicle": vehicle})
+
+    return render(request, "vehicle/vehicle_form.html", {"form": form, "vehicle": vehicle, "tyre_formset": tyre_formset})
 
 # 4. Vehicle Delete karne ke liye
 def vehicle_delete(request, vehicle_id):
     vehicle = get_object_or_404(Vehicle, id=vehicle_id)
     vehicle.delete()
     return redirect("vehicle_list")
+
+
+# ================= VEHICLE TYPE & WHEELER (admin-extensible registries) =================
+def vehicle_type_config(request):
+    vehicle_types = VehicleType.objects.all()
+    wheelers = Wheeler.objects.all()
+
+    if request.method == "POST":
+        if "add_type" in request.POST:
+            form = VehicleTypeForm(request.POST)
+            if form.is_valid():
+                form.save()
+                messages.success(request, f"Vehicle Type '{form.instance.name}' registered successfully.")
+            else:
+                messages.error(request, "Could not register that Vehicle Type - it may already exist.")
+        elif "add_wheeler" in request.POST:
+            form = WheelerForm(request.POST)
+            if form.is_valid():
+                form.save()
+                messages.success(request, f"Wheeler '{form.instance.name}' registered successfully.")
+            else:
+                messages.error(request, "Could not register that Wheeler - it may already exist.")
+        return redirect("vehicle_type_config")
+
+    return render(request, "vehicle/vehicle_type_config.html", {
+        "vehicle_types": vehicle_types,
+        "wheelers": wheelers,
+        "type_form": VehicleTypeForm(),
+        "wheeler_form": WheelerForm(),
+    })
+
+
+def vehicle_type_edit(request, type_id):
+    vtype = get_object_or_404(VehicleType, id=type_id)
+    if request.method == "POST":
+        form = VehicleTypeForm(request.POST, instance=vtype)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f"Vehicle Type updated to '{vtype.name}'.")
+        else:
+            messages.error(request, "That Vehicle Type name is already registered.")
+    return redirect("vehicle_type_config")
+
+
+def vehicle_type_delete(request, type_id):
+    vtype = get_object_or_404(VehicleType, id=type_id)
+    if request.method == "POST":
+        try:
+            name = vtype.name
+            vtype.delete()
+            messages.success(request, f"Vehicle Type '{name}' deleted successfully.")
+        except ProtectedError:
+            messages.error(request, f"Cannot delete '{vtype.name}' - it's still assigned to a vehicle.")
+    return redirect("vehicle_type_config")
+
+
+def wheeler_edit(request, wheeler_id):
+    wheeler = get_object_or_404(Wheeler, id=wheeler_id)
+    if request.method == "POST":
+        form = WheelerForm(request.POST, instance=wheeler)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f"Wheeler updated to '{wheeler.name}'.")
+        else:
+            messages.error(request, "That Wheeler name is already registered.")
+    return redirect("vehicle_type_config")
+
+
+def wheeler_delete(request, wheeler_id):
+    wheeler = get_object_or_404(Wheeler, id=wheeler_id)
+    if request.method == "POST":
+        try:
+            name = wheeler.name
+            wheeler.delete()
+            messages.success(request, f"Wheeler '{name}' deleted successfully.")
+        except ProtectedError:
+            messages.error(request, f"Cannot delete '{wheeler.name}' - it's still assigned to a vehicle.")
+    return redirect("vehicle_type_config")
+
+
 # ================= LOCATIONS (CITY + ROUTE) =================
 def locations_master(request):
     cities = City.objects.all()

@@ -5,7 +5,7 @@
     <form method="post" novalidate>
         {% csrf_token %}
 
-        {% if form.errors %}
+        {% if form.errors or tyre_formset.errors or tyre_formset.non_form_errors %}
         <div class="alert alert-danger border-0 shadow-sm rounded-3 mb-4">
             <i class="bi bi-exclamation-triangle-fill me-2"></i>
             <strong>Vehicle could not be saved.</strong> Please fix the highlighted field(s) below.
@@ -35,24 +35,17 @@
 
         <div class="row g-4">
             <div class="col-lg-8">
-                
-                <div class="card border-0 shadow-sm rounded-4 mb-4 border-start border-primary border-4">
-                    <div class="card-body p-4">
-                        <label class="form-label small fw-bold text-uppercase text-primary">Select Vendor</label>
-                        {{ form.vendor }}
-                        {{ form.vendor.errors }}
-                    </div>
-                </div>
 
                 <div class="card border-0 shadow-sm rounded-4 mb-4">
-                    <div class="card-header bg-white border-0 pt-4 px-4">
-                        <h5 class="fw-bold mb-0 text-primary">Registration & Location</h5>
-                    </div>
-                    <div class="card-body p-4">
+                    <div class="card-body p-3">
                         <div class="row g-3">
-                            <div class="col-md-6"><label class="form-label small">Vehicle Number</label>{{ form.vehicle_number }}{{ form.vehicle_number.errors }}</div>
-                            <div class="col-md-6"><label class="form-label small text-warning">Current Location</label>{{ form.current_location }}{{ form.current_location.errors }}</div>
                             <div class="col-md-4"><label class="form-label small">Mode</label>{{ form.vehicle_mode }}{{ form.vehicle_mode.errors }}</div>
+                            <div class="col-md-4">
+                                <label class="form-label small">Vendor <span class="text-muted x-small">(Rental only)</span></label>
+                                {{ form.vendor }}{{ form.vendor.errors }}
+                            </div>
+                            <div class="col-md-4"><label class="form-label small">Vehicle Number</label>{{ form.vehicle_number }}{{ form.vehicle_number.errors }}</div>
+                            <div class="col-md-4"><label class="form-label small">Current Location</label>{{ form.current_location }}{{ form.current_location.errors }}</div>
                             <div class="col-md-4"><label class="form-label small">Type</label>{{ form.vehicle_type }}{{ form.vehicle_type.errors }}</div>
                             <div class="col-md-4"><label class="form-label small">Wheeler</label>{{ form.wheeler }}{{ form.wheeler.errors }}</div>
                         </div>
@@ -60,10 +53,26 @@
                 </div>
 
                 <div class="card border-0 shadow-sm rounded-4 mb-4">
-                    <div class="card-header bg-white border-0 pt-4 px-4">
+                    <div class="card-header bg-white border-0 pt-3 px-3">
+                        <h5 class="fw-bold mb-0 text-primary">Vehicle Details</h5>
+                    </div>
+                    <div class="card-body p-3">
+                        <div class="row g-3">
+                            <div class="col-md-4"><label class="form-label small">Model</label>{{ form.model_year }}{{ form.model_year.errors }}</div>
+                            <div class="col-md-4"><label class="form-label small">Make</label>{{ form.make }}{{ form.make.errors }}</div>
+                            <div class="col-md-4"><label class="form-label small">Purchase Date</label>{{ form.purchase_date }}{{ form.purchase_date.errors }}</div>
+                            <div class="col-md-4"><label class="form-label small">Value</label>{{ form.value }}{{ form.value.errors }}</div>
+                            <div class="col-md-4"><label class="form-label small">Leased</label>{{ form.leased }}{{ form.leased.errors }}</div>
+                            <div class="col-md-4"><label class="form-label small">Registration Name</label>{{ form.registration_name }}{{ form.registration_name.errors }}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card border-0 shadow-sm rounded-4 mb-4">
+                    <div class="card-header bg-white border-0 pt-3 px-3">
                         <h5 class="fw-bold mb-0 text-primary">Technical Specifications</h5>
                     </div>
-                    <div class="card-body p-4">
+                    <div class="card-body p-3">
                         <div class="row g-3">
                             <div class="col-md-4"><label class="form-label small">Engine No</label>{{ form.engine_no }}{{ form.engine_no.errors }}</div>
                             <div class="col-md-4"><label class="form-label small">Chassis No</label>{{ form.chassis_no }}{{ form.chassis_no.errors }}</div>
@@ -73,15 +82,49 @@
                     </div>
                 </div>
 
+                <div class="card border-0 shadow-sm rounded-4 mb-4">
+                    <div class="card-header bg-white border-0 pt-3 px-3 d-flex justify-content-between align-items-center">
+                        <h5 class="fw-bold mb-0 text-primary">Tyres</h5>
+                    </div>
+                    <div class="card-body p-3">
+                        {{ tyre_formset.management_form }}
+                        <div class="row g-2 small text-muted fw-bold text-uppercase mb-1 d-none d-md-flex">
+                            <div class="col-md-6">Tyre Number</div>
+                            <div class="col-md-5">Installed Date</div>
+                            <div class="col-md-1"></div>
+                        </div>
+                        <div id="tyres-formset">
+                            {% for tform in tyre_formset %}
+                            <div class="row g-2 align-items-center tyre-row mb-2">
+                                {% for hidden in tform.hidden_fields %}{{ hidden }}{% endfor %}
+                                <div class="col-md-6">{{ tform.tyre_number }}</div>
+                                <div class="col-md-5">{{ tform.installed_date }}</div>
+                                <div class="col-md-1 text-center">
+                                    {% if tform.instance.pk %}
+                                    <div class="form-check">
+                                        {{ tform.DELETE }}
+                                        <label class="form-check-label x-small">Del</label>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        <button type="button" id="add-tyre-row" class="btn btn-sm btn-outline-primary rounded-pill px-3 mt-1">
+                            <i class="bi bi-plus-lg me-1"></i>Add Another Tyre
+                        </button>
+                    </div>
+                </div>
+
                 <div class="card border-0 shadow-sm rounded-4">
-                    <div class="card-header bg-white border-0 pt-4 px-4">
+                    <div class="card-header bg-white border-0 pt-3 px-3">
                         <h5 class="fw-bold mb-0 text-primary">Permits & Compliance</h5>
                     </div>
-                    <div class="card-body p-4">
-                        <div class="row g-4">
+                    <div class="card-body p-3">
+                        <div class="row g-3">
                             <div class="col-md-6">
-                                <div class="p-3 border rounded-3 bg-light-subtle">
-                                    <h6 class="fw-bold border-bottom pb-2">Sindh Province</h6>
+                                <div class="p-2 border rounded-3 bg-light-subtle">
+                                    <h6 class="fw-bold border-bottom pb-2 mb-2 small">Sindh Province</h6>
                                     <div class="row g-2">
                                         <div class="col-6"><label class="x-small">Permit</label>{{ form.sindh_permit_expiry }}</div>
                                         <div class="col-6"><label class="x-small text-danger">Fitness</label>{{ form.fitness_expiry_sindh }}</div>
@@ -89,8 +132,8 @@
                                 </div>
                             </div>
                             <div class="col-md-6">
-                                <div class="p-3 border rounded-3 bg-light-subtle">
-                                    <h6 class="fw-bold border-bottom pb-2">Punjab Province</h6>
+                                <div class="p-2 border rounded-3 bg-light-subtle">
+                                    <h6 class="fw-bold border-bottom pb-2 mb-2 small">Punjab Province</h6>
                                     <div class="row g-2">
                                         <div class="col-6"><label class="x-small">Permit</label>{{ form.punjab_permit_expiry }}</div>
                                         <div class="col-6"><label class="x-small text-danger">Fitness</label>{{ form.fitness_expiry_punjab }}</div>
@@ -98,8 +141,8 @@
                                 </div>
                             </div>
                             <div class="col-md-6">
-                                <div class="p-3 border rounded-3 bg-light-subtle">
-                                    <h6 class="fw-bold border-bottom pb-2">KPK Province</h6>
+                                <div class="p-2 border rounded-3 bg-light-subtle">
+                                    <h6 class="fw-bold border-bottom pb-2 mb-2 small">KPK Province</h6>
                                     <div class="row g-2">
                                         <div class="col-6"><label class="x-small">Permit</label>{{ form.kpk_permit_expiry }}</div>
                                         <div class="col-6"><label class="x-small text-danger">Fitness</label>{{ form.fitness_expiry_kpk }}</div>
@@ -107,8 +150,8 @@
                                 </div>
                             </div>
                             <div class="col-md-6">
-                                <div class="p-3 border rounded-3 bg-light-subtle">
-                                    <h6 class="fw-bold border-bottom pb-2">Balochistan Province</h6>
+                                <div class="p-2 border rounded-3 bg-light-subtle">
+                                    <h6 class="fw-bold border-bottom pb-2 mb-2 small">Balochistan Province</h6>
                                     <div class="row g-2">
                                         <div class="col-6"><label class="x-small">Permit</label>{{ form.balochistan_permit_expiry }}</div>
                                         <div class="col-6"><label class="x-small text-danger">Fitness</label>{{ form.fitness_expiry_balochistan }}</div>
@@ -121,7 +164,7 @@
             </div>
 
             <div class="col-lg-4">
-                <div class="card border-0 shadow-sm rounded-4 mb-4 bg-light p-4">
+                <div class="card border-0 shadow-sm rounded-4 mb-4 bg-light p-3">
                     <div class="form-check form-switch fs-5 text-center">
                         {{ form.is_active }}
                         <label class="form-check-label ms-2 fw-bold">Active Status</label>
@@ -137,7 +180,7 @@
                     </div>
                 </div>
 
-                <div class="card border-0 shadow-sm rounded-4 mb-4 p-4">
+                <div class="card border-0 shadow-sm rounded-4 mb-4 p-3">
                     <h6 class="fw-bold mb-3">
                         <i class="bi bi-person-badge me-2 text-primary"></i>Assign Driver
                     </h6>
@@ -151,14 +194,18 @@
                         <i class="bi bi-plus-circle me-1"></i>Add New Driver
                     </a>
                 </div>
+
+                <a href="{% url 'vehicle_type_config' %}" class="btn btn-outline-secondary btn-sm w-100">
+                    <i class="bi bi-gear me-1"></i>Manage Vehicle Types & Wheelers
+                </a>
             </div>
         </div>
     </form>
 </div>
 
 <style>
-    input, select, textarea { display: block; width: 100%; padding: 0.6rem 1rem; border: 1px solid #e2e8f0; border-radius: 8px; margin-bottom: 5px; }
-    .form-label { font-weight: 600; color: #64748b; font-size: 0.85rem; }
+    input, select, textarea { display: block; width: 100%; padding: 0.5rem 0.75rem; border: 1px solid #e2e8f0; border-radius: 8px; margin-bottom: 5px; }
+    .form-label { font-weight: 600; color: #64748b; font-size: 0.85rem; margin-bottom: 0.2rem; }
     .x-small { font-size: 0.7rem; text-transform: uppercase; font-weight: bold; color: #64748b; }
     .bg-light-subtle { background-color: #f8fafc; }
     .errorlist {
@@ -169,5 +216,53 @@
         margin: -0.2rem 0 0.4rem;
         padding: 0;
     }
+    .tyre-row .form-check { display: flex; align-items: center; gap: 4px; }
 </style>
+
+<script>
+    // Vendor is only meaningful for a Rental vehicle - disabled otherwise so
+    // Own/Fixed vehicles never submit a vendor value.
+    (function () {
+        const mode = document.getElementById('id_vehicle_mode');
+        const vendor = document.getElementById('id_vendor');
+        if (!mode || !vendor) return;
+
+        function syncVendorState() {
+            const isRental = mode.value === 'RENTAL';
+            vendor.disabled = !isRental;
+            if (!isRental) vendor.value = '';
+        }
+        mode.addEventListener('change', syncVendorState);
+        syncVendorState();
+    })();
+
+    // Add Another Tyre - same clone-last-row pattern used for Maintenance Parts.
+    document.getElementById('add-tyre-row').addEventListener('click', function () {
+        const container = document.getElementById('tyres-formset');
+        const totalForms = document.getElementById('id_tyres-TOTAL_FORMS');
+        const formNum = parseInt(totalForms.value, 10);
+        const rows = container.querySelectorAll('.tyre-row');
+        const templateRow = rows[rows.length - 1];
+        const newRow = templateRow.cloneNode(true);
+
+        newRow.querySelectorAll('input, select').forEach(function (field) {
+            const name = field.getAttribute('name');
+            const id = field.getAttribute('id');
+            if (name) field.setAttribute('name', name.replace(/-\d+-/, '-' + formNum + '-'));
+            if (id) field.setAttribute('id', id.replace(/-\d+-/, '-' + formNum + '-'));
+            if (field.type === 'checkbox') {
+                field.checked = false;
+            } else if (field.type === 'hidden') {
+                field.value = '';
+            } else {
+                field.value = '';
+            }
+        });
+        const deleteCol = newRow.querySelector('.form-check');
+        if (deleteCol) deleteCol.closest('.col-md-1').innerHTML = '';
+
+        container.appendChild(newRow);
+        totalForms.value = formNum + 1;
+    });
+</script>
 {% endblock %}

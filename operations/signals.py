@@ -13,16 +13,16 @@ def update_vehicle_location(sender, instance, created, **kwargs):
         
         # Scenario 1: Agar Trip model mein 'route' field hai (Recommended)
         if hasattr(instance, 'route') and instance.route:
-            # Route model se destination city ka naam nikalna
-            vehicle.current_location = instance.route.destination.name
+            # current_location is a City FK now, so assign the City object directly.
+            vehicle.current_location = instance.route.destination
             vehicle.save()
-            
+
         # Scenario 2: Agar Trip model mein direct 'destination' field hai
         elif hasattr(instance, 'destination') and instance.destination:
-            vehicle.current_location = instance.destination.name
+            vehicle.current_location = instance.destination
             vehicle.save()
-            
+
         # Scenario 3: Agar field ka naam 'destination_city' hai
         elif hasattr(instance, 'destination_city') and instance.destination_city:
-            vehicle.current_location = instance.destination_city.name
+            vehicle.current_location = instance.destination_city
             vehicle.save()

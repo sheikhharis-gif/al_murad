@@ -1,5 +1,8 @@
 from django import forms
-from .models import Vehicle, Driver, Vendor, City, Route, Client, Expense, ClientRate, DriverSalary
+from .models import (
+    Vehicle, VehicleType, Wheeler, VehicleTyre, Driver, Vendor,
+    City, Route, Client, Expense, ClientRate, DriverSalary
+)
 from operations.models import Trip
 
 ################ VEHICLES ################
@@ -8,29 +11,30 @@ class VehicleForm(forms.ModelForm):
     class Meta:
         model = Vehicle
         fields = "__all__"
-        
+
         # 1. Purani driver fields ko list se nikaal diya, ab sirf 'driver' dropdown bacha hai
         text_fields = [
-            "vehicle_number", "engine_no", "chassis_no", "container_no", 
-            "color", "current_location", "current_km"
+            "vehicle_number", "engine_no", "chassis_no", "container_no",
+            "color", "current_km", "make", "registration_name",
         ]
-        
+
         date_fields = [
-            "sindh_permit_expiry", "punjab_permit_expiry", "kpk_permit_expiry", 
-            "balochistan_permit_expiry", "fitness_expiry_sindh", "fitness_expiry_punjab", 
-            "fitness_expiry_kpk", "fitness_expiry_balochistan", "last_meter_update"
+            "sindh_permit_expiry", "punjab_permit_expiry", "kpk_permit_expiry",
+            "balochistan_permit_expiry", "fitness_expiry_sindh", "fitness_expiry_punjab",
+            "fitness_expiry_kpk", "fitness_expiry_balochistan", "last_meter_update",
+            "purchase_date",
         ]
 
         # 2. Base widgets for text fields
         widgets = {
             field: forms.TextInput(attrs={"class": "form-control"}) for field in text_fields
         }
-        
+
         # 3. Date fields widgets
         widgets.update({
             field: forms.DateInput(attrs={"class": "form-control", "type": "date"}) for field in date_fields
         })
-        
+
         # 4. Dropdowns (is mein ab 'driver' bhi shamil hai)
         widgets.update({
             "vendor": forms.Select(attrs={"class": "form-select"}),
@@ -38,7 +42,11 @@ class VehicleForm(forms.ModelForm):
             "vehicle_mode": forms.Select(attrs={"class": "form-select"}),
             "vehicle_type": forms.Select(attrs={"class": "form-select"}),
             "wheeler": forms.Select(attrs={"class": "form-select"}),
+            "current_location": forms.Select(attrs={"class": "form-select"}),
             "is_active": forms.CheckboxInput(attrs={"class": "form-check-input"}),
+            "leased": forms.Select(attrs={"class": "form-select"}, choices=((False, "No"), (True, "Yes"))),
+            "model_year": forms.NumberInput(attrs={"class": "form-control", "placeholder": "e.g. 2014"}),
+            "value": forms.NumberInput(attrs={"class": "form-control", "step": "0.01"}),
         })
 
     def __init__(self, *args, **kwargs):
@@ -50,6 +58,59 @@ class VehicleForm(forms.ModelForm):
             active_drivers = active_drivers | Driver.objects.filter(pk=self.instance.driver_id)
         self.fields["driver"].queryset = active_drivers.distinct()
         self.fields["driver"].empty_label = "--- No Driver Assigned ---"
+
+        self.fields["vendor"].empty_label = "--- No Vendor ---"
+        self.fields["vehicle_type"].empty_label = "--- Select Type ---"
+        self.fields["wheeler"].empty_label = "--- Select Wheeler ---"
+        self.fields["current_location"].empty_label = "--- Select City ---"
+
+
+VehicleTyreFormSet = forms.inlineformset_factory(
+    Vehicle,
+    VehicleTyre,
+    fields=["tyre_number", "installed_date"],
+    widgets={
+        "tyre_number": forms.TextInput(attrs={"class": "form-control", "placeholder": "Tyre number"}),
+        "installed_date": forms.DateInput(attrs={"class": "form-control", "type": "date"}),
+    },
+    extra=1,
+    can_delete=True,
+)
+
+
+class VehicleTypeForm(forms.ModelForm):
+    class Meta:
+        model = VehicleType
+        fields = ["name"]
+        widgets = {"name": forms.TextInput(attrs={"class": "form-control", "placeholder": "e.g. 20FT DRY"})}
+
+    def clean_name(self):
+        # Model.save() uppercases the name, so the duplicate check must compare
+        # uppercased too - otherwise "45ft dry" slips past validation as "unique"
+        # and then collides with the already-uppercased "45FT DRY" at save time.
+        name = (self.cleaned_data.get("name") or "").strip().upper()
+        qs = VehicleType.objects.filter(name=name)
+        if self.instance and self.instance.pk:
+            qs = qs.exclude(pk=self.instance.pk)
+        if qs.exists():
+            raise forms.ValidationError("This Vehicle Type is already registered.")
+        return name
+
+
+class WheelerForm(forms.ModelForm):
+    class Meta:
+        model = Wheeler
+        fields = ["name"]
+        widgets = {"name": forms.TextInput(attrs={"class": "form-control", "placeholder": "e.g. 10 WHEELER"})}
+
+    def clean_name(self):
+        name = (self.cleaned_data.get("name") or "").strip().upper()
+        qs = Wheeler.objects.filter(name=name)
+        if self.instance and self.instance.pk:
+            qs = qs.exclude(pk=self.instance.pk)
+        if qs.exists():
+            raise forms.ValidationError("This Wheeler is already registered.")
+        return name
 
 ################ DRIVERS ################
 

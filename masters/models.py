@@ -60,59 +60,67 @@ class VendorRate(models.Model):
         return f"{self.vendor} - {self.route}"
 
 # ================= VEHICLE =================
+# ================= VEHICLE TYPE (admin-extensible registry) =================
+class VehicleType(models.Model):
+    name = models.CharField(max_length=50, unique=True)
+
+    def save(self, *args, **kwargs):
+        self.name = (self.name or "").strip().upper()
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        ordering = ["name"]
+
+
+# ================= WHEELER (admin-extensible registry) =================
+class Wheeler(models.Model):
+    name = models.CharField(max_length=50, unique=True)
+
+    def save(self, *args, **kwargs):
+        self.name = (self.name or "").strip().upper()
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        ordering = ["name"]
+
+
 class Vehicle(models.Model):
     VEHICLE_MODE = [
         ("OWN", "Own"),
         ("RENTAL", "Rental"),
         ("FIXED", "Fixed"),
     ]
-    
-    VEHICLE_TYPES = [
-        ("Mini Truck", "Mini Truck"),
-        ("Suzuki Dry", "Suzuki Dry"), ("Suzuki Reefer", "Suzuki Reefer"),
-        ("Shahzore Dry", "Shahzore Dry"), ("Shahzore Reefer", "Shahzore Reefer"),
-        ("10ft Dry", "10ft Dry"), ("10ft Reefer", "10ft Reefer"),
-        ("14ft Dry", "14ft Dry"), ("14ft Reefer", "14ft Reefer"),
-        ("16ft Dry", "16ft Dry"), ("16ft Reefer", "16ft Reefer"),
-        ("17ft Dry", "17ft Dry"), ("17ft Reefer", "17ft Reefer"),
-        ("18ft Dry", "18ft Dry"), ("18ft Reefer", "18ft Reefer"),
-        ("20ft Dry", "20ft Dry"), ("20ft Reefer", "20ft Reefer"),
-        ("22ft Dry", "22ft Dry"), ("22ft Reefer", "22ft Reefer"),
-        ("24ft Dry", "24ft Dry"), ("24ft Reefer", "24ft Reefer"),
-        ("34ft Dry", "34ft Dry"), ("34ft Reefer", "34ft Reefer"),
-        ("40ft Dry", "40ft Dry"), ("40ft Reefer", "40ft Reefer"),
-        ("45ft Dry", "45ft Dry"), ("45ft Reefer", "45ft Reefer"),
-        ("50ft Dry", "50ft Dry"), ("50ft Reefer", "50ft Reefer"),
-    ]
 
-    WHEELER = [
-        ("2x2", "2x2"), ("2x4", "2x4"), ("2x8", "2x8"),
-        ("6x8", "6x8"), ("6x12", "6x12"), ("6x16", "6x16"),
-        ("6", "6 Wheeler"), ("14", "14 Wheeler"),
-    ]
+    # ForeignKey to Vendor - optional; only relevant when vehicle_mode is Rental
+    vendor = models.ForeignKey('Vendor', on_delete=models.PROTECT, null=True, blank=True, related_name='vehicles')
 
-    # ForeignKey to Vendor
-    vendor = models.ForeignKey('Vendor', on_delete=models.PROTECT, related_name='vehicles')
-    
     # Dropdown ke liye Driver link (ForeignKey)
     # Isse aapko form mein driver ki list mil jayegi
     driver = models.ForeignKey(
-        'Driver', 
-        on_delete=models.SET_NULL, 
-        null=True, 
-        blank=True, 
+        'Driver',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
         related_name='vehicles',
         help_text="Select driver from the registered list"
     )
 
     vehicle_mode = models.CharField(max_length=10, choices=VEHICLE_MODE)
     vehicle_number = models.CharField(max_length=20, unique=True)
-    current_location = models.CharField(max_length=100, default="Karachi", blank=True)     
-    vehicle_type = models.CharField(max_length=30, choices=VEHICLE_TYPES)
+    current_location = models.ForeignKey(
+        'City', on_delete=models.SET_NULL, null=True, blank=True, related_name='vehicles_here'
+    )
+    vehicle_type = models.ForeignKey(VehicleType, on_delete=models.PROTECT, null=True, blank=True, related_name='vehicles')
     engine_no = models.CharField(max_length=50, blank=True, null=True)
     chassis_no = models.CharField(max_length=50, blank=True, null=True)
     container_no = models.CharField(max_length=50, blank=True, null=True)
-    wheeler = models.CharField(max_length=10, choices=WHEELER)
+    wheeler = models.ForeignKey(Wheeler, on_delete=models.PROTECT, null=True, blank=True, related_name='vehicles')
     color = models.CharField(max_length=30, blank=True)
 
     # Expiry Dates
@@ -124,12 +132,20 @@ class Vehicle(models.Model):
     fitness_expiry_punjab = models.DateField(null=True, blank=True)
     fitness_expiry_kpk = models.DateField(null=True, blank=True)
     fitness_expiry_balochistan = models.DateField(null=True, blank=True)
-    
+
     # Old text fields removed - Ab driver database se link hai
 
     is_active = models.BooleanField(default=True)
     current_km = models.PositiveIntegerField(default=0)
     last_meter_update = models.DateField(null=True, blank=True)
+
+    # ===== Vehicle detail fields =====
+    model_year = models.PositiveIntegerField("Model", null=True, blank=True)
+    make = models.CharField(max_length=100, blank=True)
+    purchase_date = models.DateField(null=True, blank=True)
+    value = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    leased = models.BooleanField(default=False)
+    registration_name = models.CharField(max_length=150, blank=True)
 
     # ===== SMART LOGIC FOR ALERTS =====
     def check_expiry(self, expiry_date):
@@ -158,6 +174,17 @@ class Vehicle(models.Model):
 
     def __str__(self):
         return f"{self.vehicle_number} ({self.driver if self.driver else 'No Driver'})"
+
+
+# ================= VEHICLE TYRES =================
+class VehicleTyre(models.Model):
+    vehicle = models.ForeignKey(Vehicle, on_delete=models.CASCADE, related_name="tyres")
+    tyre_number = models.CharField(max_length=50)
+    installed_date = models.DateField(null=True, blank=True)
+
+    def __str__(self):
+        return f"{self.tyre_number} ({self.vehicle.vehicle_number})"
+
 
 # ================= WORKSHOP: MAINTENANCE JOB =================
 class MaintenanceJob(models.Model):
