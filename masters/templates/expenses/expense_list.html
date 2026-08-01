@@ -85,7 +85,7 @@
                 <tbody id="expenseTableBody">
                     {% for e in expenses %}
                     <tr>
-                        <td class="ps-4 fw-semibold text-dark">{{ e.date|date:"d M, Y" }}</td>
+                        <td class="ps-4 fw-semibold text-dark">{{ e.date|date:"d-F-y" }}</td>
                         <td>
                              <span class="badge bg-light text-dark border shadow-sm">Trip #{{ e.trip.id|default:"--" }}</span>
                         </td>

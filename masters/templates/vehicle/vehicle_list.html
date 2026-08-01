@@ -86,16 +86,16 @@
                             <div class="doc-grid">
                                 {% with status=v.check_expiry|default:"safe" %}
                                 <div class="doc-item {% if v.sindh_permit_expiry < today %}bg-danger text-white border-danger{% endif %}" title="Sindh">
-                                    <span class="p-tag">S</span> {{ v.sindh_permit_expiry|date:"d-F-Y"|default:"--" }}
+                                    <span class="p-tag">S</span> {{ v.sindh_permit_expiry|date:"d-F-y"|default:"--" }}
                                 </div>
                                 <div class="doc-item {% if v.punjab_permit_expiry < today %}bg-danger text-white border-danger{% endif %}" title="Punjab">
-                                    <span class="p-tag">P</span> {{ v.punjab_permit_expiry|date:"d-F-Y"|default:"--" }}
+                                    <span class="p-tag">P</span> {{ v.punjab_permit_expiry|date:"d-F-y"|default:"--" }}
                                 </div>
                                 <div class="doc-item {% if v.kpk_permit_expiry < today %}bg-danger text-white border-danger{% endif %}" title="KPK">
-                                    <span class="p-tag">K</span> {{ v.kpk_permit_expiry|date:"d-F-Y"|default:"--" }}
+                                    <span class="p-tag">K</span> {{ v.kpk_permit_expiry|date:"d-F-y"|default:"--" }}
                                 </div>
                                 <div class="doc-item {% if v.balochistan_permit_expiry < today %}bg-danger text-white border-danger{% endif %}" title="Balochistan">
-                                    <span class="p-tag">B</span> {{ v.balochistan_permit_expiry|date:"d-F-Y"|default:"--" }}
+                                    <span class="p-tag">B</span> {{ v.balochistan_permit_expiry|date:"d-F-y"|default:"--" }}
                                 </div>
                                 {% endwith %}
                             </div>
@@ -104,16 +104,16 @@
                         <td>
                             <div class="doc-grid fitness">
                                 <div class="doc-item {% if v.fitness_expiry_sindh < today %}bg-danger text-white border-danger{% endif %}">
-                                    <span class="p-tag fit">S</span> {{ v.fitness_expiry_sindh|date:"d-F-Y"|default:"--" }}
+                                    <span class="p-tag fit">S</span> {{ v.fitness_expiry_sindh|date:"d-F-y"|default:"--" }}
                                 </div>
                                 <div class="doc-item {% if v.fitness_expiry_punjab < today %}bg-danger text-white border-danger{% endif %}">
-                                    <span class="p-tag fit">P</span> {{ v.fitness_expiry_punjab|date:"d-F-Y"|default:"--" }}
+                                    <span class="p-tag fit">P</span> {{ v.fitness_expiry_punjab|date:"d-F-y"|default:"--" }}
                                 </div>
                                 <div class="doc-item {% if v.fitness_expiry_kpk < today %}bg-danger text-white border-danger{% endif %}">
-                                    <span class="p-tag fit">K</span> {{ v.fitness_expiry_kpk|date:"d-F-Y"|default:"--" }}
+                                    <span class="p-tag fit">K</span> {{ v.fitness_expiry_kpk|date:"d-F-y"|default:"--" }}
                                 </div>
                                 <div class="doc-item {% if v.fitness_expiry_balochistan < today %}bg-danger text-white border-danger{% endif %}">
-                                    <span class="p-tag fit">B</span> {{ v.fitness_expiry_balochistan|date:"d-F-Y"|default:"--" }}
+                                    <span class="p-tag fit">B</span> {{ v.fitness_expiry_balochistan|date:"d-F-y"|default:"--" }}
                                 </div>
                             </div>
                         </td>
