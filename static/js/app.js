@@ -82,5 +82,31 @@
         document.querySelectorAll('select.searchable-select').forEach(enhanceSearchableSelect);
     };
 
+    // Turns any <input class="datepicker"> into a typing-friendly date field
+    // showing "10-June-2025" (Flatpickr's altInput), while the real value
+    // submitted to the server stays ISO (Y-m-d) so Django's DateField parses
+    // it normally. Empty fields default to today's date on load; add
+    // data-max-today="1" on a field to cap it at today (e.g. a job date that
+    // can't be in the future).
+    window.enhanceDatepickers = function () {
+        if (typeof flatpickr === 'undefined') return;
+        document.querySelectorAll('input.datepicker').forEach(function (el) {
+            if (el.dataset.fpEnhanced) return;
+            el.dataset.fpEnhanced = '1';
+
+            var opts = {
+                dateFormat: 'Y-m-d',
+                altInput: true,
+                altFormat: 'd-F-Y',
+                allowInput: true,
+            };
+            if (el.dataset.maxToday) opts.maxDate = 'today';
+            if (!el.value) opts.defaultDate = 'today';
+
+            flatpickr(el, opts);
+        });
+    };
+
     document.addEventListener('DOMContentLoaded', window.enhanceSearchableSelects);
+    document.addEventListener('DOMContentLoaded', window.enhanceDatepickers);
 })();

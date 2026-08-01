@@ -32,7 +32,7 @@ class VehicleForm(forms.ModelForm):
 
         # 3. Date fields widgets
         widgets.update({
-            field: forms.DateInput(attrs={"class": "form-control", "type": "date"}) for field in date_fields
+            field: forms.DateInput(attrs={"class": "form-control datepicker"}) for field in date_fields
         })
 
         # 4. Dropdowns (is mein ab 'driver' bhi shamil hai)
@@ -71,7 +71,7 @@ VehicleTyreFormSet = forms.inlineformset_factory(
     fields=["tyre_number", "installed_date"],
     widgets={
         "tyre_number": forms.TextInput(attrs={"class": "form-control", "placeholder": "Tyre number"}),
-        "installed_date": forms.DateInput(attrs={"class": "form-control", "type": "date"}),
+        "installed_date": forms.DateInput(attrs={"class": "form-control datepicker"}),
     },
     extra=1,
     can_delete=True,
@@ -131,9 +131,9 @@ class DriverForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["address"].widget = forms.Textarea(attrs={"class": "form-control", "rows": 3})
-        self.fields["cnic_expiry"].widget = forms.DateInput(attrs={"class": "form-control", "type": "date"})
-        self.fields["license_expiry"].widget = forms.DateInput(attrs={"class": "form-control", "type": "date"})
-        self.fields["joining_date"].widget = forms.DateInput(attrs={"class": "form-control", "type": "date"})
+        self.fields["cnic_expiry"].widget = forms.DateInput(attrs={"class": "form-control datepicker"})
+        self.fields["license_expiry"].widget = forms.DateInput(attrs={"class": "form-control datepicker"})
+        self.fields["joining_date"].widget = forms.DateInput(attrs={"class": "form-control datepicker"})
         self.fields["is_active"].widget.attrs.update({"class": "form-check-input"})
 
 ################ SALARY ################
@@ -144,7 +144,7 @@ class DriverSalaryForm(forms.ModelForm):
         fields = "__all__"
         widgets = {
             "driver": forms.Select(attrs={"class": "form-select"}),
-            "month": forms.DateInput(attrs={"class": "form-control", "type": "date"}),
+            "month": forms.DateInput(attrs={"class": "form-control datepicker"}),
             "emp_id": forms.TextInput(attrs={"class": "form-control"}),
             "designation": forms.TextInput(attrs={"class": "form-control"}),
             "present_days": forms.NumberInput(attrs={"class": "form-control"}),
@@ -218,7 +218,7 @@ class ExpenseForm(forms.ModelForm):
         exclude = ['total_expense'] 
         
         widgets = {
-            'date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'date': forms.DateInput(attrs={'class': 'form-control datepicker'}),
             'trip': forms.Select(attrs={'class': 'form-select'}),
             'pump_name': forms.TextInput(attrs={'placeholder': 'Enter pump name'}),
             'slip_no': forms.TextInput(attrs={'placeholder': 'Slip # Optional'}),
@@ -244,7 +244,7 @@ class ClientRateForm(forms.ModelForm):
             "route": forms.Select(attrs={"class": "form-select searchable-select"}),
             "rate": forms.NumberInput(attrs={"class": "form-control"}),
             "fuel_price": forms.NumberInput(attrs={"class": "form-control"}),
-            "effective_date": forms.DateInput(attrs={"type": "date", "class": "form-control"}),
+            "effective_date": forms.DateInput(attrs={"class": "form-control datepicker"}),
         }
 
 from django import forms
@@ -266,7 +266,7 @@ class MaintenanceJobForm(forms.ModelForm):
         widgets = {
             "vehicle": forms.Select(attrs={"class": "form-select"}),
             "date": forms.DateInput(attrs={
-                "class": "form-control", "type": "date", "max": date.today().isoformat()
+                "class": "form-control datepicker", "data-max-today": "1"
             }),
             "maintenance_type": forms.Select(attrs={"class": "form-select"}),
             "description": forms.TextInput(attrs={"class": "form-control", "placeholder": "e.g. Break Setting"}),
@@ -277,7 +277,7 @@ class MaintenanceJobForm(forms.ModelForm):
             "labor_cost": forms.NumberInput(attrs={"class": "form-control", "min": "0", "step": "0.01"}),
             "status": forms.Select(attrs={"class": "form-select"}),
             "vendor_payment_status": forms.Select(attrs={"class": "form-select"}),
-            "payment_date": forms.DateInput(attrs={"class": "form-control", "type": "date"}),
+            "payment_date": forms.DateInput(attrs={"class": "form-control datepicker"}),
             "bill_ref": forms.TextInput(attrs={"class": "form-control", "placeholder": "Bill / reference #"}),
             "unpaid_balance": forms.NumberInput(attrs={"class": "form-control", "min": "0", "step": "0.01"}),
         }
