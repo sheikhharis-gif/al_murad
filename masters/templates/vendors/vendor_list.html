@@ -2,17 +2,20 @@
 
 {% block content %}
 <div class="container-fluid py-4">
-    
+
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
             <h3 class="fw-bold text-dark mb-1">
-                <i class="bi bi-shop text-primary me-2"></i>Vendor Directory
+                <i class="bi bi-shop text-primary me-2"></i>Supplier Directory
             </h3>
             <p class="text-muted small mb-0">Manage third-party suppliers, fuel stations, and workshop partners.</p>
         </div>
-        <div>
+        <div class="d-flex gap-2">
+            <a href="{% url 'supplier_type_config' %}" class="btn btn-outline-secondary px-3 shadow-sm fw-bold rounded-3">
+                <i class="bi bi-tags me-2"></i>Supplier Types
+            </a>
             <a href="{% url 'vendor_add' %}" class="btn btn-primary px-4 shadow-sm fw-bold rounded-3">
-                <i class="bi bi-plus-circle-fill me-2"></i>Register New Vendor
+                <i class="bi bi-plus-circle-fill me-2"></i>Add New Supplier
             </a>
         </div>
     </div>
@@ -35,7 +38,7 @@
                 </form>
                 <div class="input-group w-auto">
                     <span class="input-group-text bg-light border-0"><i class="bi bi-search"></i></span>
-                    <input type="text" id="vendorSearch" class="form-control bg-light border-0 small" placeholder="Search vendor name...">
+                    <input type="text" id="vendorSearch" class="form-control bg-light border-0 small" placeholder="Search supplier name...">
                 </div>
             </div>
         </div>
@@ -44,8 +47,10 @@
             <table class="table table-hover align-middle mb-0 custom-vendor-table">
                 <thead class="bg-light text-muted small text-uppercase fw-bold">
                     <tr>
-                        <th class="ps-4">Vendor Name</th>
-                        <th>Vehicles Count</th> <th>Contact Information</th>
+                        <th class="ps-4">Supplier Name</th>
+                        <th>Type</th>
+                        <th>Vehicles Count</th>
+                        <th>Contact Information</th>
                         <th class="text-end pe-4">Management</th>
                     </tr>
                 </thead>
@@ -64,6 +69,9 @@
                             </div>
                         </td>
                         <td>
+                            <span class="badge bg-light text-dark border">{{ v.supplier_type.name|default:"--" }}</span>
+                        </td>
+                        <td>
                             {% if v.vehicle_count > 0 %}
                                 <span class="badge bg-success-soft text-success px-3 py-2 rounded-pill border border-success-subtle">
                                     <i class="bi bi-truck me-1 small"></i> {{ v.vehicle_count }} Vehicles
@@ -77,25 +85,25 @@
                         <td>
                             <div class="d-flex flex-column">
                                 <span class="text-dark fw-medium small">
-                                    <i class="bi bi-telephone text-primary me-2"></i>{{ v.phone }}
+                                    <i class="bi bi-telephone text-primary me-2"></i>{{ v.poc1_phone|default:"--" }}
                                 </span>
                                 <span class="text-muted small">
-                                    <i class="bi bi-person me-2"></i>{{ v.poc }}
+                                    <i class="bi bi-person me-2"></i>{{ v.poc1_name|default:"--" }}
                                 </span>
                             </div>
                         </td>
                         <td class="text-end pe-4">
                             <div class="btn-group shadow-sm rounded-2 overflow-hidden border">
-                                <a href="tel:{{ v.phone }}" class="btn btn-white btn-sm" title="Call Now">
+                                <a href="tel:{{ v.poc1_phone }}" class="btn btn-white btn-sm" title="Call Now">
                                     <i class="bi bi-telephone-outbound text-success"></i>
                                 </a>
-                                <a href="{% url 'vendor_edit' v.id %}" class="btn btn-white btn-sm border-start" title="Edit Vendor">
+                                <a href="{% url 'vendor_edit' v.id %}" class="btn btn-white btn-sm border-start" title="Edit Supplier">
                                     <i class="bi bi-pencil-square text-warning"></i>
                                 </a>
                                 <form action="{% url 'vendor_delete' v.id %}" method="POST" class="d-inline">
                                     {% csrf_token %}
-                                    <button type="submit" class="btn btn-white btn-sm border-start" title="Delete Vendor" 
-                                            onclick="return confirm('Bae, kya waqai is vendor ko delete karna hai?')">
+                                    <button type="submit" class="btn btn-white btn-sm border-start" title="Delete Supplier"
+                                            onclick="return confirm('Bae, kya waqai is supplier ko delete karna hai?')">
                                         <i class="bi bi-trash text-danger"></i>
                                     </button>
                                 </form>
@@ -104,11 +112,11 @@
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="4" class="text-center py-5">
+                        <td colspan="5" class="text-center py-5">
                             <div class="py-4 opacity-50">
                                 <i class="bi bi-building-exclamation display-1"></i>
-                                <h5 class="mt-3">No vendors found in the database.</h5>
-                                <p class="small">System mein koi supplier ya vendor mojood nahi hai.</p>
+                                <h5 class="mt-3">No suppliers found in the database.</h5>
+                                <p class="small">System mein koi supplier mojood nahi hai.</p>
                             </div>
                         </td>
                     </tr>
@@ -120,9 +128,9 @@
 </div>
 
 <style>
-    /* Professional Vendor Styles */
+    /* Professional Supplier Styles */
     .bg-success-soft { background-color: rgba(25, 135, 84, 0.1) !important; }
-    
+
     .custom-vendor-table thead th {
         font-size: 0.75rem;
         padding: 1.2rem 0.75rem;
@@ -146,7 +154,7 @@
     }
 
     .bg-info-subtle { background-color: #e0f2fe !important; }
-    
+
     .btn-white { background-color: #fff; border: none; }
     .btn-white:hover { background-color: #f8fafc; }
 
@@ -154,4 +162,10 @@
         background-color: #f9fafb;
     }
 </style>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        window.initTableSearch('vendorSearch', 'vendorTableBody');
+    });
+</script>
 {% endblock %}

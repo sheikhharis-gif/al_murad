@@ -193,12 +193,13 @@
                 </li>
 
                 <li class="nav-item dropdown">
-                    <a href="#" class="nav-link dropdown-toggle {% if request.resolver_match.url_name == 'vendor_list' or request.resolver_match.url_name == 'vendor_add' or request.resolver_match.url_name == 'vendor_edit' %}active{% endif %}" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                        <i class="bi bi-shop"></i> Vendors
+                    <a href="#" class="nav-link dropdown-toggle {% if request.resolver_match.url_name == 'vendor_list' or request.resolver_match.url_name == 'vendor_add' or request.resolver_match.url_name == 'vendor_edit' or request.resolver_match.url_name == 'supplier_type_config' %}active{% endif %}" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-shop"></i> Suppliers
                     </a>
                     <ul class="dropdown-menu">
-                        <li><a class="dropdown-item" href="{% url 'vendor_list' %}"><i class="bi bi-list-ul me-2"></i>All Vendors</a></li>
-                        <li><a class="dropdown-item" href="{% url 'vendor_add' %}"><i class="bi bi-plus-circle me-2"></i>Register New Vendor</a></li>
+                        <li><a class="dropdown-item" href="{% url 'vendor_list' %}"><i class="bi bi-list-ul me-2"></i>All Suppliers</a></li>
+                        <li><a class="dropdown-item" href="{% url 'vendor_add' %}"><i class="bi bi-plus-circle me-2"></i>Add New Supplier</a></li>
+                        <li><a class="dropdown-item" href="{% url 'supplier_type_config' %}"><i class="bi bi-tags me-2"></i>Supplier Types</a></li>
                     </ul>
                 </li>
 

@@ -5,17 +5,24 @@
     <form method="post" novalidate>
         {% csrf_token %}
 
+        {% if form.errors %}
+        <div class="alert alert-danger border-0 shadow-sm rounded-3 mb-4">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+            <strong>Supplier could not be saved.</strong> Please fix the highlighted field(s) below.
+        </div>
+        {% endif %}
+
         <div class="d-flex justify-content-between align-items-center mb-4 pb-2 border-bottom">
             <div>
                 <h3 class="fw-bold text-dark mb-0">
-                    <i class="bi bi-shop text-success me-2"></i>Add New Vendor
+                    <i class="bi bi-shop text-success me-2"></i>{% if vendor %}Edit Supplier: {{ vendor.name }}{% else %}Add New Supplier{% endif %}
                 </h3>
-                <p class="text-muted small mb-0">Onboard a new supplier or service provider to your vendor network.</p>
+                <p class="text-muted small mb-0">Onboard a new supplier or service provider to your supplier network.</p>
             </div>
             <div class="d-flex gap-2">
                 <a href="{% url 'vendor_list' %}" class="btn btn-light border px-4 rounded-3 shadow-sm">Cancel</a>
                 <button type="submit" class="btn btn-success px-4 shadow-sm fw-bold rounded-3">
-                    <i class="bi bi-save me-2"></i>Register Vendor
+                    <i class="bi bi-save me-2"></i>{% if vendor %}Update Supplier{% else %}Register Supplier{% endif %}
                 </button>
             </div>
         </div>
@@ -31,20 +38,36 @@
                                     <span class="bg-success-soft p-2 rounded-3 me-2">
                                         <i class="bi bi-info-square fs-6"></i>
                                     </span>
-                                    Vendor Identity
+                                    Supplier Identity
                                 </h5>
-                                
+
                                 <div class="row g-3">
-                                    <div class="col-md-12">
-                                        <label class="form-label small fw-bold text-muted text-uppercase">Vendor / Workshop Name</label>
-                                        {{ form.name }}
+                                    <div class="col-md-8">
+                                        <label class="form-label small fw-bold text-muted text-uppercase">Supplier Name</label>
+                                        {{ form.name }}{{ form.name.errors }}
                                     </div>
-                                    <div class="col-md-12">
-                                        <label class="form-label small fw-bold text-muted text-uppercase">NTN / Registration #</label>
-                                        <div class="input-group">
-                                            <span class="input-group-text bg-light border-end-0"><i class="bi bi-hash"></i></span>
-                                            {{ form.ntn }}
+                                    <div class="col-md-4">
+                                        <label class="form-label small fw-bold text-muted text-uppercase">Supplier Type</label>
+                                        {{ form.supplier_type }}{{ form.supplier_type.errors }}
+                                        <div class="form-text x-small mt-1">
+                                            <a href="{% url 'supplier_type_config' %}">+ Add New Supplier Type</a>
                                         </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label small fw-bold text-muted text-uppercase">NTN #</label>
+                                        {{ form.ntn }}
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label small fw-bold text-muted text-uppercase">STN #</label>
+                                        {{ form.stn }}
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label small fw-bold text-muted text-uppercase">Term of Service</label>
+                                        {{ form.term_of_service }}
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label small fw-bold text-muted text-uppercase">Billing Period</label>
+                                        {{ form.billing_period }}
                                     </div>
                                 </div>
                             </div>
@@ -59,16 +82,30 @@
                                     Contact Details
                                 </h5>
                                 <div class="row g-3">
-                                    <div class="col-md-6">
-                                        <label class="form-label small fw-bold text-muted text-uppercase">Phone / Mobile Number</label>
-                                        <div class="input-group">
-                                            <span class="input-group-text bg-light border-end-0"><i class="bi bi-phone"></i></span>
-                                            {{ form.phone }}
-                                        </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label small fw-bold text-muted text-uppercase">Point of Contact 1</label>
+                                        {{ form.poc1_name }}
                                     </div>
-                                    <div class="col-md-6">
-                                        <label class="form-label small fw-bold text-muted text-uppercase">Primary Contact Person (POC)</label>
-                                        {{ form.poc }}
+                                    <div class="col-md-4">
+                                        <label class="form-label small fw-bold text-muted text-uppercase">Phone / Mobile Number</label>
+                                        {{ form.poc1_phone }}
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label small fw-bold text-muted text-uppercase">Email</label>
+                                        {{ form.poc1_email }}{{ form.poc1_email.errors }}
+                                    </div>
+
+                                    <div class="col-md-4">
+                                        <label class="form-label small fw-bold text-muted text-uppercase">Point of Contact 2</label>
+                                        {{ form.poc2_name }}
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label small fw-bold text-muted text-uppercase">Phone / Mobile Number</label>
+                                        {{ form.poc2_phone }}
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label small fw-bold text-muted text-uppercase">Email</label>
+                                        {{ form.poc2_email }}{{ form.poc2_email.errors }}
                                     </div>
                                 </div>
                             </div>
@@ -94,7 +131,7 @@
                         <div class="card border-0 shadow-sm rounded-4 mb-4 bg-success text-white overflow-hidden">
                             <div class="card-body p-4 position-relative">
                                 <h6 class="fw-bold mb-3">Compliance Note</h6>
-                                <p class="small mb-0 opacity-90">Verify vendor NTN for tax deduction purposes. Correct details ensure smooth payments and audit compliance.</p>
+                                <p class="small mb-0 opacity-90">Verify supplier NTN/STN for tax deduction purposes. Correct details ensure smooth payments and audit compliance.</p>
                                 <i class="bi bi-patch-check position-absolute end-0 bottom-0 mb-n2 me-n2 opacity-25" style="font-size: 4rem;"></i>
                             </div>
                         </div>
@@ -105,7 +142,7 @@
                                     <i class="bi bi-lightbulb text-warning me-2 fs-5"></i>
                                     <h6 class="fw-bold mb-0">Vehicle Provider</h6>
                                 </div>
-                                <p class="text-muted small mb-0">Yeh vendor ab aapki vehicle management list mein show hoga taake aap gaariyan assign kar sakein.</p>
+                                <p class="text-muted small mb-0">Yeh supplier ab aapki vehicle management list mein show hoga taake aap gaariyan assign kar sakein.</p>
                             </div>
                         </div>
                     </div>
@@ -139,16 +176,6 @@
 
     textarea { min-height: 100px; resize: none; }
     .bg-success-soft { background-color: rgba(25, 135, 84, 0.1); }
-    .input-group-text {
-        border: 2px solid #f1f5f9;
-        border-radius: 12px 0 0 12px;
-        color: #6c757d;
-        background-color: #f8fafc;
-    }
-    /* Fixing input group border issues */
-    .input-group > input {
-        border-top-left-radius: 0;
-        border-bottom-left-radius: 0;
-    }
+    .x-small { font-size: 0.7rem; }
 </style>
 {% endblock %}

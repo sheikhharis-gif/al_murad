@@ -1,7 +1,7 @@
 from decimal import Decimal, InvalidOperation
 from django import forms
 from .models import (
-    Vehicle, VehicleType, Wheeler, VehicleTyre, Driver, Vendor,
+    Vehicle, VehicleType, Wheeler, VehicleTyre, Driver, Vendor, SupplierType,
     City, Route, Client, Expense, ClientRate, DriverSalary
 )
 from operations.models import Trip
@@ -51,7 +51,7 @@ class VehicleForm(forms.ModelForm):
             "vendor": forms.Select(attrs={"class": "form-select"}),
             "driver": forms.Select(attrs={"class": "form-select searchable-select"}), # Naya Driver Dropdown
             "driver2": forms.Select(attrs={"class": "form-select searchable-select"}),
-            "vehicle_mode": forms.Select(attrs={"class": "form-select"}),
+            "vehicle_mode": forms.Select(attrs={"class": "form-select", "autofocus": "autofocus"}),
             "vehicle_type": forms.Select(attrs={"class": "form-select"}),
             "wheeler": forms.Select(attrs={"class": "form-select"}),
             "current_location": forms.Select(attrs={"class": "form-select"}),
@@ -77,7 +77,7 @@ class VehicleForm(forms.ModelForm):
         self.fields["driver2"].queryset = active_drivers
         self.fields["driver2"].empty_label = "--- No Second Driver ---"
 
-        self.fields["vendor"].empty_label = "--- No Vendor ---"
+        self.fields["vendor"].empty_label = "--- No Supplier ---"
         self.fields["vehicle_type"].empty_label = "--- Select Type ---"
         self.fields["wheeler"].empty_label = "--- Select Wheeler ---"
         self.fields["current_location"].empty_label = "--- Select City ---"
@@ -241,18 +241,47 @@ class RouteForm(forms.ModelForm):
             "distance_km": forms.NumberInput(attrs={"class": "form-control"}),
         }
 
-################ VENDOR & CLIENT ################
+################ SUPPLIER (Vendor model) & CLIENT ################
+
+class SupplierTypeForm(forms.ModelForm):
+    class Meta:
+        model = SupplierType
+        fields = ["name"]
+        widgets = {"name": forms.TextInput(attrs={"class": "form-control", "placeholder": "e.g. FUEL STATION"})}
+
+    def clean_name(self):
+        name = (self.cleaned_data.get("name") or "").strip().upper()
+        qs = SupplierType.objects.filter(name=name)
+        if self.instance and self.instance.pk:
+            qs = qs.exclude(pk=self.instance.pk)
+        if qs.exists():
+            raise forms.ValidationError("This Supplier Type is already registered.")
+        return name
+
 
 class VendorForm(forms.ModelForm):
     class Meta:
         model = Vendor
         fields = "__all__"
+
+        text_fields = [
+            "name", "poc1_name", "poc1_phone", "poc2_name", "poc2_phone",
+            "ntn", "stn", "term_of_service", "billing_period",
+        ]
+
         widgets = {
-            "name": forms.TextInput(attrs={"class": "form-control"}),
-            "poc": forms.TextInput(attrs={"class": "form-control"}),
-            "ntn": forms.TextInput(attrs={"class": "form-control"}),
-            "address": forms.Textarea(attrs={"class": "form-control", "rows": 3}),
+            field: forms.TextInput(attrs={"class": "form-control text-uppercase"}) for field in text_fields
         }
+        widgets.update({
+            "supplier_type": forms.Select(attrs={"class": "form-select"}),
+            "poc1_email": forms.EmailInput(attrs={"class": "form-control text-uppercase"}),
+            "poc2_email": forms.EmailInput(attrs={"class": "form-control text-uppercase"}),
+            "address": forms.Textarea(attrs={"class": "form-control text-uppercase", "rows": 3}),
+        })
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["supplier_type"].empty_label = "--- Select Supplier Type ---"
 
 class ClientForm(forms.ModelForm):
     class Meta:

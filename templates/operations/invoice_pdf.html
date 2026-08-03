@@ -52,7 +52,7 @@
         <tr>
             <td class="label">Driver</td><td class="value">{{ vehicle.driver.name|default:"---" }}</td>
             {% if vehicle.vehicle_mode == 'RENTAL' %}
-            <td class="label">Vendor</td><td class="value">{{ vehicle.vendor.name }}</td>
+            <td class="label">Supplier</td><td class="value">{{ vehicle.vendor.name }}</td>
             {% else %}
             <td class="label">Status</td><td class="value">{{ job.get_status_display }}</td>
             {% endif %}

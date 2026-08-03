@@ -37,13 +37,48 @@ class Driver(models.Model):
 
     class Meta:
         ordering = ["name"]
-# ================= VENDOR =================
+# ================= SUPPLIER TYPE (admin-extensible registry) =================
+class SupplierType(models.Model):
+    name = models.CharField(max_length=50, unique=True)
+
+    def save(self, *args, **kwargs):
+        self.name = (self.name or "").strip().upper()
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        ordering = ["name"]
+
+
+# ================= VENDOR (displayed to users as "Supplier") =================
 class Vendor(models.Model):
-    name = models.CharField(max_length=100)
-    phone = models.CharField(max_length=20) # Yeh field template ke liye zaroori hai
-    poc = models.CharField(max_length=100)
-    ntn = models.CharField(max_length=20, blank=True)
-    address = models.TextField()
+    name = models.CharField("Supplier Name", max_length=150)
+    supplier_type = models.ForeignKey(
+        SupplierType, on_delete=models.PROTECT, null=True, blank=True, related_name="vendors"
+    )
+    poc1_name = models.CharField("Point of Contact 1", max_length=100, blank=True)
+    poc1_phone = models.CharField("Phone / Mobile Number", max_length=20, blank=True)
+    poc1_email = models.EmailField("Email", blank=True)
+    poc2_name = models.CharField("Point of Contact 2", max_length=100, blank=True)
+    poc2_phone = models.CharField("Phone / Mobile Number", max_length=20, blank=True)
+    poc2_email = models.EmailField("Email", blank=True)
+    address = models.TextField(blank=True)
+    ntn = models.CharField("NTN #", max_length=30, blank=True)
+    stn = models.CharField("STN #", max_length=30, blank=True)
+    term_of_service = models.CharField("Term of Service", max_length=100, blank=True)
+    billing_period = models.CharField("Billing Period", max_length=50, blank=True)
+
+    def save(self, *args, **kwargs):
+        for field in (
+            "name", "poc1_name", "poc1_email", "poc2_name", "poc2_email",
+            "address", "ntn", "stn", "term_of_service", "billing_period",
+        ):
+            value = getattr(self, field, None)
+            if value:
+                setattr(self, field, value.strip().upper())
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return self.name

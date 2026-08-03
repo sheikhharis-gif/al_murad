@@ -1,12 +1,12 @@
 from django.contrib import messages
 from django.shortcuts import render, redirect
-from django.db.models import Sum
+from django.db.models import Sum, Count
 from django.db.models.deletion import ProtectedError
 from datetime import date
 
 from .models import (
     Driver, Vehicle, VehicleType, Wheeler, City, Route,
-    Vendor, Client, Expense, VehicleTyre,
+    Vendor, SupplierType, Client, Expense, VehicleTyre,
     ClientRate, DriverSalary
 )
 
@@ -14,7 +14,7 @@ from .forms import (
     DriverForm, VehicleForm, VehicleTyreForm, VehiclePermitsForm,
     VehicleTypeForm, WheelerForm,
     CityForm, RouteForm,
-    VendorForm, ClientForm,
+    VendorForm, SupplierTypeForm, ClientForm,
     ExpenseForm, ClientRateForm,
     DriverSalaryForm
 )
@@ -442,16 +442,17 @@ def route_delete(request, route_id):
             )
     return redirect("locations_master")
 
-# ================= VENDORS =================
+# ================= SUPPLIERS (Vendor model) =================
 VENDOR_SORT_FIELDS = {
-    "name": "Vendor Name",
-    "phone": "Phone",
-    "poc": "Point of Contact",
+    "name": "Supplier Name",
+    "supplier_type__name": "Supplier Type",
+    "poc1_phone": "Phone",
+    "poc1_name": "Point of Contact",
 }
 
 def vendor_list(request):
     vendors, sort_by, order = _sorted_queryset(
-        request, Vendor.objects.all(), VENDOR_SORT_FIELDS, "name"
+        request, Vendor.objects.annotate(vehicle_count=Count("vehicles")), VENDOR_SORT_FIELDS, "name"
     )
     return render(request, "vendors/vendor_list.html", {
         "vendors": vendors,
@@ -487,6 +488,48 @@ def vendor_delete(request, vendor_id):
         return redirect("vendor_list")
     # Agar galti se GET request aaye toh wapas list pe bhej do
     return redirect("vendor_list")
+
+
+# ================= SUPPLIER TYPE (admin-extensible registry) =================
+def supplier_type_config(request):
+    supplier_types = SupplierType.objects.all()
+
+    if request.method == "POST":
+        form = SupplierTypeForm(request.POST)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f"Supplier Type '{form.instance.name}' registered successfully.")
+        else:
+            messages.error(request, "Could not register that Supplier Type - it may already exist.")
+        return redirect("supplier_type_config")
+
+    return render(request, "vendors/supplier_type_config.html", {
+        "supplier_types": supplier_types,
+    })
+
+
+def supplier_type_edit(request, type_id):
+    stype = get_object_or_404(SupplierType, id=type_id)
+    if request.method == "POST":
+        form = SupplierTypeForm(request.POST, instance=stype)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f"Supplier Type updated to '{stype.name}'.")
+        else:
+            messages.error(request, "That Supplier Type name is already registered.")
+    return redirect("supplier_type_config")
+
+
+def supplier_type_delete(request, type_id):
+    stype = get_object_or_404(SupplierType, id=type_id)
+    if request.method == "POST":
+        try:
+            name = stype.name
+            stype.delete()
+            messages.success(request, f"Supplier Type '{name}' deleted successfully.")
+        except ProtectedError:
+            messages.error(request, f"Cannot delete '{stype.name}' - it's still assigned to a supplier.")
+    return redirect("supplier_type_config")
 
 from django.shortcuts import render, redirect, get_object_or_404
 from .models import Client, ClientRate, Expense

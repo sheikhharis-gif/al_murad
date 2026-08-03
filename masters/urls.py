@@ -32,11 +32,14 @@ urlpatterns = [
     path("vehicles/wheelers/<int:wheeler_id>/edit/", views.wheeler_edit, name="wheeler_edit"),
     path("vehicles/wheelers/<int:wheeler_id>/delete/", views.wheeler_delete, name="wheeler_delete"),
 
-    # VENDORS 
+    # SUPPLIERS (Vendor model)
     path("vendors/", views.vendor_list, name="vendor_list"),
     path("vendors/add/", views.vendor_add, name="vendor_add"),
     path("vendors/edit/<int:vendor_id>/", views.vendor_edit, name="vendor_edit"),
     path("vendors/delete/<int:vendor_id>/", views.vendor_delete, name="vendor_delete"),
+    path("vendors/types/", views.supplier_type_config, name="supplier_type_config"),
+    path("vendors/types/<int:type_id>/edit/", views.supplier_type_edit, name="supplier_type_edit"),
+    path("vendors/types/<int:type_id>/delete/", views.supplier_type_delete, name="supplier_type_delete"),
     # CLIENTS
     path("clients/", views.client_list, name="client_list"),
     path("clients/add/", views.client_add, name="client_add"),
