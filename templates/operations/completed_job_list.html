@@ -65,7 +65,7 @@
                                 <span class="badge bg-primary-subtle text-primary rounded-pill mb-1" style="width: fit-content;">
                                     #{{ job.job_number }}
                                 </span>
-                                <small class="text-muted"><i class="bi bi-calendar3 me-1"></i>{{ job.job_date|date:"d-F-y" }}</small>
+                                <small class="text-muted"><i class="bi bi-calendar3 me-1"></i>{{ job.job_date|date:"d-M-y" }}</small>
                             </div>
                         </td>
                         <td>
@@ -93,7 +93,7 @@
                             <span class="badge rounded-pill bg-success px-3">
                                 <i class="bi bi-check-circle me-1"></i> Job Completed
                             </span>
-                            <div class="small text-muted mt-1 mb-1">{{ job.completion_date|date:"d-F-y H:i" }}</div>
+                            <div class="small text-muted mt-1 mb-1">{{ job.completion_date|date:"d-M-y H:i" }}</div>
                             <form method="post" action="{% url 'job_update_status' job.job_number %}" class="mt-1">
                                 {% csrf_token %}
                                 <select name="status" class="form-select form-select-sm status-select" onchange="this.form.submit()" title="Update Status">

@@ -40,7 +40,7 @@
 
     <div class="header-box">
         <div class="title">AL MURAD LOGISTICS</div>
-        <div class="subtitle">Trip Sheet {% if vehicle.vehicle_mode == 'RENTAL' %}(Rental){% else %}(Own){% endif %} - Generated on {{ invoice_date|date:"d-F-y" }}</div>
+        <div class="subtitle">Trip Sheet {% if vehicle.vehicle_mode == 'RENTAL' %}(Rental){% else %}(Own){% endif %} - Generated on {{ invoice_date|date:"d-M-y" }}</div>
     </div>
 
     <table class="info-table">
@@ -91,7 +91,7 @@
                 <td>Rs {{ trip.freight|floatformat:0 }}</td>
                 <td>Rs {{ trip.detention|floatformat:0 }}</td>
                 <td style="font-weight: bold;">Rs {{ trip.freight|floatformat:0 }}</td>
-                <td>{{ trip.trip_date|date:"d-F-y" }}</td>
+                <td>{{ trip.trip_date|date:"d-M-y" }}</td>
             </tr>
             {% empty %}
             <tr>
@@ -150,7 +150,7 @@
         <tbody>
             {% for e in fuel_rows %}
             <tr>
-                <td>{{ e.date|date:"d-F-y" }}</td>
+                <td>{{ e.date|date:"d-M-y" }}</td>
                 <td>{{ e.pump_name|default:"---" }}</td>
                 <td>{{ e.slip_no|default:"---" }}</td>
                 <td>{{ e.fuel_liter|floatformat:1 }}</td>

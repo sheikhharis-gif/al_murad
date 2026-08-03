@@ -205,7 +205,7 @@
                 <tr class="{% if m.status == 'PENDING' %}table-danger{% endif %}">
                     <td class="fw-bold font-monospace">{{ m.job_id }}</td>
                     <td class="fw-bold">{{ m.vehicle }}</td>
-                    <td class="text-center">{{ m.date|date:"d-F-y" }}</td>
+                    <td class="text-center">{{ m.date|date:"d-M-y" }}</td>
                     <td class="text-center">
                         {% if m.status == 'PENDING' %}
                         <span class="badge bg-danger">Pending</span>

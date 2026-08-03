@@ -83,7 +83,7 @@
     };
 
     // Turns any <input class="datepicker"> into a typing-friendly date field
-    // showing "10-June-26" (Flatpickr's altInput), while the real value
+    // showing "10-Jan-26" (Flatpickr's altInput), while the real value
     // submitted to the server stays ISO (Y-m-d) so Django's DateField parses
     // it normally. Empty fields default to today's date on load; add
     // data-max-today="1" on a field to cap it at today (e.g. a job date that
@@ -97,7 +97,7 @@
             var opts = {
                 dateFormat: 'Y-m-d',
                 altInput: true,
-                altFormat: 'd-F-y',
+                altFormat: 'd-M-y',
                 allowInput: true,
             };
             if (el.dataset.maxToday) opts.maxDate = 'today';
