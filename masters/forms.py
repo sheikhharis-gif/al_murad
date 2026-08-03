@@ -18,7 +18,14 @@ class VehicleForm(forms.ModelForm):
 
     class Meta:
         model = Vehicle
-        fields = "__all__"
+        # Permit/fitness expiry dates moved to their own "Permits & Compliance"
+        # page (VehiclePermitsForm below) - excluded here so saving the main
+        # Vehicle Registration form no longer touches (and can't blank out) them.
+        exclude = [
+            "sindh_permit_expiry", "punjab_permit_expiry", "kpk_permit_expiry",
+            "balochistan_permit_expiry", "fitness_expiry_sindh", "fitness_expiry_punjab",
+            "fitness_expiry_kpk", "fitness_expiry_balochistan",
+        ]
 
         # 1. Purani driver fields ko list se nikaal diya, ab sirf 'driver' dropdown bacha hai
         text_fields = [
@@ -27,12 +34,7 @@ class VehicleForm(forms.ModelForm):
             "owner", "weight_capacity",
         ]
 
-        date_fields = [
-            "sindh_permit_expiry", "punjab_permit_expiry", "kpk_permit_expiry",
-            "balochistan_permit_expiry", "fitness_expiry_sindh", "fitness_expiry_punjab",
-            "fitness_expiry_kpk", "fitness_expiry_balochistan",
-            "purchase_date",
-        ]
+        date_fields = ["purchase_date"]
 
         # 2. Base widgets for text fields
         widgets = {
@@ -91,6 +93,20 @@ class VehicleForm(forms.ModelForm):
             return Decimal(raw)
         except InvalidOperation:
             raise forms.ValidationError("Enter a valid amount.")
+
+
+class VehiclePermitsForm(forms.ModelForm):
+    class Meta:
+        model = Vehicle
+        fields = [
+            "sindh_permit_expiry", "fitness_expiry_sindh",
+            "punjab_permit_expiry", "fitness_expiry_punjab",
+            "kpk_permit_expiry", "fitness_expiry_kpk",
+            "balochistan_permit_expiry", "fitness_expiry_balochistan",
+        ]
+        widgets = {
+            field: forms.DateInput(attrs={"class": "form-control datepicker"}) for field in fields
+        }
 
 
 class VehicleTyreForm(forms.ModelForm):

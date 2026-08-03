@@ -58,7 +58,7 @@
                             <div class="col-md-3"><label class="form-label small">Engine No</label>{{ form.engine_no }}{{ form.engine_no.errors }}</div>
                             <div class="col-md-3"><label class="form-label small">Weight Capacity</label>{{ form.weight_capacity }}{{ form.weight_capacity.errors }}</div>
                             <div class="col-md-3"><label class="form-label small">Purchase Date</label>{{ form.purchase_date }}{{ form.purchase_date.errors }}</div>
-                            <div class="col-md-3"><label class="form-label small">Status</label>{{ form.status }}{{ form.status.errors }}</div>
+                            <div class="col-md-3"><label class="form-label small">Value</label>{{ form.value }}{{ form.value.errors }}</div>
 
                             <div class="col-md-3"><label class="form-label small">M-Tag #</label>{{ form.m_tag }}{{ form.m_tag.errors }}</div>
                             <div class="col-md-3">
@@ -70,13 +70,18 @@
                                 {{ form.current_km }}{{ form.current_km.errors }}
                             </div>
                             <div class="col-md-3"><label class="form-label small">Current Location</label>{{ form.current_location }}{{ form.current_location.errors }}</div>
+
                             <div class="col-md-3"><label class="form-label small">Dedicated to Client</label>{{ form.dedicated_client }}{{ form.dedicated_client.errors }}</div>
                             <div class="col-md-3"><label class="form-label small">Leased</label>{{ form.leased }}{{ form.leased.errors }}</div>
-
                             <div class="col-md-3"><label class="form-label small">Container No</label>{{ form.container_no }}{{ form.container_no.errors }}</div>
-
                             <div class="col-md-3"><label class="form-label small">Registration Name</label>{{ form.registration_name }}{{ form.registration_name.errors }}</div>
-                            <div class="col-md-3"><label class="form-label small">Value</label>{{ form.value }}{{ form.value.errors }}</div>
+
+                            <div class="col-md-3"><label class="form-label small">Status</label>{{ form.status }}{{ form.status.errors }}</div>
+                            <div class="col-md-3 d-flex align-items-end">
+                                <button type="submit" class="btn btn-primary w-100 fw-bold shadow-sm">
+                                    <i class="bi bi-save me-2"></i>{% if vehicle %}Update Vehicle{% else %}Save Vehicle{% endif %}
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -92,8 +97,11 @@
                 </div>
 
                 {% if vehicle %}
-                <a href="{% url 'vehicle_tyres' vehicle.id %}" class="btn btn-outline-primary btn-sm w-100 mb-4">
+                <a href="{% url 'vehicle_tyres' vehicle.id %}" class="btn btn-outline-primary btn-sm w-100 mb-2">
                     <i class="bi bi-record-circle me-1"></i>Manage Tyres
+                </a>
+                <a href="{% url 'vehicle_permits' vehicle.id %}" class="btn btn-outline-primary btn-sm w-100 mb-4">
+                    <i class="bi bi-file-earmark-check me-1"></i>Manage Permits &amp; Compliance
                 </a>
                 {% endif %}
 
@@ -120,52 +128,6 @@
                 <a href="{% url 'vehicle_type_wheeler_config' %}" class="btn btn-outline-secondary btn-sm w-100">
                     <i class="bi bi-truck-front me-1"></i>Vehicle Types &amp; Wheelers
                 </a>
-            </div>
-        </div>
-
-        <div class="card border-0 shadow-sm rounded-4 mt-4">
-            <div class="card-header bg-white border-0 pt-3 px-3">
-                <h5 class="fw-bold mb-0 text-primary">Permits & Compliance</h5>
-            </div>
-            <div class="card-body p-3">
-                <div class="row g-3">
-                    <div class="col-md-3">
-                        <div class="p-2 border rounded-3 bg-light-subtle">
-                            <h6 class="fw-bold border-bottom pb-2 mb-2 small">Sindh Province</h6>
-                            <div class="row g-2">
-                                <div class="col-6"><label class="x-small">Permit</label>{{ form.sindh_permit_expiry }}</div>
-                                <div class="col-6"><label class="x-small text-danger">Fitness</label>{{ form.fitness_expiry_sindh }}</div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="p-2 border rounded-3 bg-light-subtle">
-                            <h6 class="fw-bold border-bottom pb-2 mb-2 small">Punjab Province</h6>
-                            <div class="row g-2">
-                                <div class="col-6"><label class="x-small">Permit</label>{{ form.punjab_permit_expiry }}</div>
-                                <div class="col-6"><label class="x-small text-danger">Fitness</label>{{ form.fitness_expiry_punjab }}</div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="p-2 border rounded-3 bg-light-subtle">
-                            <h6 class="fw-bold border-bottom pb-2 mb-2 small">KPK Province</h6>
-                            <div class="row g-2">
-                                <div class="col-6"><label class="x-small">Permit</label>{{ form.kpk_permit_expiry }}</div>
-                                <div class="col-6"><label class="x-small text-danger">Fitness</label>{{ form.fitness_expiry_kpk }}</div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="p-2 border rounded-3 bg-light-subtle">
-                            <h6 class="fw-bold border-bottom pb-2 mb-2 small">Balochistan Province</h6>
-                            <div class="row g-2">
-                                <div class="col-6"><label class="x-small">Permit</label>{{ form.balochistan_permit_expiry }}</div>
-                                <div class="col-6"><label class="x-small text-danger">Fitness</label>{{ form.fitness_expiry_balochistan }}</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
             </div>
         </div>
     </form>

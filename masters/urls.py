@@ -21,6 +21,10 @@ urlpatterns = [
     path("vehicles/<int:vehicle_id>/tyres/<int:tyre_id>/edit/", views.vehicle_tyre_edit, name="vehicle_tyre_edit"),
     path("vehicles/<int:vehicle_id>/tyres/<int:tyre_id>/delete/", views.vehicle_tyre_delete, name="vehicle_tyre_delete"),
 
+    # VEHICLE PERMITS & COMPLIANCE (separate page - pick a Vehicle #, rest auto-fills)
+    path("vehicles/permits/", views.vehicle_permits_select, name="vehicle_permits_select"),
+    path("vehicles/<int:vehicle_id>/permits/", views.vehicle_permits, name="vehicle_permits"),
+
     # VEHICLE TYPE + WHEELER (admin-extensible registries, one shared page)
     path("vehicles/types-wheelers/", views.vehicle_type_wheeler_config, name="vehicle_type_wheeler_config"),
     path("vehicles/types/<int:type_id>/edit/", views.vehicle_type_edit, name="vehicle_type_edit"),

@@ -11,7 +11,7 @@ from .models import (
 )
 
 from .forms import (
-    DriverForm, VehicleForm, VehicleTyreForm,
+    DriverForm, VehicleForm, VehicleTyreForm, VehiclePermitsForm,
     VehicleTypeForm, WheelerForm,
     CityForm, RouteForm,
     VendorForm, ClientForm,
@@ -195,6 +195,29 @@ def vehicle_tyre_delete(request, vehicle_id, tyre_id):
         tyre.delete()
         messages.success(request, f"Tyre '{number}' deleted successfully.")
     return redirect("vehicle_tyres", vehicle_id=vehicle.id)
+
+
+# ================= VEHICLE PERMITS & COMPLIANCE (separate page - Vehicle # first, rest auto-fills) =================
+def vehicle_permits_select(request):
+    vehicles = Vehicle.objects.all().order_by("vehicle_number")
+    return render(request, "vehicle/vehicle_permits_select.html", {"vehicles": vehicles})
+
+
+def vehicle_permits(request, vehicle_id):
+    vehicle = get_object_or_404(Vehicle, id=vehicle_id)
+    if request.method == "POST":
+        form = VehiclePermitsForm(request.POST, instance=vehicle)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Permits & Compliance updated successfully.")
+            return redirect("vehicle_permits", vehicle_id=vehicle.id)
+    else:
+        form = VehiclePermitsForm(instance=vehicle)
+
+    return render(request, "vehicle/vehicle_permits.html", {
+        "vehicle": vehicle,
+        "form": form,
+    })
 
 
 # ================= VEHICLE TYPE + WHEELER (admin-extensible registries, one shared page) =================

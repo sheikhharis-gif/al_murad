@@ -115,6 +115,23 @@
                     });
                     wrapper.appendChild(icon);
                 },
+                // Closing the calendar (date picked, Escape, or click-away)
+                // leaves nothing focused, so the next Tab press restarted
+                // from the very first focusable element on the page (the
+                // navbar logo) instead of continuing in the form. Hand focus
+                // to the next real field in the form instead.
+                onClose: function (selectedDates, dateStr, instance) {
+                    var focusable = Array.prototype.slice.call(
+                        document.querySelectorAll('input, select, textarea, button, a[href]')
+                    ).filter(function (node) {
+                        return node.offsetParent !== null && !node.disabled && node.tabIndex !== -1;
+                    });
+                    var anchor = instance.altInput || instance.input;
+                    var idx = focusable.indexOf(anchor);
+                    if (idx > -1 && idx + 1 < focusable.length) {
+                        focusable[idx + 1].focus();
+                    }
+                },
             };
             if (el.dataset.maxToday) opts.maxDate = 'today';
             if (!el.value) opts.defaultDate = 'today';

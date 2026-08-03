@@ -1,0 +1,46 @@
+{% comment %}
+Reusable Vehicle # search-and-pick widget: shared by Tyre Management and
+Permits & Compliance select pages. Renders a live-filtering search box above
+a persistent list of registered vehicle numbers (same pattern as the
+Vehicle Type/Wheeler registry search) instead of a plain <select>, so it's
+obvious at a glance whether a typed number is actually registered.
+Context: `vehicles` queryset, `picker_url_name` (the url name to link each
+result to, called with the vehicle id).
+{% endcomment %}
+<div class="search-box mb-3">
+    <i class="bi bi-search"></i>
+    <input type="text" id="vehicleSearchInput" class="form-control form-control-lg text-uppercase" placeholder="Type vehicle number to search..." autocomplete="off">
+</div>
+<div id="vehicleNotFound" class="alert alert-warning border-0 rounded-3 py-2 small d-none">
+    <i class="bi bi-exclamation-triangle me-1"></i>No vehicle registered with this number.
+</div>
+<div class="list-group" id="vehicleResultList" style="max-height: 320px; overflow-y: auto;">
+    {% for v in vehicles %}
+    <a href="{% url picker_url_name v.id %}" class="list-group-item list-group-item-action vehicle-result-item" data-number="{{ v.vehicle_number }}">
+        <i class="bi bi-truck me-2 text-primary"></i>{{ v.vehicle_number }}
+    </a>
+    {% empty %}
+    <div class="text-muted small py-3 text-center">No vehicles registered yet.</div>
+    {% endfor %}
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var input = document.getElementById('vehicleSearchInput');
+    var items = Array.prototype.slice.call(document.querySelectorAll('.vehicle-result-item'));
+    var notFound = document.getElementById('vehicleNotFound');
+    if (!input) return;
+    input.addEventListener('input', function () {
+        input.value = input.value.toUpperCase();
+        var q = input.value.trim();
+        var visibleCount = 0;
+        items.forEach(function (item) {
+            var match = !q || item.dataset.number.indexOf(q) > -1;
+            item.style.display = match ? '' : 'none';
+            if (match) visibleCount++;
+        });
+        notFound.classList.toggle('d-none', !(q && visibleCount === 0));
+    });
+    input.focus();
+});
+</script>

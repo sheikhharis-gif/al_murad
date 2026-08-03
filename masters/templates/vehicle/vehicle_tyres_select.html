@@ -5,33 +5,17 @@
 
     <div class="mb-4">
         <h3 class="fw-bold text-dark mb-1"><i class="bi bi-record-circle text-primary me-2"></i>Tyre Management</h3>
-        <p class="text-muted small">Select a Vehicle # to view and manage its tyres.</p>
+        <p class="text-muted small">Search a Vehicle # to view and manage its tyres.</p>
     </div>
 
     <div class="row justify-content-center">
         <div class="col-lg-6">
             <div class="card border-0 shadow-sm rounded-4 p-4">
                 <label class="form-label fw-bold">Vehicle #</label>
-                <select id="vehiclePicker" class="form-select form-select-lg searchable-select" data-url-template="{% url 'vehicle_tyres' vehicle_id=0 %}">
-                    <option value="">--- Select Vehicle ---</option>
-                    {% for v in vehicles %}
-                    <option value="{{ v.id }}">{{ v.vehicle_number }}</option>
-                    {% endfor %}
-                </select>
+                {% include "vehicle/_vehicle_search_picker.html" with picker_url_name="vehicle_tyres" %}
                 <div class="form-text mt-2">Make, Model, Type and Current KM will auto-fill from the Vehicle Registration once selected.</div>
             </div>
         </div>
     </div>
 </div>
-
-<script>
-    document.addEventListener('DOMContentLoaded', function () {
-        var picker = document.getElementById('vehiclePicker');
-        picker.addEventListener('change', function () {
-            if (picker.value) {
-                window.location.href = picker.dataset.urlTemplate.replace('0', picker.value);
-            }
-        });
-    });
-</script>
 {% endblock %}

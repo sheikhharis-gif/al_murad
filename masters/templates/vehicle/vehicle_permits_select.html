@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid py-4">
+
+    <div class="mb-4">
+        <h3 class="fw-bold text-dark mb-1"><i class="bi bi-file-earmark-check text-primary me-2"></i>Permits & Compliance</h3>
+        <p class="text-muted small">Search a Vehicle # to view and manage its provincial permits and fitness dates.</p>
+    </div>
+
+    <div class="row justify-content-center">
+        <div class="col-lg-6">
+            <div class="card border-0 shadow-sm rounded-4 p-4">
+                <label class="form-label fw-bold">Vehicle #</label>
+                {% include "vehicle/_vehicle_search_picker.html" with picker_url_name="vehicle_permits" %}
+                <div class="form-text mt-2">Vehicle details will auto-fill once selected.</div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
