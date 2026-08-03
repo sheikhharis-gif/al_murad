@@ -884,23 +884,3 @@ body {
         width: 100%;
     }
 }
-
-/* Date picker fields - calendar icon so it's obvious these are pickers */
-.datepicker-wrapper {
-    position: relative;
-    width: 100%;
-}
-
-.datepicker-wrapper input.form-control {
-    padding-right: 34px;
-}
-
-.datepicker-wrapper .datepicker-icon {
-    position: absolute;
-    right: 12px;
-    top: 50%;
-    transform: translateY(-50%);
-    color: #94a3b8;
-    cursor: pointer;
-    pointer-events: auto;
-}

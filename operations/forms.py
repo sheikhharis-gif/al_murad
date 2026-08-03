@@ -50,7 +50,7 @@ class TripForm(forms.ModelForm):
             "bilty_number", "weight", "rate", "detention",
         ]
         widgets = {
-            "trip_date": forms.DateInput(attrs={"class": "form-control datepicker"}),
+            "trip_date": forms.DateInput(attrs={"class": "form-control", "type": "date"}),
             "bilty_number": forms.TextInput(attrs={"class": "form-control", "placeholder": "Bilty No."}),
             "weight": forms.NumberInput(attrs={"class": "form-control", "placeholder": "0.00"}),
             "rate": forms.NumberInput(attrs={"class": "form-control", "placeholder": "0.00"}),
