@@ -94,11 +94,26 @@
             if (el.dataset.fpEnhanced) return;
             el.dataset.fpEnhanced = '1';
 
+            // Wrap the input so a calendar icon can sit inside it - makes it
+            // visually obvious this is a date picker, not a plain text box.
+            var wrapper = document.createElement('div');
+            wrapper.className = 'datepicker-wrapper';
+            el.parentNode.insertBefore(wrapper, el);
+            wrapper.appendChild(el);
+
             var opts = {
                 dateFormat: 'Y-m-d',
                 altInput: true,
                 altFormat: 'd-M-y',
                 allowInput: true,
+                onReady: function (selectedDates, dateStr, instance) {
+                    var icon = document.createElement('i');
+                    icon.className = 'bi bi-calendar3 datepicker-icon';
+                    icon.addEventListener('click', function () {
+                        instance.open();
+                    });
+                    wrapper.appendChild(icon);
+                },
             };
             if (el.dataset.maxToday) opts.maxDate = 'today';
             if (!el.value) opts.defaultDate = 'today';
