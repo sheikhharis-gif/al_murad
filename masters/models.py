@@ -157,8 +157,10 @@ class Vehicle(models.Model):
     last_meter_update = models.DateField(null=True, blank=True)
 
     # ===== Vehicle detail fields =====
+    owner = models.CharField(max_length=150, blank=True)
     model_year = models.PositiveIntegerField("Model", null=True, blank=True)
     make = models.CharField(max_length=100, blank=True)
+    weight_capacity = models.CharField("Weight Capacity", max_length=30, blank=True)
     purchase_date = models.DateField(null=True, blank=True)
     value = models.DecimalField(max_digits=14, decimal_places=2, null=True, blank=True)
     leased = models.BooleanField(default=False)
@@ -171,7 +173,7 @@ class Vehicle(models.Model):
     status = models.CharField(max_length=15, choices=STATUS_CHOICES, default="ACTIVE")
 
     def save(self, *args, **kwargs):
-        for field in ("vehicle_number", "engine_no", "chassis_no", "container_no", "color", "make", "registration_name", "m_tag"):
+        for field in ("vehicle_number", "engine_no", "chassis_no", "container_no", "color", "make", "registration_name", "m_tag", "owner", "weight_capacity"):
             value = getattr(self, field, None)
             if value:
                 setattr(self, field, value.strip().upper())
@@ -209,12 +211,15 @@ class Vehicle(models.Model):
 # ================= VEHICLE TYRES =================
 class VehicleTyre(models.Model):
     vehicle = models.ForeignKey(Vehicle, on_delete=models.CASCADE, related_name="tyres")
+    make = models.CharField("Tyre Make", max_length=100, blank=True)
     tyre_number = models.CharField(max_length=50)
     installed_date = models.DateField(null=True, blank=True)
     installed_km = models.PositiveIntegerField("Kilometer", null=True, blank=True)
+    price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
 
     def save(self, *args, **kwargs):
         self.tyre_number = (self.tyre_number or "").strip().upper()
+        self.make = (self.make or "").strip().upper()
         super().save(*args, **kwargs)
 
     def __str__(self):

@@ -133,13 +133,14 @@
 
                 {% if not is_expense_only and not is_workshop_only %}
                 <li class="nav-item dropdown">
-                    <a href="#" class="nav-link dropdown-toggle {% if request.resolver_match.url_name == 'vehicle_list' or request.resolver_match.url_name == 'vehicle_add' or request.resolver_match.url_name == 'vehicle_edit' or request.resolver_match.url_name == 'vehicle_type_wheeler_config' %}active{% endif %}" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                    <a href="#" class="nav-link dropdown-toggle {% if request.resolver_match.url_name == 'vehicle_list' or request.resolver_match.url_name == 'vehicle_add' or request.resolver_match.url_name == 'vehicle_edit' or request.resolver_match.url_name == 'vehicle_type_wheeler_config' or request.resolver_match.url_name == 'vehicle_tyres_select' or request.resolver_match.url_name == 'vehicle_tyres' %}active{% endif %}" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                         <i class="bi bi-truck-front-fill"></i> Vehicles
                     </a>
                     <ul class="dropdown-menu">
                         <li><a class="dropdown-item" href="{% url 'vehicle_list' %}"><i class="bi bi-list-ul me-2"></i>All Vehicles</a></li>
                         <li><a class="dropdown-item" href="{% url 'vehicle_add' %}"><i class="bi bi-plus-circle me-2"></i>Add New Vehicle</a></li>
                         <li><a class="dropdown-item" href="{% url 'vehicle_type_wheeler_config' %}"><i class="bi bi-truck-front me-2"></i>Vehicle Types &amp; Wheelers</a></li>
+                        <li><a class="dropdown-item" href="{% url 'vehicle_tyres_select' %}"><i class="bi bi-record-circle me-2"></i>Tyre Management</a></li>
                     </ul>
                 </li>
 

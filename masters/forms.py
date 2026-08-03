@@ -24,6 +24,7 @@ class VehicleForm(forms.ModelForm):
         text_fields = [
             "vehicle_number", "engine_no", "chassis_no", "container_no",
             "color", "starting_km", "current_km", "make", "registration_name", "m_tag",
+            "owner", "weight_capacity",
         ]
 
         date_fields = [
@@ -95,39 +96,30 @@ class VehicleForm(forms.ModelForm):
 class VehicleTyreForm(forms.ModelForm):
     class Meta:
         model = VehicleTyre
-        fields = ["tyre_number", "installed_date", "installed_km"]
+        fields = ["make", "tyre_number", "installed_date", "installed_km", "price"]
         widgets = {
+            "make": forms.TextInput(attrs={"class": "form-control text-uppercase", "placeholder": "Tyre make"}),
             "tyre_number": forms.TextInput(attrs={"class": "form-control text-uppercase", "placeholder": "Tyre number"}),
             "installed_date": forms.DateInput(attrs={"class": "form-control datepicker"}),
             "installed_km": forms.NumberInput(attrs={"class": "form-control", "placeholder": "KM", "min": "0"}),
+            "price": forms.NumberInput(attrs={"class": "form-control", "placeholder": "Price", "min": "0", "step": "0.01"}),
         }
 
+    def __init__(self, *args, vehicle=None, **kwargs):
+        # 'vehicle' is passed explicitly by the view (not part of POST data)
+        # so clean_tyre_number() can scope the duplicate check per-vehicle.
+        self.vehicle = vehicle
+        super().__init__(*args, **kwargs)
 
-class BaseVehicleTyreFormSet(forms.BaseInlineFormSet):
-    def clean(self):
-        # Two tyres on the same vehicle can share an installed date or KM
-        # reading, but the same physical tyre number can't appear twice.
-        super().clean()
-        seen = set()
-        for form in self.forms:
-            if not hasattr(form, "cleaned_data") or form.cleaned_data.get("DELETE"):
-                continue
-            number = (form.cleaned_data.get("tyre_number") or "").strip().upper()
-            if not number:
-                continue
-            if number in seen:
-                form.add_error("tyre_number", "This tyre number is already used in another row.")
-            seen.add(number)
-
-
-VehicleTyreFormSet = forms.inlineformset_factory(
-    Vehicle,
-    VehicleTyre,
-    form=VehicleTyreForm,
-    formset=BaseVehicleTyreFormSet,
-    extra=1,
-    can_delete=True,
-)
+    def clean_tyre_number(self):
+        number = (self.cleaned_data.get("tyre_number") or "").strip().upper()
+        if self.vehicle:
+            qs = VehicleTyre.objects.filter(vehicle=self.vehicle, tyre_number=number)
+            if self.instance and self.instance.pk:
+                qs = qs.exclude(pk=self.instance.pk)
+            if qs.exists():
+                raise forms.ValidationError("This tyre number is already registered for this vehicle.")
+        return number
 
 
 class VehicleTypeForm(forms.ModelForm):

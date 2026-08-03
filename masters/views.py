@@ -6,12 +6,12 @@ from datetime import date
 
 from .models import (
     Driver, Vehicle, VehicleType, Wheeler, City, Route,
-    Vendor, Client, Expense,
+    Vendor, Client, Expense, VehicleTyre,
     ClientRate, DriverSalary
 )
 
 from .forms import (
-    DriverForm, VehicleForm, VehicleTyreFormSet,
+    DriverForm, VehicleForm, VehicleTyreForm,
     VehicleTypeForm, WheelerForm,
     CityForm, RouteForm,
     VendorForm, ClientForm,
@@ -120,35 +120,81 @@ def vehicle_list(request):
 def vehicle_add(request):
     # Agar data POST hai toh form fill hoga, warna khali form
     form = VehicleForm(request.POST or None)
-    tyre_formset = VehicleTyreFormSet(request.POST or None, prefix="tyres")
-    if request.method == "POST" and form.is_valid() and tyre_formset.is_valid():
-        vehicle = form.save()
-        tyre_formset.instance = vehicle
-        tyre_formset.save()
+    if request.method == "POST" and form.is_valid():
+        form.save()
         return redirect("vehicle_list")
 
     # IMPORTANT: Template ka naam "vehicle_form.html" hona chahiye
-    return render(request, "vehicle/vehicle_form.html", {"form": form, "tyre_formset": tyre_formset})
+    return render(request, "vehicle/vehicle_form.html", {"form": form})
 
 # 3. Vehicle Edit karne ke liye
 def vehicle_edit(request, vehicle_id):
     vehicle = get_object_or_404(Vehicle, id=vehicle_id)
     # Instance pass karna zaroori hai taake purana data nazar aaye
     form = VehicleForm(request.POST or None, instance=vehicle)
-    tyre_formset = VehicleTyreFormSet(request.POST or None, instance=vehicle, prefix="tyres")
 
-    if request.method == "POST" and form.is_valid() and tyre_formset.is_valid():
+    if request.method == "POST" and form.is_valid():
         form.save()
-        tyre_formset.save()
         return redirect("vehicle_list")
 
-    return render(request, "vehicle/vehicle_form.html", {"form": form, "vehicle": vehicle, "tyre_formset": tyre_formset})
+    return render(request, "vehicle/vehicle_form.html", {"form": form, "vehicle": vehicle})
 
 # 4. Vehicle Delete karne ke liye
 def vehicle_delete(request, vehicle_id):
     vehicle = get_object_or_404(Vehicle, id=vehicle_id)
     vehicle.delete()
     return redirect("vehicle_list")
+
+
+# ================= VEHICLE TYRES (separate page - Vehicle # first, rest auto-fills) =================
+def vehicle_tyres_select(request):
+    vehicles = Vehicle.objects.all().order_by("vehicle_number")
+    return render(request, "vehicle/vehicle_tyres_select.html", {"vehicles": vehicles})
+
+
+def vehicle_tyres(request, vehicle_id):
+    vehicle = get_object_or_404(Vehicle, id=vehicle_id)
+
+    if request.method == "POST":
+        form = VehicleTyreForm(request.POST, vehicle=vehicle)
+        if form.is_valid():
+            tyre = form.save(commit=False)
+            tyre.vehicle = vehicle
+            tyre.save()
+            messages.success(request, f"Tyre '{tyre.tyre_number}' added successfully.")
+            return redirect("vehicle_tyres", vehicle_id=vehicle.id)
+    else:
+        form = VehicleTyreForm(vehicle=vehicle)
+
+    tyres = vehicle.tyres.all().order_by("-id")
+    return render(request, "vehicle/vehicle_tyres.html", {
+        "vehicle": vehicle,
+        "form": form,
+        "tyres": tyres,
+    })
+
+
+def vehicle_tyre_edit(request, vehicle_id, tyre_id):
+    vehicle = get_object_or_404(Vehicle, id=vehicle_id)
+    tyre = get_object_or_404(VehicleTyre, id=tyre_id, vehicle=vehicle)
+    if request.method == "POST":
+        form = VehicleTyreForm(request.POST, instance=tyre, vehicle=vehicle)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f"Tyre '{tyre.tyre_number}' updated successfully.")
+        else:
+            messages.error(request, "Could not update that tyre - check the highlighted field(s).")
+    return redirect("vehicle_tyres", vehicle_id=vehicle.id)
+
+
+def vehicle_tyre_delete(request, vehicle_id, tyre_id):
+    vehicle = get_object_or_404(Vehicle, id=vehicle_id)
+    tyre = get_object_or_404(VehicleTyre, id=tyre_id, vehicle=vehicle)
+    if request.method == "POST":
+        number = tyre.tyre_number
+        tyre.delete()
+        messages.success(request, f"Tyre '{number}' deleted successfully.")
+    return redirect("vehicle_tyres", vehicle_id=vehicle.id)
 
 
 # ================= VEHICLE TYPE + WHEELER (admin-extensible registries, one shared page) =================

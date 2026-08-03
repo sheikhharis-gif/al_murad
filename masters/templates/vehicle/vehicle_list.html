@@ -131,6 +131,9 @@
 
                         <td class="text-end pe-4">
                             <div class="btn-group shadow-sm rounded-pill bg-white overflow-hidden border">
+                                <a href="{% url 'vehicle_tyres' v.id %}" class="btn btn-sm btn-white text-secondary py-2 px-3 border-end" title="Manage Tyres">
+                                    <i class="bi bi-record-circle"></i>
+                                </a>
                                 <a href="{% url 'vehicle_edit' v.id %}" class="btn btn-sm btn-white text-warning py-2 px-3 border-end">
                                     <i class="bi bi-pencil-square"></i>
                                 </a>

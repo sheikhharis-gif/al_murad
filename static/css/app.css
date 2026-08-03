@@ -904,3 +904,15 @@ body {
     cursor: pointer;
     pointer-events: auto;
 }
+
+/* Several form pages have their own "input, select { display:block; width:100% }"
+   style block that (unscoped) leaks into flatpickr's own popup calendar and
+   breaks its month/year header layout - the year number ends up wrapped onto
+   a hidden second line. Force flatpickr's internal controls back to their
+   own layout regardless of page-level overrides. */
+.flatpickr-calendar select,
+.flatpickr-calendar input {
+    display: revert !important;
+    width: revert !important;
+    margin-bottom: 0 !important;
+}
