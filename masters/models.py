@@ -94,7 +94,6 @@ class Vehicle(models.Model):
     VEHICLE_MODE = [
         ("OWN", "Own"),
         ("RENTAL", "Rental"),
-        ("FIXED", "Fixed"),
     ]
 
     STATUS_CHOICES = [
@@ -127,7 +126,7 @@ class Vehicle(models.Model):
         help_text="Optional second driver assigned to this vehicle"
     )
 
-    vehicle_mode = models.CharField(max_length=10, choices=VEHICLE_MODE)
+    vehicle_mode = models.CharField(max_length=10, choices=VEHICLE_MODE, default="OWN")
     vehicle_number = models.CharField(max_length=20, unique=True)
     current_location = models.ForeignKey(
         'City', on_delete=models.SET_NULL, null=True, blank=True, related_name='vehicles_here'
@@ -154,7 +153,6 @@ class Vehicle(models.Model):
     is_active = models.BooleanField(default=True)
     starting_km = models.PositiveIntegerField("Starting KMs", default=0)
     current_km = models.PositiveIntegerField("Current KMs", default=0)
-    last_meter_update = models.DateField(null=True, blank=True)
 
     # ===== Vehicle detail fields =====
     owner = models.CharField(max_length=150, blank=True)

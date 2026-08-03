@@ -30,7 +30,7 @@ class VehicleForm(forms.ModelForm):
         date_fields = [
             "sindh_permit_expiry", "punjab_permit_expiry", "kpk_permit_expiry",
             "balochistan_permit_expiry", "fitness_expiry_sindh", "fitness_expiry_punjab",
-            "fitness_expiry_kpk", "fitness_expiry_balochistan", "last_meter_update",
+            "fitness_expiry_kpk", "fitness_expiry_balochistan",
             "purchase_date",
         ]
 
