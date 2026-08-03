@@ -114,7 +114,7 @@ class VehicleTyreForm(forms.ModelForm):
         model = VehicleTyre
         fields = ["make", "tyre_number", "installed_date", "installed_km", "price"]
         widgets = {
-            "make": forms.TextInput(attrs={"class": "form-control text-uppercase", "placeholder": "Tyre make"}),
+            "make": forms.TextInput(attrs={"class": "form-control text-uppercase", "placeholder": "Tyre make", "autofocus": "autofocus"}),
             "tyre_number": forms.TextInput(attrs={"class": "form-control text-uppercase", "placeholder": "Tyre number"}),
             "installed_date": forms.DateInput(attrs={"class": "form-control datepicker"}),
             "installed_km": forms.NumberInput(attrs={"class": "form-control", "placeholder": "KM", "min": "0"}),
@@ -142,7 +142,7 @@ class VehicleTypeForm(forms.ModelForm):
     class Meta:
         model = VehicleType
         fields = ["name"]
-        widgets = {"name": forms.TextInput(attrs={"class": "form-control", "placeholder": "e.g. 20FT DRY"})}
+        widgets = {"name": forms.TextInput(attrs={"class": "form-control", "placeholder": "e.g. 20FT DRY", "autofocus": "autofocus"})}
 
     def clean_name(self):
         # Model.save() uppercases the name, so the duplicate check must compare
@@ -187,6 +187,7 @@ class DriverForm(forms.ModelForm):
                 "reference2_mobile"
             ]
         }
+        widgets["name"].attrs["autofocus"] = "autofocus"
         
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -203,7 +204,7 @@ class DriverSalaryForm(forms.ModelForm):
         model = DriverSalary
         fields = "__all__"
         widgets = {
-            "driver": forms.Select(attrs={"class": "form-select"}),
+            "driver": forms.Select(attrs={"class": "form-select", "autofocus": "autofocus"}),
             "month": forms.DateInput(attrs={"class": "form-control datepicker"}),
             "emp_id": forms.TextInput(attrs={"class": "form-control"}),
             "designation": forms.TextInput(attrs={"class": "form-control"}),
@@ -272,6 +273,7 @@ class VendorForm(forms.ModelForm):
         widgets = {
             field: forms.TextInput(attrs={"class": "form-control text-uppercase"}) for field in text_fields
         }
+        widgets["name"].attrs["autofocus"] = "autofocus"
         widgets.update({
             "supplier_type": forms.Select(attrs={"class": "form-select"}),
             "poc1_email": forms.EmailInput(attrs={"class": "form-control text-uppercase"}),
@@ -288,7 +290,7 @@ class ClientForm(forms.ModelForm):
         model = Client
         fields = "__all__"
         widgets = {
-            "name": forms.TextInput(attrs={"class": "form-control"}),
+            "name": forms.TextInput(attrs={"class": "form-control", "autofocus": "autofocus"}),
             "poc": forms.TextInput(attrs={"class": "form-control"}),
             "ntn": forms.TextInput(attrs={"class": "form-control"}),
             "address": forms.Textarea(attrs={"class": "form-control", "rows": 3}),
@@ -308,7 +310,7 @@ class ExpenseForm(forms.ModelForm):
         
         widgets = {
             'date': forms.DateInput(attrs={'class': 'form-control datepicker'}),
-            'trip': forms.Select(attrs={'class': 'form-select'}),
+            'trip': forms.Select(attrs={'class': 'form-select', 'autofocus': 'autofocus'}),
             'pump_name': forms.TextInput(attrs={'placeholder': 'Enter pump name'}),
             'slip_no': forms.TextInput(attrs={'placeholder': 'Slip # Optional'}),
         }
@@ -330,7 +332,7 @@ class ClientRateForm(forms.ModelForm):
         model = ClientRate
         fields = ["route", "rate", "fuel_price", "effective_date"]
         widgets = {
-            "route": forms.Select(attrs={"class": "form-select searchable-select"}),
+            "route": forms.Select(attrs={"class": "form-select searchable-select", "autofocus": "autofocus"}),
             "rate": forms.NumberInput(attrs={"class": "form-control"}),
             "fuel_price": forms.NumberInput(attrs={"class": "form-control"}),
             "effective_date": forms.DateInput(attrs={"class": "form-control datepicker"}),
@@ -353,7 +355,7 @@ class MaintenanceJobForm(forms.ModelForm):
             "unpaid_balance",
         ]
         widgets = {
-            "vehicle": forms.Select(attrs={"class": "form-select"}),
+            "vehicle": forms.Select(attrs={"class": "form-select", "autofocus": "autofocus"}),
             "date": forms.DateInput(attrs={
                 "class": "form-control datepicker", "data-max-today": "1"
             }),
@@ -400,7 +402,7 @@ class PartsInventoryForm(forms.ModelForm):
         model = PartsInventory
         fields = ["part_name", "category", "stock_level", "reorder_point", "unit_cost"]
         widgets = {
-            "part_name": forms.TextInput(attrs={"class": "form-control", "placeholder": "e.g. Break Oil Guard"}),
+            "part_name": forms.TextInput(attrs={"class": "form-control", "placeholder": "e.g. Break Oil Guard", "autofocus": "autofocus"}),
             "category": forms.Select(attrs={"class": "form-select"}),
             "stock_level": forms.NumberInput(attrs={"class": "form-control", "min": "0"}),
             "reorder_point": forms.NumberInput(attrs={"class": "form-control", "min": "0"}),

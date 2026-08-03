@@ -55,6 +55,15 @@
         var selected = options.filter(function (o) { return o.selected && o.value; })[0];
         textInput.value = selected ? selected.textContent : '';
 
+        // The original <select> is what carries autofocus (if this field is
+        // meant to be the form's starting field) - but it's about to be
+        // hidden below, so the browser's autofocus would land on nothing.
+        // Hand focus to the replacement text input instead.
+        if (select.hasAttribute('autofocus')) {
+            textInput.setAttribute('autofocus', 'autofocus');
+            setTimeout(function () { textInput.focus(); }, 0);
+        }
+
         select.style.display = 'none';
         select.insertAdjacentElement('beforebegin', textInput);
         select.insertAdjacentElement('beforebegin', datalist);

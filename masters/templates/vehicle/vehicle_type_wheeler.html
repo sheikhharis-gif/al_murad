@@ -20,7 +20,7 @@
                     <form method="post" class="bg-light p-4 rounded-4 mb-4 border border-light-subtle">
                         {% csrf_token %}
                         <label class="form-label small fw-bold">Type Name</label>
-                        <input type="text" name="name" class="form-control text-uppercase" placeholder="e.g. 20FT DRY" required>
+                        <input type="text" name="name" class="form-control text-uppercase" placeholder="e.g. 20FT DRY" autofocus required>
                         <button type="submit" name="add_type" value="1" class="btn btn-dark w-100 mt-3 fw-bold rounded-3 py-2">
                             <i class="bi bi-plus-circle me-2"></i>Register Type
                         </button>
