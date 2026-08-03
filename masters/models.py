@@ -97,6 +97,13 @@ class Vehicle(models.Model):
         ("FIXED", "Fixed"),
     ]
 
+    STATUS_CHOICES = [
+        ("ACTIVE", "Active"),
+        ("MAINTENANCE", "Under Maintenance"),
+        ("IDLE", "Idle"),
+        ("INACTIVE", "Inactive"),
+    ]
+
     # ForeignKey to Vendor - optional; only relevant when vehicle_mode is Rental
     vendor = models.ForeignKey('Vendor', on_delete=models.PROTECT, null=True, blank=True, related_name='vehicles')
 
@@ -109,6 +116,15 @@ class Vehicle(models.Model):
         blank=True,
         related_name='vehicles',
         help_text="Select driver from the registered list"
+    )
+    driver2 = models.ForeignKey(
+        'Driver',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='vehicles_as_second_driver',
+        verbose_name="Second Driver",
+        help_text="Optional second driver assigned to this vehicle"
     )
 
     vehicle_mode = models.CharField(max_length=10, choices=VEHICLE_MODE)
@@ -136,16 +152,30 @@ class Vehicle(models.Model):
     # Old text fields removed - Ab driver database se link hai
 
     is_active = models.BooleanField(default=True)
-    current_km = models.PositiveIntegerField(default=0)
+    starting_km = models.PositiveIntegerField("Starting KMs", default=0)
+    current_km = models.PositiveIntegerField("Current KMs", default=0)
     last_meter_update = models.DateField(null=True, blank=True)
 
     # ===== Vehicle detail fields =====
     model_year = models.PositiveIntegerField("Model", null=True, blank=True)
     make = models.CharField(max_length=100, blank=True)
     purchase_date = models.DateField(null=True, blank=True)
-    value = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    value = models.DecimalField(max_digits=14, decimal_places=2, null=True, blank=True)
     leased = models.BooleanField(default=False)
     registration_name = models.CharField(max_length=150, blank=True)
+    m_tag = models.CharField("M-Tag #", max_length=50, blank=True)
+    dedicated_client = models.ForeignKey(
+        'Client', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='dedicated_vehicles', verbose_name="Dedicated to Client"
+    )
+    status = models.CharField(max_length=15, choices=STATUS_CHOICES, default="ACTIVE")
+
+    def save(self, *args, **kwargs):
+        for field in ("vehicle_number", "engine_no", "chassis_no", "container_no", "color", "make", "registration_name", "m_tag"):
+            value = getattr(self, field, None)
+            if value:
+                setattr(self, field, value.strip().upper())
+        super().save(*args, **kwargs)
 
     # ===== SMART LOGIC FOR ALERTS =====
     def check_expiry(self, expiry_date):
@@ -181,6 +211,11 @@ class VehicleTyre(models.Model):
     vehicle = models.ForeignKey(Vehicle, on_delete=models.CASCADE, related_name="tyres")
     tyre_number = models.CharField(max_length=50)
     installed_date = models.DateField(null=True, blank=True)
+    installed_km = models.PositiveIntegerField("Kilometer", null=True, blank=True)
+
+    def save(self, *args, **kwargs):
+        self.tyre_number = (self.tyre_number or "").strip().upper()
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.tyre_number} ({self.vehicle.vehicle_number})"

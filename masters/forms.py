@@ -1,3 +1,4 @@
+from decimal import Decimal, InvalidOperation
 from django import forms
 from .models import (
     Vehicle, VehicleType, Wheeler, VehicleTyre, Driver, Vendor,
@@ -8,6 +9,13 @@ from operations.models import Trip
 ################ VEHICLES ################
 
 class VehicleForm(forms.ModelForm):
+    # Declared explicitly (instead of the auto-generated DecimalField) so a
+    # comma-formatted "7,500,000" doesn't fail Decimal parsing before
+    # clean_value() gets a chance to strip the commas.
+    value = forms.CharField(required=False, widget=forms.TextInput(attrs={
+        "class": "form-control money-input", "placeholder": "e.g. 7,500,000", "inputmode": "numeric",
+    }))
+
     class Meta:
         model = Vehicle
         fields = "__all__"
@@ -15,7 +23,7 @@ class VehicleForm(forms.ModelForm):
         # 1. Purani driver fields ko list se nikaal diya, ab sirf 'driver' dropdown bacha hai
         text_fields = [
             "vehicle_number", "engine_no", "chassis_no", "container_no",
-            "color", "current_km", "make", "registration_name",
+            "color", "starting_km", "current_km", "make", "registration_name", "m_tag",
         ]
 
         date_fields = [
@@ -27,7 +35,7 @@ class VehicleForm(forms.ModelForm):
 
         # 2. Base widgets for text fields
         widgets = {
-            field: forms.TextInput(attrs={"class": "form-control"}) for field in text_fields
+            field: forms.TextInput(attrs={"class": "form-control text-uppercase"}) for field in text_fields
         }
 
         # 3. Date fields widgets
@@ -39,14 +47,16 @@ class VehicleForm(forms.ModelForm):
         widgets.update({
             "vendor": forms.Select(attrs={"class": "form-select"}),
             "driver": forms.Select(attrs={"class": "form-select searchable-select"}), # Naya Driver Dropdown
+            "driver2": forms.Select(attrs={"class": "form-select searchable-select"}),
             "vehicle_mode": forms.Select(attrs={"class": "form-select"}),
             "vehicle_type": forms.Select(attrs={"class": "form-select"}),
             "wheeler": forms.Select(attrs={"class": "form-select"}),
             "current_location": forms.Select(attrs={"class": "form-select"}),
+            "dedicated_client": forms.Select(attrs={"class": "form-select"}),
+            "status": forms.Select(attrs={"class": "form-select"}),
             "is_active": forms.CheckboxInput(attrs={"class": "form-check-input"}),
             "leased": forms.Select(attrs={"class": "form-select"}, choices=((False, "No"), (True, "Yes"))),
             "model_year": forms.NumberInput(attrs={"class": "form-control", "placeholder": "e.g. 2014"}),
-            "value": forms.NumberInput(attrs={"class": "form-control", "step": "0.01"}),
         })
 
     def __init__(self, *args, **kwargs):
@@ -56,23 +66,65 @@ class VehicleForm(forms.ModelForm):
         if self.instance and self.instance.pk and self.instance.driver_id:
             # Keep the currently assigned driver selectable even if they've since gone inactive.
             active_drivers = active_drivers | Driver.objects.filter(pk=self.instance.driver_id)
-        self.fields["driver"].queryset = active_drivers.distinct()
+        if self.instance and self.instance.pk and self.instance.driver2_id:
+            active_drivers = active_drivers | Driver.objects.filter(pk=self.instance.driver2_id)
+        active_drivers = active_drivers.distinct()
+        self.fields["driver"].queryset = active_drivers
         self.fields["driver"].empty_label = "--- No Driver Assigned ---"
+        self.fields["driver2"].queryset = active_drivers
+        self.fields["driver2"].empty_label = "--- No Second Driver ---"
 
         self.fields["vendor"].empty_label = "--- No Vendor ---"
         self.fields["vehicle_type"].empty_label = "--- Select Type ---"
         self.fields["wheeler"].empty_label = "--- Select Wheeler ---"
         self.fields["current_location"].empty_label = "--- Select City ---"
+        self.fields["dedicated_client"].empty_label = "--- Not Dedicated ---"
+
+    def clean_value(self):
+        # Value is typed with thousands-comma formatting (e.g. "7,500,000") for
+        # readability - strip commas before handing it to the model's DecimalField.
+        raw = (self.cleaned_data.get("value") or "").replace(",", "").strip()
+        if not raw:
+            return None
+        try:
+            return Decimal(raw)
+        except InvalidOperation:
+            raise forms.ValidationError("Enter a valid amount.")
+
+
+class VehicleTyreForm(forms.ModelForm):
+    class Meta:
+        model = VehicleTyre
+        fields = ["tyre_number", "installed_date", "installed_km"]
+        widgets = {
+            "tyre_number": forms.TextInput(attrs={"class": "form-control text-uppercase", "placeholder": "Tyre number"}),
+            "installed_date": forms.DateInput(attrs={"class": "form-control datepicker"}),
+            "installed_km": forms.NumberInput(attrs={"class": "form-control", "placeholder": "KM", "min": "0"}),
+        }
+
+
+class BaseVehicleTyreFormSet(forms.BaseInlineFormSet):
+    def clean(self):
+        # Two tyres on the same vehicle can share an installed date or KM
+        # reading, but the same physical tyre number can't appear twice.
+        super().clean()
+        seen = set()
+        for form in self.forms:
+            if not hasattr(form, "cleaned_data") or form.cleaned_data.get("DELETE"):
+                continue
+            number = (form.cleaned_data.get("tyre_number") or "").strip().upper()
+            if not number:
+                continue
+            if number in seen:
+                form.add_error("tyre_number", "This tyre number is already used in another row.")
+            seen.add(number)
 
 
 VehicleTyreFormSet = forms.inlineformset_factory(
     Vehicle,
     VehicleTyre,
-    fields=["tyre_number", "installed_date"],
-    widgets={
-        "tyre_number": forms.TextInput(attrs={"class": "form-control", "placeholder": "Tyre number"}),
-        "installed_date": forms.DateInput(attrs={"class": "form-control datepicker"}),
-    },
+    form=VehicleTyreForm,
+    formset=BaseVehicleTyreFormSet,
     extra=1,
     can_delete=True,
 )
