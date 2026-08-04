@@ -2,7 +2,7 @@ from decimal import Decimal, InvalidOperation
 from django import forms
 from .models import (
     Vehicle, VehicleType, Wheeler, VehicleTyre, Driver, Vendor, SupplierType,
-    City, Route, Client, Expense, ClientRate, DriverSalary
+    City, Route, Client, ClientType, Expense, ClientRate, DriverSalary
 )
 from operations.models import Trip
 
@@ -285,17 +285,47 @@ class VendorForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         self.fields["supplier_type"].empty_label = "--- Select Supplier Type ---"
 
+class ClientTypeForm(forms.ModelForm):
+    class Meta:
+        model = ClientType
+        fields = ["name"]
+        widgets = {"name": forms.TextInput(attrs={"class": "form-control", "placeholder": "e.g. CORPORATE"})}
+
+    def clean_name(self):
+        name = (self.cleaned_data.get("name") or "").strip().upper()
+        qs = ClientType.objects.filter(name=name)
+        if self.instance and self.instance.pk:
+            qs = qs.exclude(pk=self.instance.pk)
+        if qs.exists():
+            raise forms.ValidationError("This Client Type is already registered.")
+        return name
+
+
 class ClientForm(forms.ModelForm):
     class Meta:
         model = Client
         fields = "__all__"
+
+        text_fields = [
+            "name", "poc1_name", "poc1_phone", "poc2_name", "poc2_phone",
+            "ntn", "stn", "term_of_service", "billing_period", "billing_company",
+        ]
+
         widgets = {
-            "name": forms.TextInput(attrs={"class": "form-control", "autofocus": "autofocus"}),
-            "poc": forms.TextInput(attrs={"class": "form-control"}),
-            "ntn": forms.TextInput(attrs={"class": "form-control"}),
-            "address": forms.Textarea(attrs={"class": "form-control", "rows": 3}),
-            "billing_company": forms.TextInput(attrs={"class": "form-control"}),
+            field: forms.TextInput(attrs={"class": "form-control"}) for field in text_fields
         }
+        widgets["name"].attrs["autofocus"] = "autofocus"
+        widgets.update({
+            "client_type": forms.Select(attrs={"class": "form-select"}),
+            "poc1_email": forms.EmailInput(attrs={"class": "form-control"}),
+            "poc2_email": forms.EmailInput(attrs={"class": "form-control"}),
+            "address": forms.Textarea(attrs={"class": "form-control", "rows": 3}),
+            "is_active": forms.CheckboxInput(attrs={"class": "form-check-input"}),
+        })
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["client_type"].empty_label = "--- Select Client Type ---"
 
 ################ EXPENSE & RATES ################
 from django import forms

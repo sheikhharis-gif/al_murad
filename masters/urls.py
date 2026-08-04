@@ -47,6 +47,9 @@ urlpatterns = [
     # ✅ Client Edit aur Delete ke missing paths yahan add kar diye hain
     path("clients/edit/<int:client_id>/", views.client_edit, name="client_edit"),
     path("clients/delete/<int:client_id>/", views.client_delete, name="client_delete"),
+    path("clients/types/", views.client_type_config, name="client_type_config"),
+    path("clients/types/<int:type_id>/edit/", views.client_type_edit, name="client_type_edit"),
+    path("clients/types/<int:type_id>/delete/", views.client_type_delete, name="client_type_delete"),
 
     # ================= EXPENSES =================
     path('', views.expense_sheet, name='expense_sheet'),          # /expenses/

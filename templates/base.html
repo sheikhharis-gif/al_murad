@@ -183,12 +183,13 @@
 
                 {% if not is_expense_only and not is_workshop_only %}
                 <li class="nav-item dropdown">
-                    <a href="#" class="nav-link dropdown-toggle {% if request.resolver_match.url_name == 'client_list' or request.resolver_match.url_name == 'client_add' or request.resolver_match.url_name == 'client_edit' or request.resolver_match.url_name == 'client_rates' %}active{% endif %}" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                    <a href="#" class="nav-link dropdown-toggle {% if request.resolver_match.url_name == 'client_list' or request.resolver_match.url_name == 'client_add' or request.resolver_match.url_name == 'client_edit' or request.resolver_match.url_name == 'client_rates' or request.resolver_match.url_name == 'client_type_config' %}active{% endif %}" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                         <i class="bi bi-building"></i> Clients
                     </a>
                     <ul class="dropdown-menu">
                         <li><a class="dropdown-item" href="{% url 'client_list' %}"><i class="bi bi-list-ul me-2"></i>All Clients</a></li>
                         <li><a class="dropdown-item" href="{% url 'client_add' %}"><i class="bi bi-plus-circle me-2"></i>Add New Client</a></li>
+                        <li><a class="dropdown-item" href="{% url 'client_type_config' %}"><i class="bi bi-tags me-2"></i>Client Types</a></li>
                     </ul>
                 </li>
 

@@ -532,13 +532,14 @@ def supplier_type_delete(request, type_id):
     return redirect("supplier_type_config")
 
 from django.shortcuts import render, redirect, get_object_or_404
-from .models import Client, ClientRate, Expense
-from .forms import ClientForm, ClientRateForm, ExpenseForm
+from .models import Client, ClientType, ClientRate, Expense
+from .forms import ClientForm, ClientTypeForm, ClientRateForm, ExpenseForm
 
 # ================= CLIENTS =================
 CLIENT_SORT_FIELDS = {
     "name": "Company Name",
-    "poc": "Point of Contact",
+    "client_type__name": "Client Type",
+    "poc1_name": "Point of Contact",
     "ntn": "NTN",
     "billing_company": "Billing Company",
 }
@@ -580,6 +581,48 @@ def client_delete(request, client_id):
         client.delete()
         return redirect("client_list")
     return redirect("client_list")
+
+
+# ================= CLIENT TYPE (admin-extensible registry) =================
+def client_type_config(request):
+    client_types = ClientType.objects.all()
+
+    if request.method == "POST":
+        form = ClientTypeForm(request.POST)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f"Client Type '{form.instance.name}' registered successfully.")
+        else:
+            messages.error(request, "Could not register that Client Type - it may already exist.")
+        return redirect("client_type_config")
+
+    return render(request, "clients/client_type_config.html", {
+        "client_types": client_types,
+    })
+
+
+def client_type_edit(request, type_id):
+    ctype = get_object_or_404(ClientType, id=type_id)
+    if request.method == "POST":
+        form = ClientTypeForm(request.POST, instance=ctype)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f"Client Type updated to '{ctype.name}'.")
+        else:
+            messages.error(request, "That Client Type name is already registered.")
+    return redirect("client_type_config")
+
+
+def client_type_delete(request, type_id):
+    ctype = get_object_or_404(ClientType, id=type_id)
+    if request.method == "POST":
+        try:
+            name = ctype.name
+            ctype.delete()
+            messages.success(request, f"Client Type '{name}' deleted successfully.")
+        except ProtectedError:
+            messages.error(request, f"Cannot delete '{ctype.name}' - it's still assigned to a client.")
+    return redirect("client_type_config")
 
 # ================= CLIENT RATE =================
 def client_rates(request, client_id):

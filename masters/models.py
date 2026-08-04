@@ -67,7 +67,7 @@ class Vendor(models.Model):
     address = models.TextField(blank=True)
     ntn = models.CharField("NTN #", max_length=30, blank=True)
     stn = models.CharField("STN #", max_length=30, blank=True)
-    term_of_service = models.CharField("Term of Service", max_length=100, blank=True)
+    term_of_service = models.CharField("Terms of Service", max_length=100, blank=True)
     billing_period = models.CharField("Billing Period", max_length=50, blank=True)
 
     def save(self, *args, **kwargs):
@@ -387,14 +387,50 @@ class PartsInventory(models.Model):
     class Meta:
         verbose_name_plural = "Parts Inventory"
         ordering = ["part_name"]
+# ================= CLIENT TYPE (admin-extensible registry) =================
+class ClientType(models.Model):
+    name = models.CharField(max_length=50, unique=True)
+
+    def save(self, *args, **kwargs):
+        self.name = (self.name or "").strip().upper()
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        ordering = ["name"]
+
+
 # ================= CLIENT =================
 class Client(models.Model):
     name = models.CharField(max_length=100)
-    poc = models.CharField(max_length=100)
-    ntn = models.CharField(max_length=20, unique=True)
+    client_type = models.ForeignKey(
+        ClientType, on_delete=models.PROTECT, null=True, blank=True, related_name="clients"
+    )
+    poc1_name = models.CharField("Point of Contact 1", max_length=100, blank=True)
+    poc1_phone = models.CharField("Phone / Mobile Number", max_length=20, blank=True)
+    poc1_email = models.EmailField("Email", blank=True)
+    poc2_name = models.CharField("Point of Contact 2", max_length=100, blank=True)
+    poc2_phone = models.CharField("Phone / Mobile Number", max_length=20, blank=True)
+    poc2_email = models.EmailField("Email", blank=True)
+    ntn = models.CharField("NTN #", max_length=20, unique=True)
+    stn = models.CharField("STN #", max_length=30, blank=True)
+    term_of_service = models.CharField("Terms of Service", max_length=100, blank=True)
+    billing_period = models.CharField("Billing Period", max_length=50, blank=True)
     address = models.TextField()
     billing_company = models.CharField(max_length=150, blank=True)
     is_active = models.BooleanField(default=True)
+
+    def save(self, *args, **kwargs):
+        for field in (
+            "name", "poc1_name", "poc1_email", "poc2_name", "poc2_email",
+            "address", "ntn", "stn", "term_of_service", "billing_period", "billing_company",
+        ):
+            value = getattr(self, field, None)
+            if value:
+                setattr(self, field, value.strip().upper())
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return self.name
