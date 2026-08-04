@@ -69,6 +69,7 @@ class Vendor(models.Model):
     stn = models.CharField("STN #", max_length=30, blank=True)
     term_of_service = models.CharField("Terms of Service", max_length=100, blank=True)
     billing_period = models.CharField("Billing Period", max_length=50, blank=True)
+    is_active = models.BooleanField(default=True)
 
     def save(self, *args, **kwargs):
         for field in (

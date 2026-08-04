@@ -279,6 +279,7 @@ class VendorForm(forms.ModelForm):
             "poc1_email": forms.EmailInput(attrs={"class": "form-control text-uppercase"}),
             "poc2_email": forms.EmailInput(attrs={"class": "form-control text-uppercase"}),
             "address": forms.Textarea(attrs={"class": "form-control text-uppercase", "rows": 3}),
+            "is_active": forms.CheckboxInput(attrs={"class": "form-check-input"}),
         })
 
     def __init__(self, *args, **kwargs):
