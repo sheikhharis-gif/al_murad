@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load rate_filters %}
 
 {% block content %}
 <div class="container-fluid py-4">
@@ -97,17 +98,17 @@
                         <col style="width:9%">
                         <col style="width:11%">
                     </colgroup>
-                    <thead class="sticky-top bg-white">
-                        <tr class="text-muted small text-uppercase">
+                    <thead class="sticky-top">
+                        <tr class="text-uppercase">
                             <th>Route</th>
                             <th class="text-center">Current Fuel Price</th>
                             <th class="text-center">Current Rate</th>
                             <th class="text-center">Effective %</th>
-                            <th class="text-center">Rate Subject to Revision</th>
+                            <th class="text-center rsr-col">Rate Subject to Revision</th>
                             <th class="text-center">Updated Fuel Price</th>
                             <th class="text-center">Fuel Price Change %</th>
                             <th class="text-center">Rate Adjustment</th>
-                            <th class="text-center">Updated Trip Cost</th>
+                            <th class="text-center utc-col">Updated Trip Cost</th>
                             <th class="text-center">Effective Date</th>
                             <th class="text-center">Actions</th>
                         </tr>
@@ -116,15 +117,15 @@
                         {% for r in rates %}
                         <tr>
                             <td class="fw-bold text-dark">{{ r.route.route_code }}</td>
-                            <td class="text-center">{{ r.current_fuel_price }}</td>
-                            <td class="text-center">{{ r.current_rate }}</td>
-                            <td class="text-center">{{ r.effective_percent }}%</td>
-                            <td class="text-center">{{ r.rate_subject_to_revision }}</td>
-                            <td class="text-center">{{ r.updated_fuel_price }}</td>
-                            <td class="text-center {% if r.fuel_price_change_percent < 0 %}text-danger{% elif r.fuel_price_change_percent > 0 %}text-success{% endif %}">{{ r.fuel_price_change_percent }}%</td>
-                            <td class="text-center {% if r.rate_adjustment < 0 %}text-danger{% elif r.rate_adjustment > 0 %}text-success{% endif %}">{{ r.rate_adjustment }}</td>
-                            <td class="text-center fw-bold">{{ r.updated_trip_cost }}</td>
-                            <td class="text-center">{{ r.effective_date|date:"d-M-y" }}</td>
+                            <td class="text-center">{{ r.current_fuel_price|acct }}</td>
+                            <td class="text-center">{{ r.current_rate|acct }}</td>
+                            <td class="text-center">{{ r.effective_percent|pct_trim }}</td>
+                            <td class="text-center rsr-col">{{ r.rate_subject_to_revision|acct }}</td>
+                            <td class="text-center">{{ r.updated_fuel_price|acct }}</td>
+                            <td class="text-center {% if r.fuel_price_change_percent < 0 %}text-danger{% elif r.fuel_price_change_percent > 0 %}text-success{% endif %}">{{ r.fuel_price_change_percent|pct }}</td>
+                            <td class="text-center {% if r.rate_adjustment < 0 %}text-danger{% elif r.rate_adjustment > 0 %}text-success{% endif %}">{{ r.rate_adjustment|acct }}</td>
+                            <td class="text-center utc-col">{{ r.updated_trip_cost|acct }}</td>
+                            <td class="text-center">{{ r.effective_date|date:"j-M-y" }}</td>
                             <td class="text-center">
                                 <div class="btn-group btn-group-sm shadow-sm rounded-2 overflow-hidden bg-white border">
                                     <button type="button"
@@ -213,8 +214,11 @@
     .btn-white { background-color: #fff; border: none; }
     .btn-white:hover { background-color: #f8fafc; }
     .rate-table { table-layout: fixed; width: 100%; font-size: 0.78rem; }
-    .rate-table th { border: none; background-color: #f8f9fa; color: #6c757d; font-weight: 600; padding: 8px 6px; white-space: normal; line-height: 1.15; vertical-align: middle; }
+    .rate-table th { border: none; background-color: #ed7d31; color: #fff; font-weight: 700; font-size: 0.7rem; padding: 8px 6px; white-space: normal; line-height: 1.15; vertical-align: middle; }
     .rate-table td { padding: 8px 6px; border-bottom: 1px solid #f1f4f8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .rate-table td.rsr-col { background-color: #f1f3f5; color: #6c757d; }
+    .rate-table th.utc-col, .rate-table td.utc-col { background-color: #dbe9fb; }
+    .rate-table td.utc-col { color: #1a56db; font-weight: 700; }
 </style>
 
 <script>
