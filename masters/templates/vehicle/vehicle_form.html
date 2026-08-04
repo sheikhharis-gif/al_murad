@@ -74,15 +74,6 @@
                             <div class="col-md-3"><label class="form-label small">Registration Name</label>{{ form.registration_name }}{{ form.registration_name.errors }}</div>
 
                             <div class="col-md-3"><label class="form-label small">Status</label>{{ form.status }}{{ form.status.errors }}</div>
-                            <div class="col-md-3">
-                                <label class="form-label small">Select Driver 1</label>
-                                {{ form.driver }}{{ form.driver.errors }}
-                            </div>
-                            <div class="col-md-3">
-                                <label class="form-label small">Select Driver 2</label>
-                                {{ form.driver2 }}{{ form.driver2.errors }}
-                                <div class="form-text x-small mt-1"><a href="{% url 'driver_add' %}" tabindex="-1">+ Add New Driver</a></div>
-                            </div>
                             <div class="col-md-3 d-flex align-items-end">
                                 <button type="submit" class="btn btn-primary w-100 fw-bold shadow-sm">
                                     <i class="bi bi-save me-2"></i>{% if vehicle %}Update Vehicle{% else %}Save Vehicle{% endif %}
@@ -110,6 +101,26 @@
                     <i class="bi bi-file-earmark-check me-1"></i>Manage Permits &amp; Compliance
                 </a>
                 {% endif %}
+
+                <div class="card border-0 shadow-sm rounded-4 mb-4 p-3">
+                    <h6 class="fw-bold mb-3">
+                        <i class="bi bi-person-badge me-2 text-primary"></i>Assign Driver
+                    </h6>
+                    <div class="mb-3">
+                        <label class="form-label small">Select Driver 1</label>
+                        {{ form.driver }}
+                        {{ form.driver.errors }}
+                        <div class="form-text x-small mt-1">Only active drivers are listed - type to search.</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small">Select Driver 2</label>
+                        {{ form.driver2 }}
+                        {{ form.driver2.errors }}
+                    </div>
+                    <a href="{% url 'driver_add' %}" class="btn btn-outline-primary btn-sm w-100 mt-2">
+                        <i class="bi bi-plus-circle me-1"></i>Add New Driver
+                    </a>
+                </div>
 
                 <a href="{% url 'vehicle_type_wheeler_config' %}" class="btn btn-outline-secondary btn-sm w-100">
                     <i class="bi bi-truck-front me-1"></i>Vehicle Types &amp; Wheelers
@@ -168,6 +179,50 @@
         }
         money.addEventListener('input', formatMoney);
         formatMoney();
+    })();
+
+    // Tab order: after Status, go to Assign Driver (sidebar) then Save,
+    // instead of falling through to whatever the sidebar happens to contain
+    // next in the DOM. Driver 1/2 get swapped for a plain text input by the
+    // searchable-select enhancer (app.js) at some point after this script
+    // runs, so the "next control" is resolved fresh on every Tab press
+    // rather than cached up front.
+    (function () {
+        const statusEl = document.getElementById('id_status');
+        if (!statusEl) return;
+        const saveBtn = statusEl.closest('form').querySelector('button[type="submit"]');
+
+        function visibleControlFor(id) {
+            const el = document.getElementById(id);
+            if (!el) return null;
+            if (el.style.display !== 'none') return el;
+            // searchable-select hides the original <select> and inserts a
+            // text input (plus a <datalist>) right before it - walk back to
+            // whichever preceding sibling is that input.
+            let sib = el.previousElementSibling;
+            while (sib && sib.tagName !== 'INPUT') sib = sib.previousElementSibling;
+            return sib || el;
+        }
+
+        const steps = [
+            { from: () => visibleControlFor('id_status'), to: () => visibleControlFor('id_driver') },
+            { from: () => visibleControlFor('id_driver'), to: () => visibleControlFor('id_driver2') },
+            { from: () => visibleControlFor('id_driver2'), to: () => saveBtn },
+        ];
+
+        document.addEventListener('keydown', function (e) {
+            if (e.key !== 'Tab' || e.shiftKey) return;
+            for (const step of steps) {
+                if (document.activeElement === step.from()) {
+                    const target = step.to();
+                    if (target) {
+                        e.preventDefault();
+                        target.focus();
+                    }
+                    return;
+                }
+            }
+        });
     })();
 </script>
 {% endblock %}
