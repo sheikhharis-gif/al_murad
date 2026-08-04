@@ -52,9 +52,12 @@
                     {{ form.route }}{{ form.route.errors }}
                 </div>
                 <div class="col-md-2">
-                    <label class="form-label small fw-bold">Current Fuel Price</label>
+                    <label class="form-label small fw-bold">
+                        Current Fuel Price
+                        <i class="bi bi-info-circle text-muted" data-bs-toggle="tooltip" data-bs-placement="top"
+                           title="Auto-filled and locked once this route already has an entry. Only editable for the first entry."></i>
+                    </label>
                     {{ form.current_fuel_price }}
-                    <div class="form-text x-small mt-1">Locked once route has a prior entry</div>
                 </div>
                 <div class="col-md-2">
                     <label class="form-label small fw-bold">Current Rate</label>
@@ -248,6 +251,10 @@ document.addEventListener('DOMContentLoaded', function () {
         routeSelect.addEventListener('change', syncCurrentFields);
         syncCurrentFields();
     }
+
+    document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function (el) {
+        new bootstrap.Tooltip(el);
+    });
 
     const rateModal = new bootstrap.Modal(document.getElementById('rateEditModal'));
     document.querySelectorAll('.edit-rate-btn').forEach(function (btn) {
