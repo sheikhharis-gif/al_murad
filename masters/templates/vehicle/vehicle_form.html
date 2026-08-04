@@ -74,6 +74,15 @@
                             <div class="col-md-3"><label class="form-label small">Registration Name</label>{{ form.registration_name }}{{ form.registration_name.errors }}</div>
 
                             <div class="col-md-3"><label class="form-label small">Status</label>{{ form.status }}{{ form.status.errors }}</div>
+                            <div class="col-md-3">
+                                <label class="form-label small">Select Driver 1</label>
+                                {{ form.driver }}{{ form.driver.errors }}
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small">Select Driver 2</label>
+                                {{ form.driver2 }}{{ form.driver2.errors }}
+                                <div class="form-text x-small mt-1"><a href="{% url 'driver_add' %}" tabindex="-1">+ Add New Driver</a></div>
+                            </div>
                             <div class="col-md-3 d-flex align-items-end">
                                 <button type="submit" class="btn btn-primary w-100 fw-bold shadow-sm">
                                     <i class="bi bi-save me-2"></i>{% if vehicle %}Update Vehicle{% else %}Save Vehicle{% endif %}
@@ -101,26 +110,6 @@
                     <i class="bi bi-file-earmark-check me-1"></i>Manage Permits &amp; Compliance
                 </a>
                 {% endif %}
-
-                <div class="card border-0 shadow-sm rounded-4 mb-4 p-3">
-                    <h6 class="fw-bold mb-3">
-                        <i class="bi bi-person-badge me-2 text-primary"></i>Assign Driver
-                    </h6>
-                    <div class="mb-3">
-                        <label class="form-label small">Select Driver 1</label>
-                        {{ form.driver }}
-                        {{ form.driver.errors }}
-                        <div class="form-text x-small mt-1">Only active drivers are listed - type to search.</div>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label small">Select Driver 2</label>
-                        {{ form.driver2 }}
-                        {{ form.driver2.errors }}
-                    </div>
-                    <a href="{% url 'driver_add' %}" class="btn btn-outline-primary btn-sm w-100 mt-2">
-                        <i class="bi bi-plus-circle me-1"></i>Add New Driver
-                    </a>
-                </div>
 
                 <a href="{% url 'vehicle_type_wheeler_config' %}" class="btn btn-outline-secondary btn-sm w-100">
                     <i class="bi bi-truck-front me-1"></i>Vehicle Types &amp; Wheelers
