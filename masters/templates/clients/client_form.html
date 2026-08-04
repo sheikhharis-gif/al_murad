@@ -52,8 +52,13 @@
                     <div class="col-md-3"><label class="form-label small">Phone / Mobile Number</label>{{ form.poc2_phone }}</div>
 
                     <div class="col-md-3"><label class="form-label small">Email</label>{{ form.poc2_email }}{{ form.poc2_email.errors }}</div>
-                    <div class="col-md-9"><label class="form-label small">Head Office / Billing Address</label>{{ form.address }}</div>
+                </div>
 
+                <div class="row g-2 mt-1">
+                    <div class="col-md-9"><label class="form-label small">Head Office / Billing Address</label>{{ form.address }}</div>
+                </div>
+
+                <div class="row g-2 mt-1">
                     <div class="col-md-3 d-flex align-items-center">
                         <div class="form-check form-switch fs-5">
                             {{ form.is_active }}
