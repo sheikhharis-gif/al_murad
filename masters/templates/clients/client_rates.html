@@ -79,37 +79,50 @@
                 </div>
             </form>
 
-            <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
-                <table class="table table-hover align-middle custom-table mb-0">
+            <div style="max-height: 400px; overflow-y: auto;">
+                <table class="table table-hover align-middle custom-table rate-table mb-0">
+                    <colgroup>
+                        <col style="width:6%">
+                        <col style="width:9%">
+                        <col style="width:9%">
+                        <col style="width:7%">
+                        <col style="width:11%">
+                        <col style="width:9%">
+                        <col style="width:10%">
+                        <col style="width:9%">
+                        <col style="width:10%">
+                        <col style="width:9%">
+                        <col style="width:11%">
+                    </colgroup>
                     <thead class="sticky-top bg-white">
                         <tr class="text-muted small text-uppercase">
                             <th>Route</th>
-                            <th>Current Fuel Price</th>
-                            <th>Current Rate</th>
-                            <th>Effective %</th>
-                            <th>Rate Subject to Revision</th>
-                            <th>Updated Fuel Price</th>
-                            <th>Fuel Price Change %</th>
-                            <th>Rate Adjustment</th>
-                            <th>Updated Trip Cost</th>
-                            <th>Effective Date</th>
-                            <th class="text-end">Actions</th>
+                            <th class="text-center">Current Fuel Price</th>
+                            <th class="text-center">Current Rate</th>
+                            <th class="text-center">Effective %</th>
+                            <th class="text-center">Rate Subject to Revision</th>
+                            <th class="text-center">Updated Fuel Price</th>
+                            <th class="text-center">Fuel Price Change %</th>
+                            <th class="text-center">Rate Adjustment</th>
+                            <th class="text-center">Updated Trip Cost</th>
+                            <th class="text-center">Effective Date</th>
+                            <th class="text-center">Actions</th>
                         </tr>
                     </thead>
                     <tbody id="rateTableBody">
                         {% for r in rates %}
                         <tr>
                             <td class="fw-bold text-dark">{{ r.route.route_code }}</td>
-                            <td>{{ r.current_fuel_price }}</td>
-                            <td>{{ r.current_rate }}</td>
-                            <td>{{ r.effective_percent }}%</td>
-                            <td>{{ r.rate_subject_to_revision }}</td>
-                            <td>{{ r.updated_fuel_price }}</td>
-                            <td class="{% if r.fuel_price_change_percent < 0 %}text-danger{% elif r.fuel_price_change_percent > 0 %}text-success{% endif %}">{{ r.fuel_price_change_percent }}%</td>
-                            <td class="{% if r.rate_adjustment < 0 %}text-danger{% elif r.rate_adjustment > 0 %}text-success{% endif %}">{{ r.rate_adjustment }}</td>
-                            <td class="fw-bold">{{ r.updated_trip_cost }}</td>
-                            <td>{{ r.effective_date|date:"d-M-y" }}</td>
-                            <td class="text-end">
+                            <td class="text-center">{{ r.current_fuel_price }}</td>
+                            <td class="text-center">{{ r.current_rate }}</td>
+                            <td class="text-center">{{ r.effective_percent }}%</td>
+                            <td class="text-center">{{ r.rate_subject_to_revision }}</td>
+                            <td class="text-center">{{ r.updated_fuel_price }}</td>
+                            <td class="text-center {% if r.fuel_price_change_percent < 0 %}text-danger{% elif r.fuel_price_change_percent > 0 %}text-success{% endif %}">{{ r.fuel_price_change_percent }}%</td>
+                            <td class="text-center {% if r.rate_adjustment < 0 %}text-danger{% elif r.rate_adjustment > 0 %}text-success{% endif %}">{{ r.rate_adjustment }}</td>
+                            <td class="text-center fw-bold">{{ r.updated_trip_cost }}</td>
+                            <td class="text-center">{{ r.effective_date|date:"d-M-y" }}</td>
+                            <td class="text-center">
                                 <div class="btn-group btn-group-sm shadow-sm rounded-2 overflow-hidden bg-white border">
                                     <button type="button"
                                         class="btn btn-sm btn-white text-warning border-end edit-rate-btn"
@@ -194,10 +207,11 @@
 
 <style>
     .x-small { font-size: 0.7rem; text-transform: uppercase; font-weight: bold; color: #64748b; }
-    .custom-table th { border: none; background-color: #f8f9fa; color: #6c757d; font-weight: 600; padding: 12px; white-space: nowrap; }
-    .custom-table td { padding: 12px; border-bottom: 1px solid #f1f4f8; white-space: nowrap; }
     .btn-white { background-color: #fff; border: none; }
     .btn-white:hover { background-color: #f8fafc; }
+    .rate-table { table-layout: fixed; width: 100%; font-size: 0.78rem; }
+    .rate-table th { border: none; background-color: #f8f9fa; color: #6c757d; font-weight: 600; padding: 8px 6px; white-space: normal; line-height: 1.15; vertical-align: middle; }
+    .rate-table td { padding: 8px 6px; border-bottom: 1px solid #f1f4f8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 </style>
 
 <script>
