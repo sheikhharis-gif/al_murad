@@ -1,31 +1,253 @@
 {% extends "base.html" %}
+
 {% block content %}
+<div class="container-fluid py-4">
 
-<h4>Client Rates – {{ client.name }}</h4>
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+        <div>
+            <h3 class="fw-bold text-dark mb-1"><i class="bi bi-cash-stack text-primary me-2"></i>Client Rates</h3>
+            <p class="text-muted small mb-0">Fuel-price-indexed route rates - each entry revises the last one for that route.</p>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="{% url 'client_rates_select' %}" class="btn btn-light border px-3">
+                <i class="bi bi-arrow-left me-1"></i>Change Client
+            </a>
+            <a href="{% url 'client_edit' client.id %}" class="btn btn-outline-primary px-3">
+                <i class="bi bi-pencil-square me-1"></i>Edit Client
+            </a>
+        </div>
+    </div>
 
-<form method="post" class="card p-3 mb-3">
-    {% csrf_token %}
-    {{ form.as_p }}
-    <button type="submit" class="btn btn-success">Add Rate</button>
-</form>
+    <div class="card border-0 shadow-sm rounded-4 mb-4">
+        <div class="card-body p-3">
+            <div class="row g-3 text-center flex-nowrap overflow-auto">
+                <div class="col">
+                    <div class="x-small text-muted">Client</div>
+                    <div class="fw-bold fs-6 text-nowrap">{{ client.name }}</div>
+                </div>
+                <div class="col">
+                    <div class="x-small text-muted">Type</div>
+                    <div class="fw-bold fs-6 text-nowrap">{{ client.client_type.name|default:"--" }}</div>
+                </div>
+                <div class="col">
+                    <div class="x-small text-muted">NTN #</div>
+                    <div class="fw-bold fs-6 text-nowrap">{{ client.ntn|default:"--" }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
 
-<table class="table table-bordered">
-    <tr>
-        <th>Route</th>
-        <th>Rate</th>
-        <th>Fuel Price</th>
-        <th>Effective Date</th>
-    </tr>
-    {% for r in rates %}
-    <tr>
-        <td>{{ r.route }}</td>
-        <td>{{ r.rate }}</td>
-        <td>{{ r.fuel_price }}</td>
-        <td>{{ r.effective_date }}</td>
-    </tr>
-    {% empty %}
-    <tr><td colspan="4">No rates found</td></tr>
-    {% endfor %}
-</table>
+    <div class="card border-0 shadow-sm rounded-4">
+        <div class="card-header bg-white border-0 pt-3 px-3">
+            <h5 class="fw-bold mb-0 text-primary">Rate Details</h5>
+        </div>
+        <div class="card-body p-3">
+            {% if form.errors %}
+            <div class="alert alert-danger border-0 rounded-3 py-2 small">Please fix the highlighted field(s) below.</div>
+            {% endif %}
+            <form method="post" class="row g-2 align-items-end bg-light p-3 rounded-4 mb-3 border border-light-subtle">
+                {% csrf_token %}
+                <div class="col-md-2">
+                    <label class="form-label small fw-bold">Route</label>
+                    {{ form.route }}{{ form.route.errors }}
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small fw-bold">Current Fuel Price</label>
+                    {{ form.current_fuel_price }}
+                    <div class="form-text x-small mt-1">Locked once route has a prior entry</div>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small fw-bold">Current Rate</label>
+                    {{ form.current_rate }}
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small fw-bold">Effective %</label>
+                    {{ form.effective_percent }}
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small fw-bold">Updated Fuel Price</label>
+                    {{ form.updated_fuel_price }}
+                </div>
+                <div class="col-md-1">
+                    <label class="form-label small fw-bold">Eff. Date</label>
+                    {{ form.effective_date }}
+                </div>
+                <div class="col-md-1">
+                    <button type="submit" class="btn btn-primary w-100 fw-bold">
+                        <i class="bi bi-plus-lg"></i>
+                    </button>
+                </div>
+            </form>
 
+            <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                <table class="table table-hover align-middle custom-table mb-0">
+                    <thead class="sticky-top bg-white">
+                        <tr class="text-muted small text-uppercase">
+                            <th>Route</th>
+                            <th>Current Fuel Price</th>
+                            <th>Current Rate</th>
+                            <th>Effective %</th>
+                            <th>Rate Subject to Revision</th>
+                            <th>Updated Fuel Price</th>
+                            <th>Fuel Price Change %</th>
+                            <th>Rate Adjustment</th>
+                            <th>Updated Trip Cost</th>
+                            <th>Effective Date</th>
+                            <th class="text-end">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="rateTableBody">
+                        {% for r in rates %}
+                        <tr>
+                            <td class="fw-bold text-dark">{{ r.route.route_code }}</td>
+                            <td>{{ r.current_fuel_price }}</td>
+                            <td>{{ r.current_rate }}</td>
+                            <td>{{ r.effective_percent }}%</td>
+                            <td>{{ r.rate_subject_to_revision }}</td>
+                            <td>{{ r.updated_fuel_price }}</td>
+                            <td class="{% if r.fuel_price_change_percent < 0 %}text-danger{% elif r.fuel_price_change_percent > 0 %}text-success{% endif %}">{{ r.fuel_price_change_percent }}%</td>
+                            <td class="{% if r.rate_adjustment < 0 %}text-danger{% elif r.rate_adjustment > 0 %}text-success{% endif %}">{{ r.rate_adjustment }}</td>
+                            <td class="fw-bold">{{ r.updated_trip_cost }}</td>
+                            <td>{{ r.effective_date|date:"d-M-y" }}</td>
+                            <td class="text-end">
+                                <div class="btn-group btn-group-sm shadow-sm rounded-2 overflow-hidden bg-white border">
+                                    <button type="button"
+                                        class="btn btn-sm btn-white text-warning border-end edit-rate-btn"
+                                        data-edit-url="{% url 'client_rate_edit' client.id r.id %}"
+                                        data-route="{{ r.route_id }}"
+                                        data-current-fuel-price="{{ r.current_fuel_price }}"
+                                        data-current-rate="{{ r.current_rate }}"
+                                        data-effective-percent="{{ r.effective_percent }}"
+                                        data-updated-fuel-price="{{ r.updated_fuel_price }}"
+                                        data-effective-date="{{ r.effective_date|date:'Y-m-d' }}"
+                                        title="Edit Entry">
+                                        <i class="bi bi-pencil-square"></i>
+                                    </button>
+                                    <form method="post" action="{% url 'client_rate_delete' client.id r.id %}" class="d-inline">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-sm btn-white text-danger" title="Delete Entry"
+                                            onclick="return confirm('Delete this rate entry for {{ r.route.route_code }}?')">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="11" class="text-center py-4 text-muted">No rate entries recorded for this client yet.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Rate Modal -->
+<div class="modal fade" id="rateEditModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-4">
+            <form method="post" id="rateEditForm" action="">
+                {% csrf_token %}
+                <div class="modal-header border-0 pb-0">
+                    <h5 class="modal-title fw-bold">Edit Rate Entry</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body pt-2">
+                    <div class="mb-2">
+                        <label class="form-label small fw-bold">Route</label>
+                        <select name="route" id="editRoute" class="form-select" required>
+                            {% for rt in form.route.field.queryset %}
+                            <option value="{{ rt.id }}">{{ rt.route_code }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label small fw-bold">Current Fuel Price</label>
+                        <input type="number" step="0.01" name="current_fuel_price" id="editCurrentFuelPrice" class="form-control" required>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label small fw-bold">Current Rate</label>
+                        <input type="number" step="0.01" name="current_rate" id="editCurrentRate" class="form-control" required>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label small fw-bold">Effective %</label>
+                        <input type="number" step="0.01" name="effective_percent" id="editEffectivePercent" class="form-control" required>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label small fw-bold">Updated Fuel Price</label>
+                        <input type="number" step="0.01" name="updated_fuel_price" id="editUpdatedFuelPrice" class="form-control" required>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label small fw-bold">Effective Date</label>
+                        <input type="date" name="effective_date" id="editEffectiveDate" class="form-control" required>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-light border" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-dark fw-bold">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+    .x-small { font-size: 0.7rem; text-transform: uppercase; font-weight: bold; color: #64748b; }
+    .custom-table th { border: none; background-color: #f8f9fa; color: #6c757d; font-weight: 600; padding: 12px; white-space: nowrap; }
+    .custom-table td { padding: 12px; border-bottom: 1px solid #f1f4f8; white-space: nowrap; }
+    .btn-white { background-color: #fff; border: none; }
+    .btn-white:hover { background-color: #f8fafc; }
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    // Route already has a prior revision -> Current Fuel Price/Current Rate
+    // auto-fill from that revision's Updated Fuel Price/Updated Trip Cost
+    // and lock (matches "CLIENT RATE FILE.xlsx"). No prior revision -> both
+    // stay open for manual entry.
+    var lastByRoute = JSON.parse('{{ last_by_route_json|escapejs }}');
+    var routeSelect = document.getElementById('id_route');
+    var curFuel = document.getElementById('id_current_fuel_price');
+    var curRate = document.getElementById('id_current_rate');
+
+    function syncCurrentFields() {
+        if (!routeSelect || !curFuel || !curRate) return;
+        var info = lastByRoute[routeSelect.value];
+        if (info) {
+            curFuel.value = info.fuel_price;
+            curRate.value = info.trip_cost;
+            curFuel.readOnly = true;
+            curRate.readOnly = true;
+            curFuel.classList.add('bg-light');
+            curRate.classList.add('bg-light');
+        } else {
+            curFuel.value = '';
+            curRate.value = '';
+            curFuel.readOnly = false;
+            curRate.readOnly = false;
+            curFuel.classList.remove('bg-light');
+            curRate.classList.remove('bg-light');
+        }
+    }
+    if (routeSelect) {
+        routeSelect.addEventListener('change', syncCurrentFields);
+        syncCurrentFields();
+    }
+
+    const rateModal = new bootstrap.Modal(document.getElementById('rateEditModal'));
+    document.querySelectorAll('.edit-rate-btn').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            document.getElementById('rateEditForm').action = this.dataset.editUrl;
+            document.getElementById('editRoute').value = this.dataset.route;
+            document.getElementById('editCurrentFuelPrice').value = this.dataset.currentFuelPrice;
+            document.getElementById('editCurrentRate').value = this.dataset.currentRate;
+            document.getElementById('editEffectivePercent').value = this.dataset.effectivePercent;
+            document.getElementById('editUpdatedFuelPrice').value = this.dataset.updatedFuelPrice;
+            document.getElementById('editEffectiveDate').value = this.dataset.effectiveDate;
+            rateModal.show();
+        });
+    });
+});
+</script>
 {% endblock %}

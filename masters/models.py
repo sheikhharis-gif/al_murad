@@ -438,18 +438,39 @@ class Client(models.Model):
 
 
 # ================= CLIENT RATE =================
+# Fuel-price-indexed rate revision log, one row per revision. For the first
+# revision of a (client, route) pair, Current Fuel Price/Current Rate are
+# typed in manually; every later revision auto-chains off the previous
+# revision's Updated Fuel Price/Updated Trip Cost (client-side JS fills
+# these in and locks them, mirroring "CLIENT RATE FILE.xlsx").
 class ClientRate(models.Model):
-    client = models.ForeignKey(Client, on_delete=models.CASCADE)
-    route = models.ForeignKey("Route", on_delete=models.CASCADE)
-    rate = models.DecimalField(max_digits=10, decimal_places=2)
-    fuel_price = models.DecimalField(max_digits=10, decimal_places=2)
+    client = models.ForeignKey(Client, on_delete=models.CASCADE, related_name="rates")
+    route = models.ForeignKey("Route", on_delete=models.CASCADE, related_name="client_rates")
+    current_fuel_price = models.DecimalField("Current Fuel Price", max_digits=10, decimal_places=2)
+    current_rate = models.DecimalField("Current Rate", max_digits=12, decimal_places=2)
+    effective_percent = models.DecimalField("Effective %", max_digits=5, decimal_places=2)
+    rate_subject_to_revision = models.DecimalField(max_digits=12, decimal_places=2, editable=False)
+    updated_fuel_price = models.DecimalField("Updated Fuel Price", max_digits=10, decimal_places=2)
+    fuel_price_change_percent = models.DecimalField(max_digits=6, decimal_places=2, editable=False)
+    rate_adjustment = models.DecimalField(max_digits=12, decimal_places=2, editable=False)
+    updated_trip_cost = models.DecimalField(max_digits=12, decimal_places=2, editable=False)
     effective_date = models.DateField()
 
     class Meta:
-        unique_together = ("client", "route")
+        ordering = ["route__route_code", "-effective_date", "-id"]
+
+    def save(self, *args, **kwargs):
+        self.rate_subject_to_revision = self.current_rate * (self.effective_percent / 100)
+        self.fuel_price_change_percent = (
+            (self.updated_fuel_price - self.current_fuel_price) / self.current_fuel_price * 100
+            if self.current_fuel_price else 0
+        )
+        self.rate_adjustment = self.rate_subject_to_revision * (self.fuel_price_change_percent / 100)
+        self.updated_trip_cost = self.current_rate + self.rate_adjustment
+        super().save(*args, **kwargs)
 
     def __str__(self):
-        return f"{self.client} - {self.route}"
+        return f"{self.client} - {self.route} ({self.effective_date})"
 
 
 

@@ -361,11 +361,16 @@ class ExpenseForm(forms.ModelForm):
 class ClientRateForm(forms.ModelForm):
     class Meta:
         model = ClientRate
-        fields = ["route", "rate", "fuel_price", "effective_date"]
+        fields = [
+            "route", "current_fuel_price", "current_rate", "effective_percent",
+            "updated_fuel_price", "effective_date",
+        ]
         widgets = {
             "route": forms.Select(attrs={"class": "form-select searchable-select", "autofocus": "autofocus"}),
-            "rate": forms.NumberInput(attrs={"class": "form-control"}),
-            "fuel_price": forms.NumberInput(attrs={"class": "form-control"}),
+            "current_fuel_price": forms.NumberInput(attrs={"class": "form-control", "step": "0.01"}),
+            "current_rate": forms.NumberInput(attrs={"class": "form-control", "step": "0.01"}),
+            "effective_percent": forms.NumberInput(attrs={"class": "form-control", "step": "0.01", "placeholder": "e.g. 50"}),
+            "updated_fuel_price": forms.NumberInput(attrs={"class": "form-control", "step": "0.01"}),
             "effective_date": forms.DateInput(attrs={"class": "form-control datepicker"}),
         }
 

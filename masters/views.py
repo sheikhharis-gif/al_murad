@@ -1,3 +1,4 @@
+import json
 from django.contrib import messages
 from django.shortcuts import render, redirect
 from django.db.models import Sum, Count
@@ -624,7 +625,12 @@ def client_type_delete(request, type_id):
             messages.error(request, f"Cannot delete '{ctype.name}' - it's still assigned to a client.")
     return redirect("client_type_config")
 
-# ================= CLIENT RATE =================
+# ================= CLIENT RATE (fuel-price-indexed revision log) =================
+def client_rates_select(request):
+    clients = Client.objects.all().order_by("name")
+    return render(request, "clients/client_rates_select.html", {"clients": clients})
+
+
 def client_rates(request, client_id):
     client = get_object_or_404(Client, id=client_id)
 
@@ -634,17 +640,53 @@ def client_rates(request, client_id):
             rate = form.save(commit=False)
             rate.client = client
             rate.save()
+            messages.success(request, "Rate entry added successfully.")
             return redirect("client_rates", client_id=client.id)
     else:
         form = ClientRateForm()
 
-    rates = ClientRate.objects.filter(client=client).order_by("rate")
+    rates = ClientRate.objects.filter(client=client)
+
+    # Latest revision per route (rates is already ordered route, then
+    # -effective_date/-id via Meta.ordering, so the first hit per route here
+    # is its most recent one) - the add-rate form's JS uses this to auto-fill
+    # and lock Current Fuel Price/Current Rate once a route has a prior entry.
+    last_by_route = {}
+    for r in rates:
+        if r.route_id not in last_by_route:
+            last_by_route[r.route_id] = {
+                "fuel_price": str(r.updated_fuel_price),
+                "trip_cost": str(r.updated_trip_cost),
+            }
 
     return render(request, "clients/client_rates.html", {
         "client": client,
         "form": form,
-        "rates": rates
+        "rates": rates,
+        "last_by_route_json": json.dumps(last_by_route),
     })
+
+
+def client_rate_edit(request, client_id, rate_id):
+    client = get_object_or_404(Client, id=client_id)
+    rate = get_object_or_404(ClientRate, id=rate_id, client=client)
+    if request.method == "POST":
+        form = ClientRateForm(request.POST, instance=rate)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Rate entry updated successfully.")
+        else:
+            messages.error(request, "Could not update that rate entry - check the highlighted field(s).")
+    return redirect("client_rates", client_id=client.id)
+
+
+def client_rate_delete(request, client_id, rate_id):
+    client = get_object_or_404(Client, id=client_id)
+    rate = get_object_or_404(ClientRate, id=rate_id, client=client)
+    if request.method == "POST":
+        rate.delete()
+        messages.success(request, "Rate entry deleted successfully.")
+    return redirect("client_rates", client_id=client.id)
 
 # ================= EXPENSES =================
 def expense_edit(request, expense_id):

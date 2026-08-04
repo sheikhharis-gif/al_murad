@@ -1,0 +1,45 @@
+{% comment %}
+Reusable Client search-and-pick widget, same pattern as the Vehicle #
+picker used by Tyre Management / Permits & Compliance: a live-filtering
+search box above a persistent list of registered clients, so it's obvious
+at a glance whether a typed name is actually registered.
+Context: `clients` queryset, `picker_url_name` (the url name to link each
+result to, called with the client id).
+{% endcomment %}
+<div class="search-box mb-3">
+    <i class="bi bi-search"></i>
+    <input type="text" id="clientSearchInput" class="form-control form-control-lg text-uppercase" placeholder="Type client name to search..." autocomplete="off">
+</div>
+<div id="clientNotFound" class="alert alert-warning border-0 rounded-3 py-2 small d-none">
+    <i class="bi bi-exclamation-triangle me-1"></i>No client registered with this name.
+</div>
+<div class="list-group" id="clientResultList" style="max-height: 320px; overflow-y: auto;">
+    {% for c in clients %}
+    <a href="{% url picker_url_name c.id %}" class="list-group-item list-group-item-action client-result-item" data-name="{{ c.name }}">
+        <i class="bi bi-building me-2 text-primary"></i>{{ c.name }}
+    </a>
+    {% empty %}
+    <div class="text-muted small py-3 text-center">No clients registered yet.</div>
+    {% endfor %}
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var input = document.getElementById('clientSearchInput');
+    var items = Array.prototype.slice.call(document.querySelectorAll('.client-result-item'));
+    var notFound = document.getElementById('clientNotFound');
+    if (!input) return;
+    input.addEventListener('input', function () {
+        input.value = input.value.toUpperCase();
+        var q = input.value.trim();
+        var visibleCount = 0;
+        items.forEach(function (item) {
+            var match = !q || item.dataset.name.indexOf(q) > -1;
+            item.style.display = match ? '' : 'none';
+            if (match) visibleCount++;
+        });
+        notFound.classList.toggle('d-none', !(q && visibleCount === 0));
+    });
+    input.focus();
+});
+</script>
