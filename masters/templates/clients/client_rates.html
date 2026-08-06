@@ -230,6 +230,7 @@ document.addEventListener('DOMContentLoaded', function () {
     var routeSelect = document.getElementById('id_route');
     var curFuel = document.getElementById('id_current_fuel_price');
     var curRate = document.getElementById('id_current_rate');
+    var effPct = document.getElementById('id_effective_percent');
 
     function syncCurrentFields() {
         if (!routeSelect || !curFuel || !curRate) return;
@@ -241,6 +242,9 @@ document.addEventListener('DOMContentLoaded', function () {
             curRate.readOnly = true;
             curFuel.classList.add('bg-light');
             curRate.classList.add('bg-light');
+            // Effective % carries over from the previous entry too, but
+            // stays editable - it's a convenience default, not a lock.
+            if (effPct) effPct.value = info.effective_percent;
         } else {
             curFuel.value = '';
             curRate.value = '';

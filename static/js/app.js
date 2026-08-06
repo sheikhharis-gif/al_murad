@@ -91,6 +91,130 @@
         document.querySelectorAll('select.searchable-select').forEach(enhanceSearchableSelect);
     };
 
+    // Turns a <select class="dropdown-search-select"> into a proper live
+    // search dropdown (dark, prefix-matched) - used where a native <datalist>
+    // isn't precise/visible enough, e.g. the Route picker in Client Rates.
+    // Only options whose text STARTS WITH the typed query are shown (not a
+    // "contains anywhere" match), so typing "khi" only surfaces routes
+    // starting at KHI, not ones that merely end in KHI.
+    function enhanceDropdownSearchSelect(select) {
+        if (!select || select.dataset.enhanced) return;
+        select.dataset.enhanced = '1';
+
+        var options = Array.prototype.slice.call(select.options).filter(function (o) { return o.value; });
+
+        var wrapper = document.createElement('div');
+        wrapper.className = 'dropdown-search-wrapper';
+
+        var textInput = document.createElement('input');
+        textInput.type = 'text';
+        textInput.className = 'form-control dropdown-search-input';
+        textInput.setAttribute('placeholder', select.dataset.placeholder || 'Type to search...');
+        textInput.setAttribute('autocomplete', 'off');
+
+        var list = document.createElement('div');
+        list.className = 'dropdown-search-list';
+
+        var selected = options.filter(function (o) { return o.selected; })[0];
+        textInput.value = selected ? selected.textContent.trim() : '';
+
+        if (select.hasAttribute('autofocus')) {
+            textInput.setAttribute('autofocus', 'autofocus');
+            setTimeout(function () { textInput.focus(); }, 0);
+        }
+
+        select.style.display = 'none';
+        select.insertAdjacentElement('beforebegin', wrapper);
+        wrapper.appendChild(textInput);
+        wrapper.appendChild(list);
+        wrapper.appendChild(select);
+
+        var activeIndex = -1;
+
+        function renderList() {
+            var q = textInput.value.trim().toUpperCase();
+            var matches = q ? options.filter(function (o) { return o.textContent.trim().toUpperCase().indexOf(q) === 0; }) : options;
+            list.innerHTML = '';
+            activeIndex = -1;
+            if (!matches.length) {
+                var empty = document.createElement('div');
+                empty.className = 'dropdown-search-empty';
+                empty.textContent = 'No matching route';
+                list.appendChild(empty);
+            } else {
+                matches.forEach(function (opt) {
+                    var item = document.createElement('div');
+                    item.className = 'dropdown-search-item';
+                    item.textContent = opt.textContent.trim();
+                    item.dataset.value = opt.value;
+                    item.addEventListener('mousedown', function (e) {
+                        e.preventDefault();
+                        select.value = opt.value;
+                        textInput.value = opt.textContent.trim();
+                        closeList();
+                        select.dispatchEvent(new Event('change', { bubbles: true }));
+                    });
+                    list.appendChild(item);
+                });
+            }
+            list.classList.add('show');
+        }
+
+        function closeList() {
+            list.classList.remove('show');
+            list.innerHTML = '';
+            activeIndex = -1;
+        }
+
+        function setActive(idx) {
+            var items = list.querySelectorAll('.dropdown-search-item');
+            items.forEach(function (el) { el.classList.remove('active'); });
+            if (idx >= 0 && idx < items.length) {
+                items[idx].classList.add('active');
+                items[idx].scrollIntoView({ block: 'nearest' });
+            }
+            activeIndex = idx;
+        }
+
+        textInput.addEventListener('input', function () {
+            if (!textInput.value) {
+                select.value = '';
+                select.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+            renderList();
+        });
+        textInput.addEventListener('focus', function () {
+            textInput.select();
+            renderList();
+        });
+        textInput.addEventListener('blur', function () {
+            setTimeout(closeList, 150);
+        });
+        textInput.addEventListener('keydown', function (e) {
+            var items = list.querySelectorAll('.dropdown-search-item');
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                if (!items.length) return;
+                setActive(Math.min(activeIndex + 1, items.length - 1));
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                if (!items.length) return;
+                setActive(Math.max(activeIndex - 1, 0));
+            } else if (e.key === 'Enter') {
+                if (activeIndex > -1 && items[activeIndex]) {
+                    e.preventDefault();
+                    items[activeIndex].dispatchEvent(new Event('mousedown'));
+                }
+            } else if (e.key === 'Escape') {
+                closeList();
+            }
+        });
+    }
+
+    window.enhanceDropdownSearchSelects = function () {
+        document.querySelectorAll('select.dropdown-search-select').forEach(enhanceDropdownSearchSelect);
+    };
+
     // Turns any <input class="datepicker"> into a typing-friendly date field
     // showing "10-Jan-26" (Flatpickr's altInput), while the real value
     // submitted to the server stays ISO (Y-m-d) so Django's DateField parses
@@ -116,6 +240,7 @@
                 altInput: true,
                 altFormat: 'd-M-y',
                 allowInput: true,
+                locale: { firstDayOfWeek: 1 },
                 onReady: function (selectedDates, dateStr, instance) {
                     var icon = document.createElement('i');
                     icon.className = 'bi bi-calendar3 datepicker-icon';
@@ -123,6 +248,16 @@
                         instance.open();
                     });
                     wrapper.appendChild(icon);
+
+                    // Typing into a field that already shows a date (e.g.
+                    // today's default) inserted new characters into the
+                    // middle of the existing text instead of replacing it,
+                    // garbling the value and making flatpickr land on the
+                    // wrong date. Select the existing text on focus so any
+                    // typing cleanly replaces it.
+                    instance.altInput.addEventListener('focus', function () {
+                        instance.altInput.select();
+                    });
                 },
                 // Closing the calendar (date picked, Escape, or click-away)
                 // leaves nothing focused, so the next Tab press restarted
@@ -149,6 +284,23 @@
         });
     };
 
+    // Any <input data-uppercase> / <textarea data-uppercase> uppercases what
+    // the user types live, instead of only on save - cursor position is
+    // preserved so typing in the middle of a value doesn't jump to the end.
+    window.enhanceUppercaseInputs = function () {
+        document.querySelectorAll('[data-uppercase]').forEach(function (el) {
+            if (el.dataset.ucEnhanced) return;
+            el.dataset.ucEnhanced = '1';
+            el.addEventListener('input', function () {
+                var start = el.selectionStart, end = el.selectionEnd;
+                el.value = el.value.toUpperCase();
+                if (start !== null) el.setSelectionRange(start, end);
+            });
+        });
+    };
+
     document.addEventListener('DOMContentLoaded', window.enhanceSearchableSelects);
+    document.addEventListener('DOMContentLoaded', window.enhanceDropdownSearchSelects);
     document.addEventListener('DOMContentLoaded', window.enhanceDatepickers);
+    document.addEventListener('DOMContentLoaded', window.enhanceUppercaseInputs);
 })();

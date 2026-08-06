@@ -269,16 +269,21 @@ class VendorForm(forms.ModelForm):
             "name", "poc1_name", "poc1_phone", "poc2_name", "poc2_phone",
             "ntn", "stn", "term_of_service", "billing_period",
         ]
+        uppercase_fields = [
+            "name", "poc1_name", "poc2_name", "ntn", "stn", "term_of_service", "billing_period",
+        ]
 
         widgets = {
             field: forms.TextInput(attrs={"class": "form-control text-uppercase"}) for field in text_fields
         }
+        for field in uppercase_fields:
+            widgets[field].attrs["data-uppercase"] = "1"
         widgets["name"].attrs["autofocus"] = "autofocus"
         widgets.update({
             "supplier_type": forms.Select(attrs={"class": "form-select"}),
-            "poc1_email": forms.EmailInput(attrs={"class": "form-control text-uppercase"}),
-            "poc2_email": forms.EmailInput(attrs={"class": "form-control text-uppercase"}),
-            "address": forms.Textarea(attrs={"class": "form-control text-uppercase", "rows": 3}),
+            "poc1_email": forms.EmailInput(attrs={"class": "form-control text-uppercase", "data-uppercase": "1"}),
+            "poc2_email": forms.EmailInput(attrs={"class": "form-control text-uppercase", "data-uppercase": "1"}),
+            "address": forms.Textarea(attrs={"class": "form-control text-uppercase", "rows": 3, "data-uppercase": "1"}),
             "is_active": forms.CheckboxInput(attrs={"class": "form-check-input"}),
         })
 
@@ -311,16 +316,22 @@ class ClientForm(forms.ModelForm):
             "name", "poc1_name", "poc1_phone", "poc2_name", "poc2_phone",
             "ntn", "stn", "term_of_service", "billing_period", "billing_company",
         ]
+        uppercase_fields = [
+            "name", "poc1_name", "poc2_name", "ntn", "stn",
+            "term_of_service", "billing_period", "billing_company",
+        ]
 
         widgets = {
-            field: forms.TextInput(attrs={"class": "form-control"}) for field in text_fields
+            field: forms.TextInput(attrs={"class": "form-control text-uppercase"}) for field in text_fields
         }
+        for field in uppercase_fields:
+            widgets[field].attrs["data-uppercase"] = "1"
         widgets["name"].attrs["autofocus"] = "autofocus"
         widgets.update({
             "client_type": forms.Select(attrs={"class": "form-select"}),
-            "poc1_email": forms.EmailInput(attrs={"class": "form-control"}),
-            "poc2_email": forms.EmailInput(attrs={"class": "form-control"}),
-            "address": forms.Textarea(attrs={"class": "form-control", "rows": 3}),
+            "poc1_email": forms.EmailInput(attrs={"class": "form-control text-uppercase", "data-uppercase": "1"}),
+            "poc2_email": forms.EmailInput(attrs={"class": "form-control text-uppercase", "data-uppercase": "1"}),
+            "address": forms.Textarea(attrs={"class": "form-control text-uppercase", "rows": 3, "data-uppercase": "1"}),
             "is_active": forms.CheckboxInput(attrs={"class": "form-check-input"}),
         })
 
@@ -366,7 +377,11 @@ class ClientRateForm(forms.ModelForm):
             "updated_fuel_price", "effective_date",
         ]
         widgets = {
-            "route": forms.Select(attrs={"class": "form-select searchable-select", "autofocus": "autofocus"}),
+            "route": forms.Select(attrs={
+                "class": "form-select dropdown-search-select",
+                "autofocus": "autofocus",
+                "data-placeholder": "Type route code (e.g. KHI)...",
+            }),
             "current_fuel_price": forms.NumberInput(attrs={"class": "form-control", "step": "0.01"}),
             "current_rate": forms.NumberInput(attrs={"class": "form-control", "step": "0.01"}),
             "effective_percent": forms.NumberInput(attrs={"class": "form-control", "step": "0.01", "placeholder": "e.g. 50"}),

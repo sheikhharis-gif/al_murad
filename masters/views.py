@@ -657,6 +657,7 @@ def client_rates(request, client_id):
             last_by_route[r.route_id] = {
                 "fuel_price": str(r.updated_fuel_price),
                 "trip_cost": str(r.updated_trip_cost),
+                "effective_percent": str(r.effective_percent),
             }
 
     return render(request, "clients/client_rates.html", {
