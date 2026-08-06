@@ -533,8 +533,8 @@ def supplier_type_delete(request, type_id):
     return redirect("supplier_type_config")
 
 from django.shortcuts import render, redirect, get_object_or_404
-from .models import Client, ClientType, ClientRate, Expense
-from .forms import ClientForm, ClientTypeForm, ClientRateForm, ExpenseForm
+from .models import Client, ClientType, ClientRate, DedicatedRate, Expense
+from .forms import ClientForm, ClientTypeForm, ClientRateForm, DedicatedRateForm, ExpenseForm
 
 # ================= CLIENTS =================
 CLIENT_SORT_FIELDS = {
@@ -660,11 +660,18 @@ def client_rates(request, client_id):
                 "effective_percent": str(r.effective_percent),
             }
 
+    dedicated_rates = DedicatedRate.objects.filter(client=client).select_related("vehicle", "route")
+    dedicated_form = DedicatedRateForm(auto_id="id_ded_%s")
+    routes_distance = {r.id: str(r.distance_km) for r in Route.objects.all()}
+
     return render(request, "clients/client_rates.html", {
         "client": client,
         "form": form,
         "rates": rates,
         "last_by_route_json": json.dumps(last_by_route),
+        "dedicated_rates": dedicated_rates,
+        "dedicated_form": dedicated_form,
+        "routes_distance_json": json.dumps(routes_distance),
     })
 
 
@@ -688,6 +695,51 @@ def client_rate_delete(request, client_id, rate_id):
         rate.delete()
         messages.success(request, "Rate entry deleted successfully.")
     return redirect("client_rates", client_id=client.id)
+
+
+# ================= DEDICATED RATE (per-vehicle fixed + variable cost) =================
+from django.urls import reverse
+
+
+def _client_rates_redirect(client_id, mode=None):
+    url = reverse("client_rates", args=[client_id])
+    return redirect(f"{url}?mode={mode}" if mode else url)
+
+
+def client_dedicated_rate_add(request, client_id):
+    client = get_object_or_404(Client, id=client_id)
+    if request.method == "POST":
+        form = DedicatedRateForm(request.POST)
+        if form.is_valid():
+            rate = form.save(commit=False)
+            rate.client = client
+            rate.save()
+            messages.success(request, "Dedicated rate entry added successfully.")
+        else:
+            messages.error(request, "Could not add that dedicated rate entry - check the highlighted field(s).")
+    return _client_rates_redirect(client.id, mode="dedicated")
+
+
+def client_dedicated_rate_edit(request, client_id, rate_id):
+    client = get_object_or_404(Client, id=client_id)
+    rate = get_object_or_404(DedicatedRate, id=rate_id, client=client)
+    if request.method == "POST":
+        form = DedicatedRateForm(request.POST, instance=rate)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Dedicated rate entry updated successfully.")
+        else:
+            messages.error(request, "Could not update that dedicated rate entry - check the highlighted field(s).")
+    return _client_rates_redirect(client.id, mode="dedicated")
+
+
+def client_dedicated_rate_delete(request, client_id, rate_id):
+    client = get_object_or_404(Client, id=client_id)
+    rate = get_object_or_404(DedicatedRate, id=rate_id, client=client)
+    if request.method == "POST":
+        rate.delete()
+        messages.success(request, "Dedicated rate entry deleted successfully.")
+    return _client_rates_redirect(client.id, mode="dedicated")
 
 # ================= EXPENSES =================
 def expense_edit(request, expense_id):

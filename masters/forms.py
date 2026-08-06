@@ -2,7 +2,7 @@ from decimal import Decimal, InvalidOperation
 from django import forms
 from .models import (
     Vehicle, VehicleType, Wheeler, VehicleTyre, Driver, Vendor, SupplierType,
-    City, Route, Client, ClientType, Expense, ClientRate, DriverSalary
+    City, Route, Client, ClientType, Expense, ClientRate, DedicatedRate, DriverSalary
 )
 from operations.models import Trip
 
@@ -388,6 +388,40 @@ class ClientRateForm(forms.ModelForm):
             "updated_fuel_price": forms.NumberInput(attrs={"class": "form-control", "step": "0.01"}),
             "effective_date": forms.DateInput(attrs={"class": "form-control datepicker"}),
         }
+
+
+class DedicatedRateForm(forms.ModelForm):
+    class Meta:
+        model = DedicatedRate
+        fields = [
+            "vehicle", "fixed_cost", "month", "fuel_avg", "fuel_price",
+            "route", "distance_mode", "distance_km", "effective_date",
+        ]
+        widgets = {
+            "vehicle": forms.Select(attrs={
+                "class": "form-select dropdown-search-select",
+                "autofocus": "autofocus",
+                "data-placeholder": "Type vehicle # ...",
+            }),
+            "fixed_cost": forms.NumberInput(attrs={"class": "form-control", "step": "0.01"}),
+            "month": forms.DateInput(attrs={"class": "form-control datepicker"}),
+            "fuel_avg": forms.NumberInput(attrs={"class": "form-control", "step": "0.01", "placeholder": "Km/Ltr"}),
+            "fuel_price": forms.NumberInput(attrs={"class": "form-control", "step": "0.01"}),
+            "route": forms.Select(attrs={
+                "class": "form-select dropdown-search-select",
+                "data-placeholder": "Type route code (e.g. KHI)...",
+            }),
+            "distance_mode": forms.RadioSelect(),
+            "distance_km": forms.NumberInput(attrs={"class": "form-control", "step": "0.01"}),
+            "effective_date": forms.DateInput(attrs={"class": "form-control datepicker"}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["vehicle"].empty_label = "--- Select Vehicle ---"
+        self.fields["vehicle"].label_from_instance = lambda obj: obj.vehicle_number
+        self.fields["route"].empty_label = "--- Select Route ---"
+
 
 from django import forms
 from django.forms import inlineformset_factory

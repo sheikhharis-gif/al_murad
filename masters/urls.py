@@ -47,6 +47,9 @@ urlpatterns = [
     path("clients/<int:client_id>/rates/", views.client_rates, name="client_rates"),
     path("clients/<int:client_id>/rates/<int:rate_id>/edit/", views.client_rate_edit, name="client_rate_edit"),
     path("clients/<int:client_id>/rates/<int:rate_id>/delete/", views.client_rate_delete, name="client_rate_delete"),
+    path("clients/<int:client_id>/dedicated-rates/add/", views.client_dedicated_rate_add, name="client_dedicated_rate_add"),
+    path("clients/<int:client_id>/dedicated-rates/<int:rate_id>/edit/", views.client_dedicated_rate_edit, name="client_dedicated_rate_edit"),
+    path("clients/<int:client_id>/dedicated-rates/<int:rate_id>/delete/", views.client_dedicated_rate_delete, name="client_dedicated_rate_delete"),
     # ✅ Client Edit aur Delete ke missing paths yahan add kar diye hain
     path("clients/edit/<int:client_id>/", views.client_edit, name="client_edit"),
     path("clients/delete/<int:client_id>/", views.client_delete, name="client_delete"),

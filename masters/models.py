@@ -473,6 +473,44 @@ class ClientRate(models.Model):
         return f"{self.client} - {self.route} ({self.effective_date})"
 
 
+# ================= DEDICATED RATE =================
+# The other "Mode" of Client Rates (alongside the Trip fuel-price revision
+# log above): a per-vehicle monthly cost profile - a Fixed Cost/month plus
+# a Variable Cost per KM derived from fuel price/average, matching
+# "Dedicated.xlsx". Distance can come from the Route's registered distance
+# (Standard), a future Job Orders KM tracker (Actual - not wired up yet, no
+# real source exists for it today so it falls back to the Route distance
+# too), or be typed by hand (Tracker).
+class DedicatedRate(models.Model):
+    DISTANCE_MODE_CHOICES = [
+        ("STANDARD", "Standard (from Route)"),
+        ("ACTUAL", "Actual (from Job Orders)"),
+        ("TRACKER", "Tracker (manual)"),
+    ]
+
+    client = models.ForeignKey(Client, on_delete=models.CASCADE, related_name="dedicated_rates")
+    vehicle = models.ForeignKey("Vehicle", on_delete=models.PROTECT, related_name="dedicated_rates")
+    fixed_cost = models.DecimalField("Fixed Cost", max_digits=12, decimal_places=2)
+    month = models.DateField("Month")
+    fuel_avg = models.DecimalField("Fuel Avg (Km/Ltr)", max_digits=6, decimal_places=2)
+    fuel_price = models.DecimalField("Fuel Price", max_digits=10, decimal_places=2)
+    variable_cost = models.DecimalField("Variable Cost (Rs/Km)", max_digits=10, decimal_places=2, editable=False)
+    route = models.ForeignKey("Route", on_delete=models.PROTECT, related_name="dedicated_rates")
+    distance_mode = models.CharField(max_length=10, choices=DISTANCE_MODE_CHOICES, default="STANDARD")
+    distance_km = models.DecimalField("Distance (Km)", max_digits=10, decimal_places=2)
+    effective_date = models.DateField()
+
+    class Meta:
+        ordering = ["route__route_code", "-effective_date", "-id"]
+
+    def save(self, *args, **kwargs):
+        self.variable_cost = (self.fuel_price / self.fuel_avg) if self.fuel_avg else 0
+        if self.distance_mode in ("STANDARD", "ACTUAL") and self.route_id:
+            self.distance_km = self.route.distance_km
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.client} - {self.vehicle} ({self.effective_date})"
 
 
 
