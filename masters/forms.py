@@ -187,7 +187,7 @@ class StaffForm(forms.ModelForm):
                 "next_of_kin_name", "next_of_kin_mobile", "next_of_kin_relation",
             ]
         }
-        widgets["name"].attrs["autofocus"] = "autofocus"
+        widgets["designation"].attrs["autofocus"] = "autofocus"
         widgets.update({
             "salary": forms.NumberInput(attrs={"class": "form-control", "step": "0.01"}),
         })
