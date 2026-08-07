@@ -21,7 +21,7 @@
                 <li><a class="dropdown-item rounded-2 py-2" href="{% url 'job_add' %}"><i class="bi bi-briefcase me-2"></i>New Job Order</a></li>
                 <li><hr class="dropdown-divider"></li>
                 <li><a class="dropdown-item rounded-2 py-2" href="{% url 'vehicle_add' %}"><i class="bi bi-truck me-2"></i>Add Vehicle</a></li>
-                <li><a class="dropdown-item rounded-2 py-2" href="{% url 'driver_add' %}"><i class="bi bi-person-badge me-2"></i>Add Driver</a></li>
+                <li><a class="dropdown-item rounded-2 py-2" href="{% url 'staff_add' %}"><i class="bi bi-person-badge me-2"></i>Add Staff</a></li>
             </ul>
         </div>
     </div>
@@ -98,13 +98,13 @@
         </a>
     </div>
     <div class="col-sm-6 col-xl-3">
-        <a href="{% url 'driver_list' %}" class="stat-card-link">
+        <a href="{% url 'staff_list' %}" class="stat-card-link">
             <div class="stat-card">
                 <div class="stat-icon amber"><i class="bi bi-person-badge-fill"></i></div>
                 <div>
-                    <p class="stat-label">Drivers</p>
-                    <p class="stat-value">{{ total_drivers }}</p>
-                    <p class="stat-sub">Registered drivers</p>
+                    <p class="stat-label">Staff</p>
+                    <p class="stat-value">{{ total_staff }}</p>
+                    <p class="stat-sub">Registered staff</p>
                 </div>
             </div>
         </a>

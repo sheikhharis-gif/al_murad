@@ -6,7 +6,7 @@ from django.conf import settings
 from django.core.management.base import BaseCommand
 from openpyxl import load_workbook
 
-from masters.models import Client, Driver, Vehicle, Vendor
+from masters.models import Client, Staff, Vehicle, Vendor
 
 PLACEHOLDER_EXPIRY = datetime.date(2030, 12, 31)
 PLACEHOLDER_JOINING = datetime.date(2020, 1, 1)
@@ -146,7 +146,7 @@ class Command(BaseCommand):
             ref2_name = clean(row[19])
             ref2_mobile = clean(row[20]) if len(row) > 20 else ""
 
-            driver, was_created = Driver.objects.get_or_create(
+            driver, was_created = Staff.objects.get_or_create(
                 cnic=cnic,
                 defaults={
                     "name": name,

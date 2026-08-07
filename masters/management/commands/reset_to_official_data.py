@@ -5,7 +5,7 @@ from django.core.management import call_command
 from django.core.management.base import BaseCommand
 from openpyxl import load_workbook
 
-from masters.models import Client, Driver, Vehicle, Vendor
+from masters.models import Client, Staff, Vehicle, Vendor
 from operations.models import Invoice, Job, Trip
 
 
@@ -70,7 +70,7 @@ class Command(BaseCommand):
         vehicles_deleted = vehicles_qs.count()
         vehicles_qs.delete()
 
-        drivers_qs = Driver.objects.exclude(cnic__in=official_cnics)
+        drivers_qs = Staff.objects.exclude(cnic__in=official_cnics)
         drivers_deleted = drivers_qs.count()
         drivers_qs.delete()
 

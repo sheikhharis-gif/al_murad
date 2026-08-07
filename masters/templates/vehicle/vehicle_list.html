@@ -38,7 +38,7 @@
                 </form>
                 <div class="search-box">
                     <i class="bi bi-search"></i>
-                    <input type="text" id="vehicleSearch" class="form-control" placeholder="Search vehicle, driver or vendor...">
+                    <input type="text" id="vehicleSearch" class="form-control" placeholder="Search vehicle, staff or vendor...">
                 </div>
             </div>
         </div>
@@ -47,7 +47,7 @@
             <table class="table table-hover align-middle mb-0 custom-table">
                 <thead>
                     <tr>
-                        <th class="ps-4">Vehicle & Driver</th> <th>Supplier Info</th>
+                        <th class="ps-4">Vehicle & Staff</th> <th>Supplier Info</th>
                         <th>Provincial Permits</th>
                         <th>Fitness Expiry</th>
                         <th>Operational Status</th> 
@@ -66,7 +66,7 @@
                                     <div class="fw-bold text-dark fs-6">{{ v.vehicle_number }}</div>
                                     <div class="text-primary extra-small fw-bold">
                                         <i class="bi bi-person-fill"></i> 
-                                        {% if v.driver %}{{ v.driver.name }}{% else %}No Driver Assigned{% endif %}
+                                        {% if v.driver %}{{ v.driver.name }}{% else %}No Staff Assigned{% endif %}
                                     </div>
                                     <span class="text-muted extra-small text-uppercase">{{ v.vehicle_type.name|default:"" }}</span>
                                 </div>

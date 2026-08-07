@@ -3,11 +3,11 @@ from . import views
 
 urlpatterns = [
 
-    # DRIVERS
-    path("drivers/", views.driver_list, name="driver_list"),
-    path("drivers/add/", views.driver_add, name="driver_add"),
-    path("drivers/edit/<int:driver_id>/", views.driver_edit, name="driver_edit"),
-    path("drivers/delete/<int:driver_id>/", views.driver_delete, name="driver_delete"),
+    # STAFF
+    path("staff/", views.staff_list, name="staff_list"),
+    path("staff/add/", views.staff_add, name="staff_add"),
+    path("staff/edit/<int:staff_id>/", views.staff_edit, name="staff_edit"),
+    path("staff/delete/<int:staff_id>/", views.staff_delete, name="staff_delete"),
 
     # VEHICLES
     path("vehicles/", views.vehicle_list, name="vehicle_list"),

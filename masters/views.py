@@ -6,13 +6,13 @@ from django.db.models.deletion import ProtectedError
 from datetime import date
 
 from .models import (
-    Driver, Vehicle, VehicleType, Wheeler, City, Route,
+    Staff, Vehicle, VehicleType, Wheeler, City, Route,
     Vendor, SupplierType, Client, Expense, VehicleTyre,
     ClientRate, DriverSalary
 )
 
 from .forms import (
-    DriverForm, VehicleForm, VehicleTyreForm, VehiclePermitsForm,
+    StaffForm, VehicleForm, VehicleTyreForm, VehiclePermitsForm,
     VehicleTypeForm, WheelerForm,
     CityForm, RouteForm,
     VendorForm, SupplierTypeForm, ClientForm,
@@ -32,51 +32,52 @@ def _sorted_queryset(request, queryset, sort_fields, default_sort, default_order
     return queryset.order_by(order_field), sort_by, order
 
 
-# ================= DRIVERS =================
-DRIVER_SORT_FIELDS = {
-    "name": "Driver Name",
+# ================= STAFF =================
+STAFF_SORT_FIELDS = {
+    "name": "Full Name",
     "employee_id": "Employee ID",
-    "mobile": "Mobile Number",
+    "designation": "Designation",
+    "mobile1": "Mobile Number",
     "cnic": "CNIC",
     "joining_date": "Joining Date",
     "is_active": "Status",
 }
 
-def driver_list(request):
-    drivers, sort_by, order = _sorted_queryset(
-        request, Driver.objects.all(), DRIVER_SORT_FIELDS, "name"
+def staff_list(request):
+    staff, sort_by, order = _sorted_queryset(
+        request, Staff.objects.all(), STAFF_SORT_FIELDS, "name"
     )
-    return render(request, "drivers/driver_list.html", {
-        "drivers": drivers,
-        "sort_fields": DRIVER_SORT_FIELDS,
+    return render(request, "staff/staff_list.html", {
+        "staff": staff,
+        "sort_fields": STAFF_SORT_FIELDS,
         "sort_by": sort_by,
         "order": order,
     })
 
 
-def driver_add(request):
-    form = DriverForm(request.POST or None)
+def staff_add(request):
+    form = StaffForm(request.POST or None)
     if form.is_valid():
         form.save()
-        return redirect("driver_list")
-    return render(request, "drivers/driver_form.html", {"form": form})
-# ================= DRIVER EDIT & DELETE =================
+        return redirect("staff_list")
+    return render(request, "staff/staff_form.html", {"form": form})
+# ================= STAFF EDIT & DELETE =================
 
-def driver_edit(request, driver_id):
-    driver = get_object_or_404(Driver, id=driver_id)
+def staff_edit(request, staff_id):
+    staff_member = get_object_or_404(Staff, id=staff_id)
     if request.method == "POST":
-        form = DriverForm(request.POST, instance=driver)
+        form = StaffForm(request.POST, instance=staff_member)
         if form.is_valid():
             form.save()
-            return redirect("driver_list")
+            return redirect("staff_list")
     else:
-        form = DriverForm(instance=driver)
-    return render(request, "drivers/driver_form.html", {"form": form, "driver": driver})
+        form = StaffForm(instance=staff_member)
+    return render(request, "staff/staff_form.html", {"form": form, "staff": staff_member})
 
-def driver_delete(request, driver_id):
-    driver = get_object_or_404(Driver, id=driver_id)
-    driver.delete()
-    return redirect("driver_list")
+def staff_delete(request, staff_id):
+    staff_member = get_object_or_404(Staff, id=staff_id)
+    staff_member.delete()
+    return redirect("staff_list")
 
 
 from django.shortcuts import render, redirect, get_object_or_404
@@ -87,7 +88,7 @@ from datetime import date, timedelta # Ye line file mein sab se upar honi chahiy
 
 VEHICLE_SORT_FIELDS = {
     "vehicle_number": "Vehicle Number",
-    "driver__name": "Driver Name",
+    "driver__name": "Staff Name",
     "vendor__name": "Vendor Name",
     "vehicle_type__name": "Vehicle Type",
     "wheeler__name": "Wheeler",

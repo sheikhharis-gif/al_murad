@@ -1,6 +1,6 @@
 from django.contrib import admin
 from .models import (
-    Driver,
+    Staff,
     Vehicle,
     Client,
     MaintenanceJob,
@@ -12,8 +12,8 @@ from .models import (
     Route,
 )
 
-# ================= DRIVER =================
-admin.site.register(Driver)
+# ================= STAFF =================
+admin.site.register(Staff)
 
 # ================= CLIENT =================
 admin.site.register(Client)

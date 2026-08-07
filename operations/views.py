@@ -27,7 +27,7 @@ from .models import Job, Trip
 from masters.models import (
     City,
     Client,
-    Driver,
+    Staff,
     Expense,
     Route,
     Vendor,
@@ -59,7 +59,7 @@ def dashboard(request):
     # Baqi calculations
     total_trips = Trip.objects.count()
     total_vehicles = Vehicle.objects.count()
-    total_drivers = Driver.objects.count()
+    total_staff = Staff.objects.count()
     completed_jobs_count = Job.objects.filter(status="completed").count()
     on_process_jobs_count = Job.objects.filter(status__in=["in_progress", "returning"]).count()
     total_freight = Trip.objects.aggregate(total=Sum("freight"))["total"] or 0
@@ -119,7 +119,7 @@ def dashboard(request):
         "warning_date": warning_limit,
         "total_trips": total_trips,
         "total_vehicles": total_vehicles,
-        "total_drivers": total_drivers,
+        "total_staff": total_staff,
         "completed_jobs_count": completed_jobs_count,
         "on_process_jobs_count": on_process_jobs_count,
         "total_freight": total_freight,

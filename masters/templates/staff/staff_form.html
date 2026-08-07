@@ -8,7 +8,7 @@
         {% if form.errors %}
         <div class="alert alert-danger border-0 shadow-sm rounded-3 mb-4">
             <i class="bi bi-exclamation-triangle-fill me-2"></i>
-            <strong>Driver could not be saved.</strong> Please fix the highlighted field(s) below.
+            <strong>Staff record could not be saved.</strong> Please fix the highlighted field(s) below.
             {% if form.non_field_errors %}
             <ul class="mb-0 mt-2">
                 {% for error in form.non_field_errors %}<li>{{ error }}</li>{% endfor %}
@@ -20,14 +20,14 @@
         <div class="d-flex justify-content-between align-items-center mb-4">
             <div>
                 <h3 class="fw-bold text-dark mb-0">
-                    <i class="bi bi-person-plus-fill text-primary me-2"></i>Driver Onboarding
+                    <i class="bi bi-person-plus-fill text-primary me-2"></i>Staff Onboarding
                 </h3>
-                <p class="text-muted small mb-0">Register a new driver and assign their credentials to the fleet system.</p>
+                <p class="text-muted small mb-0">Register a new staff member and assign their credentials to the fleet system.</p>
             </div>
             <div class="d-flex gap-2">
-                <a href="{% url 'driver_list' %}" class="btn btn-light border px-4 shadow-sm">Cancel</a>
+                <a href="{% url 'staff_list' %}" class="btn btn-light border px-4 shadow-sm">Cancel</a>
                 <button type="submit" class="btn btn-primary px-4 shadow-sm fw-bold">
-                    <i class="bi bi-save me-2"></i>Register Driver
+                    <i class="bi bi-save me-2"></i>Register Staff
                 </button>
             </div>
         </div>
@@ -44,12 +44,17 @@
                     </div>
                     <div class="card-body p-4 pt-2">
                         <div class="row g-3">
-                            {% if driver %}
+                            {% if staff %}
                             <div class="col-md-6">
                                 <label class="form-label small fw-bold text-muted">Employee ID</label>
-                                <input type="text" class="form-control" value="{{ driver.employee_id }}" disabled>
+                                <input type="text" class="form-control" value="{{ staff.employee_id }}" disabled>
                             </div>
                             {% endif %}
+                            <div class="col-md-6">
+                                <label class="form-label small fw-bold text-muted">Designation</label>
+                                {{ form.designation }}
+                                {{ form.designation.errors }}
+                            </div>
                             <div class="col-md-6">
                                 <label class="form-label small fw-bold text-muted">Full Name</label>
                                 {{ form.name }}
@@ -59,6 +64,11 @@
                                 <label class="form-label small fw-bold text-muted">Father's Name</label>
                                 {{ form.father_name }}
                                 {{ form.father_name.errors }}
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small fw-bold text-muted">Date of Birth</label>
+                                {{ form.date_of_birth }}
+                                {{ form.date_of_birth.errors }}
                             </div>
                             <div class="col-12">
                                 <label class="form-label small fw-bold text-muted">Permanent Address</label>
@@ -79,9 +89,14 @@
                     <div class="card-body p-4 pt-2">
                         <div class="row g-3">
                             <div class="col-md-4">
-                                <label class="form-label small fw-bold text-muted">Mobile Number</label>
-                                {{ form.mobile }}
-                                {{ form.mobile.errors }}
+                                <label class="form-label small fw-bold text-muted">Mobile 1 #</label>
+                                {{ form.mobile1 }}
+                                {{ form.mobile1.errors }}
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small fw-bold text-muted">Mobile 2 #</label>
+                                {{ form.mobile2 }}
+                                {{ form.mobile2.errors }}
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label small fw-bold text-muted">CNIC Number</label>
@@ -106,12 +121,17 @@
                     </div>
                     <div class="card-body p-4 pt-2">
                         <div class="row g-3">
-                            <div class="col-md-6">
+                            <div class="col-md-4">
                                 <label class="form-label small fw-bold text-muted">License Number</label>
                                 {{ form.license_number }}
                                 {{ form.license_number.errors }}
                             </div>
-                            <div class="col-md-6">
+                            <div class="col-md-4">
+                                <label class="form-label small fw-bold text-muted">License Category</label>
+                                {{ form.license_category }}
+                                {{ form.license_category.errors }}
+                            </div>
+                            <div class="col-md-4">
                                 <label class="form-label small fw-bold text-muted text-danger">License Expiry Date</label>
                                 {{ form.license_expiry }}
                                 {{ form.license_expiry.errors }}
@@ -122,7 +142,7 @@
             </div>
 
             <div class="col-lg-4">
-                
+
                 <div class="card border-0 shadow-sm rounded-4 mb-4 bg-light shadow-inner">
                     <div class="card-body p-4">
                         <div class="d-flex justify-content-between align-items-center mb-3">
@@ -136,10 +156,15 @@
                             {{ form.joining_date }}
                             {{ form.joining_date.errors }}
                         </div>
+                        <div class="mt-3">
+                            <label class="form-label small fw-bold text-muted">Salary</label>
+                            {{ form.salary }}
+                            {{ form.salary.errors }}
+                        </div>
                     </div>
                 </div>
 
-                <div class="card border-0 shadow-sm rounded-4">
+                <div class="card border-0 shadow-sm rounded-4 mb-4">
                     <div class="card-header bg-white border-0 pt-4 px-4">
                         <h6 class="fw-bold mb-0"><i class="bi bi-people me-2"></i>Emergency References</h6>
                     </div>
@@ -159,6 +184,24 @@
                                 <label class="form-label small fw-bold text-muted mb-1">Contact Mobile</label>
                                 {{ form.reference2_mobile }}
                             </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card border-0 shadow-sm rounded-4">
+                    <div class="card-header bg-white border-0 pt-4 px-4">
+                        <h6 class="fw-bold mb-0"><i class="bi bi-person-heart me-2"></i>Next of Kin</h6>
+                    </div>
+                    <div class="card-body p-4">
+                        <label class="form-label small fw-bold text-muted mb-1">Name</label>
+                        {{ form.next_of_kin_name }}
+                        <div class="mt-2">
+                            <label class="form-label small fw-bold text-muted mb-1">Contact Mobile</label>
+                            {{ form.next_of_kin_mobile }}
+                        </div>
+                        <div class="mt-2">
+                            <label class="form-label small fw-bold text-muted mb-1">Relation</label>
+                            {{ form.next_of_kin_relation }}
                         </div>
                     </div>
                 </div>

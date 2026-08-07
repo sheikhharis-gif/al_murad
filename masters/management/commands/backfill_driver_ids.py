@@ -1,6 +1,6 @@
 from django.core.management.base import BaseCommand
 
-from masters.models import Driver
+from masters.models import Staff
 
 
 class Command(BaseCommand):
@@ -11,7 +11,7 @@ class Command(BaseCommand):
     )
 
     def handle(self, *args, **options):
-        missing = Driver.objects.filter(employee_id="").order_by("id")
+        missing = Staff.objects.filter(employee_id="").order_by("id")
         count = missing.count()
         for driver in missing:
             driver.save()  # Driver.save() assigns the next ALMRD-#### automatically.

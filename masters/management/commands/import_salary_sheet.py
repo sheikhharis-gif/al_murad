@@ -5,7 +5,7 @@ from django.conf import settings
 from django.core.management.base import BaseCommand
 from openpyxl import load_workbook
 
-from masters.models import Driver, DriverSalary
+from masters.models import Staff, DriverSalary
 
 PLACEHOLDER_EXPIRY = datetime.date(2030, 12, 31)
 PLACEHOLDER_JOINING = datetime.date(2020, 1, 1)
@@ -71,7 +71,7 @@ class Command(BaseCommand):
                 net_payable_salary, status,
             ) = row[3], row[4], row[5], row[6], row[7], row[8], row[9], row[10], row[11], row[12], row[13], row[14], row[15]
 
-            driver, created = Driver.objects.get_or_create(
+            driver, created = Staff.objects.get_or_create(
                 cnic=f"TEST-{emp_id}",
                 defaults={
                     "name": name,

@@ -1,7 +1,7 @@
 from decimal import Decimal, InvalidOperation
 from django import forms
 from .models import (
-    Vehicle, VehicleType, Wheeler, VehicleTyre, Driver, Vendor, SupplierType,
+    Vehicle, VehicleType, Wheeler, VehicleTyre, Staff, Vendor, SupplierType,
     City, Route, Client, ClientType, Expense, ClientRate, DedicatedRate, DriverSalary
 )
 from operations.models import Trip
@@ -64,18 +64,18 @@ class VehicleForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # Only show active drivers when assigning one to a vehicle, A-Z (Driver.Meta.ordering).
-        active_drivers = Driver.objects.filter(is_active=True)
+        # Only show active staff when assigning one to a vehicle, A-Z (Staff.Meta.ordering).
+        active_staff = Staff.objects.filter(is_active=True)
         if self.instance and self.instance.pk and self.instance.driver_id:
-            # Keep the currently assigned driver selectable even if they've since gone inactive.
-            active_drivers = active_drivers | Driver.objects.filter(pk=self.instance.driver_id)
+            # Keep the currently assigned staff member selectable even if they've since gone inactive.
+            active_staff = active_staff | Staff.objects.filter(pk=self.instance.driver_id)
         if self.instance and self.instance.pk and self.instance.driver2_id:
-            active_drivers = active_drivers | Driver.objects.filter(pk=self.instance.driver2_id)
-        active_drivers = active_drivers.distinct()
-        self.fields["driver"].queryset = active_drivers
-        self.fields["driver"].empty_label = "--- No Driver Assigned ---"
-        self.fields["driver2"].queryset = active_drivers
-        self.fields["driver2"].empty_label = "--- No Second Driver ---"
+            active_staff = active_staff | Staff.objects.filter(pk=self.instance.driver2_id)
+        active_staff = active_staff.distinct()
+        self.fields["driver"].queryset = active_staff
+        self.fields["driver"].empty_label = "--- No Staff Assigned ---"
+        self.fields["driver2"].queryset = active_staff
+        self.fields["driver2"].empty_label = "--- No Second Staff ---"
 
         self.fields["vendor"].empty_label = "--- No Supplier ---"
         self.fields["vehicle_type"].empty_label = "--- Select Type ---"
@@ -174,24 +174,28 @@ class WheelerForm(forms.ModelForm):
 
 ################ DRIVERS ################
 
-class DriverForm(forms.ModelForm):
+class StaffForm(forms.ModelForm):
     class Meta:
-        model = Driver
+        model = Staff
         fields = "__all__"
         widgets = {
             field: forms.TextInput(attrs={"class": "form-control"})
             for field in [
-                "name", "father_name", "mobile", "cnic",
-                "license_number", "reference1_name",
-                "reference1_mobile", "reference2_name",
-                "reference2_mobile"
+                "name", "father_name", "designation", "mobile1", "mobile2", "cnic",
+                "license_number", "license_category", "reference1_name",
+                "reference1_mobile", "reference2_name", "reference2_mobile",
+                "next_of_kin_name", "next_of_kin_mobile", "next_of_kin_relation",
             ]
         }
         widgets["name"].attrs["autofocus"] = "autofocus"
-        
+        widgets.update({
+            "salary": forms.NumberInput(attrs={"class": "form-control", "step": "0.01"}),
+        })
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["address"].widget = forms.Textarea(attrs={"class": "form-control", "rows": 3})
+        self.fields["date_of_birth"].widget = forms.DateInput(attrs={"class": "form-control datepicker"})
         self.fields["cnic_expiry"].widget = forms.DateInput(attrs={"class": "form-control datepicker"})
         self.fields["license_expiry"].widget = forms.DateInput(attrs={"class": "form-control datepicker"})
         self.fields["joining_date"].widget = forms.DateInput(attrs={"class": "form-control datepicker"})

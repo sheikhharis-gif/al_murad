@@ -1,6 +1,6 @@
 from django.core.management.base import BaseCommand
 
-from masters.models import Client, Driver, DriverSalary, Vehicle
+from masters.models import Client, Staff, DriverSalary, Vehicle
 from operations.models import Job, Trip
 
 
@@ -36,13 +36,13 @@ class Command(BaseCommand):
         clients_deleted = clients_qs.count()
         clients_qs.delete()
 
-        test_drivers = Driver.objects.filter(cnic__startswith="TEST-EMP")
+        test_drivers = Staff.objects.filter(cnic__startswith="TEST-EMP")
         drivers_deleted = test_drivers.count()
         salary_count_before = DriverSalary.objects.filter(driver__cnic__startswith="TEST-EMP").count()
         test_drivers.delete()
 
         backfilled = 0
-        for d in Driver.objects.filter(employee_id="").order_by("id"):
+        for d in Staff.objects.filter(employee_id="").order_by("id"):
             d.save()
             backfilled += 1
 

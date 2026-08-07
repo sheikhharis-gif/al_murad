@@ -2,30 +2,38 @@ import re
 from datetime import date, timedelta
 from django.db import models
 
-# ================= DRIVER =================
-class Driver(models.Model):
+# ================= STAFF =================
+class Staff(models.Model):
     employee_id = models.CharField("Employee ID", max_length=20, blank=True, editable=False)
-    name = models.CharField("Driver Name", max_length=100)
+    designation = models.CharField("Designation", max_length=100, blank=True)
+    name = models.CharField("Full Name", max_length=100)
     father_name = models.CharField("Father Name", max_length=100)
+    date_of_birth = models.DateField("Date of Birth", null=True, blank=True)
     address = models.TextField("Address")
-    mobile = models.CharField("Mobile #", max_length=20)
+    mobile1 = models.CharField("Mobile 1 #", max_length=20)
+    mobile2 = models.CharField("Mobile 2 #", max_length=20, blank=True)
     cnic = models.CharField("CNIC #", max_length=15, unique=True)
     cnic_expiry = models.DateField("CNIC Expiry")
-    license_number = models.CharField("License Number", max_length=50)
-    license_expiry = models.DateField("License Expiry")
-    reference1_name = models.CharField(max_length=100, blank=True)
-    reference1_mobile = models.CharField(max_length=20, blank=True)
-    reference2_name = models.CharField(max_length=100, blank=True)
-    reference2_mobile = models.CharField(max_length=20, blank=True)
+    license_number = models.CharField("License #", max_length=50, blank=True)
+    license_category = models.CharField("License Category", max_length=50, blank=True)
+    license_expiry = models.DateField("License Expiry", null=True, blank=True)
+    salary = models.DecimalField("Salary", max_digits=12, decimal_places=2, null=True, blank=True)
+    reference1_name = models.CharField("Primary Contact Name", max_length=100, blank=True)
+    reference1_mobile = models.CharField("Primary Contact Number", max_length=20, blank=True)
+    reference2_name = models.CharField("Secondary Contact Name", max_length=100, blank=True)
+    reference2_mobile = models.CharField("Secondary Contact Number", max_length=20, blank=True)
+    next_of_kin_name = models.CharField("Next of Kin Name", max_length=100, blank=True)
+    next_of_kin_mobile = models.CharField("Next of Kin Number", max_length=20, blank=True)
+    next_of_kin_relation = models.CharField("Next of Kin Relation", max_length=50, blank=True)
     joining_date = models.DateField("Joining Date")
     is_active = models.BooleanField(default=True)
 
     def save(self, *args, **kwargs):
         if not self.employee_id:
             # Based on the highest existing number, not the row count, so a
-            # deleted driver in the middle can never cause a collision.
+            # deleted staff member in the middle can never cause a collision.
             max_num = 0
-            for eid in Driver.objects.exclude(employee_id="").values_list("employee_id", flat=True):
+            for eid in Staff.objects.exclude(employee_id="").values_list("employee_id", flat=True):
                 match = re.search(r"(\d+)$", eid)
                 if match:
                     max_num = max(max_num, int(match.group(1)))
@@ -142,24 +150,24 @@ class Vehicle(models.Model):
     # ForeignKey to Vendor - optional; only relevant when vehicle_mode is Rental
     vendor = models.ForeignKey('Vendor', on_delete=models.PROTECT, null=True, blank=True, related_name='vehicles')
 
-    # Dropdown ke liye Driver link (ForeignKey)
-    # Isse aapko form mein driver ki list mil jayegi
+    # Dropdown ke liye Staff link (ForeignKey)
+    # Isse aapko form mein staff ki list mil jayegi
     driver = models.ForeignKey(
-        'Driver',
+        'Staff',
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
         related_name='vehicles',
-        help_text="Select driver from the registered list"
+        help_text="Select staff member from the registered list"
     )
     driver2 = models.ForeignKey(
-        'Driver',
+        'Staff',
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
         related_name='vehicles_as_second_driver',
         verbose_name="Second Driver",
-        help_text="Optional second driver assigned to this vehicle"
+        help_text="Optional second staff member assigned to this vehicle"
     )
 
     vehicle_mode = models.CharField(max_length=10, choices=VEHICLE_MODE, default="OWN")
@@ -605,7 +613,7 @@ class Route(models.Model):
 
 # ================= DRIVER SALARY =================
 class DriverSalary(models.Model):
-    driver = models.ForeignKey(Driver, on_delete=models.CASCADE)
+    driver = models.ForeignKey(Staff, on_delete=models.CASCADE)
     month = models.DateField()
 
     emp_id = models.CharField("Emp ID", max_length=20, blank=True)
@@ -635,7 +643,7 @@ class DriverSalary(models.Model):
 
 # ================= DRIVER ADVANCE =================
 class DriverAdvance(models.Model):
-    driver = models.ForeignKey(Driver, on_delete=models.CASCADE)
+    driver = models.ForeignKey(Staff, on_delete=models.CASCADE)
     date = models.DateField()
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     remarks = models.TextField(blank=True)
