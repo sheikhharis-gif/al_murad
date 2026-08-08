@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid py-4">
+
+    <div class="mb-4">
+        <h3 class="fw-bold text-dark mb-1"><i class="bi bi-journal-text text-primary me-2"></i>Staff Monthly Account &amp; Expense Statement</h3>
+        <p class="text-muted small mb-0">Select a staff member to view/manage their attendance sheet and account ledger.</p>
+    </div>
+
+    <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+        <div class="card-header bg-white border-0 py-3 px-4 d-flex flex-wrap justify-content-between align-items-center gap-2 border-bottom">
+            <h5 class="fw-bold mb-0 text-dark">Select Staff</h5>
+            <div class="input-group w-auto">
+                <span class="input-group-text bg-light border-0"><i class="bi bi-search"></i></span>
+                <input type="text" id="staffAccSearch" class="form-control bg-light border-0 small" placeholder="Search by name, designation or ID...">
+            </div>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0 custom-table">
+                <thead class="bg-light">
+                    <tr class="text-muted small text-uppercase fw-bold">
+                        <th class="ps-4">Employee ID</th>
+                        <th>Full Name</th>
+                        <th>Designation</th>
+                        <th>Mobile Number</th>
+                        <th class="text-end pe-4">Action</th>
+                    </tr>
+                </thead>
+                <tbody id="staffAccTableBody">
+                    {% for s in staff %}
+                    <tr role="button" onclick="window.location='{% url 'staff_account' s.id %}'">
+                        <td class="ps-4 fw-bold text-dark">{{ s.employee_id|default:"---" }}</td>
+                        <td>{{ s.name }}</td>
+                        <td>{{ s.designation|default:"---" }}</td>
+                        <td>{{ s.mobile1 }}</td>
+                        <td class="text-end pe-4">
+                            <a href="{% url 'staff_account' s.id %}" class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-journal-text me-1"></i>Open Statement
+                            </a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="5" class="text-center py-4 text-muted">No active staff registered yet.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<style>
+    .custom-table th { border: none; background-color: #f8f9fa; color: #6c757d; font-weight: 600; padding: 12px; }
+    .custom-table td { padding: 12px; border-bottom: 1px solid #f1f4f8; }
+</style>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        window.initTableSearch('staffAccSearch', 'staffAccTableBody');
+    });
+</script>
+{% endblock %}

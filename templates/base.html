@@ -146,12 +146,13 @@
                 </li>
 
                 <li class="nav-item dropdown">
-                    <a href="#" class="nav-link dropdown-toggle {% if request.resolver_match.url_name == 'staff_list' or request.resolver_match.url_name == 'staff_add' or request.resolver_match.url_name == 'staff_edit' or request.resolver_match.url_name == 'staff_delete' %}active{% endif %}" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                    <a href="#" class="nav-link dropdown-toggle {% if request.resolver_match.url_name == 'staff_list' or request.resolver_match.url_name == 'staff_add' or request.resolver_match.url_name == 'staff_edit' or request.resolver_match.url_name == 'staff_delete' or request.resolver_match.url_name == 'staff_account_select' or request.resolver_match.url_name == 'staff_account' %}active{% endif %}" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                         <i class="bi bi-person-badge-fill"></i> Staff
                     </a>
                     <ul class="dropdown-menu">
                         <li><a class="dropdown-item" href="{% url 'staff_list' %}"><i class="bi bi-list-ul me-2"></i>All Staff</a></li>
                         <li><a class="dropdown-item" href="{% url 'staff_add' %}"><i class="bi bi-plus-circle me-2"></i>Register New Staff</a></li>
+                        <li><a class="dropdown-item" href="{% url 'staff_account_select' %}"><i class="bi bi-journal-text me-2"></i>Monthly Account & Expense Statement</a></li>
                     </ul>
                 </li>
 

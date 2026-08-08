@@ -1,8 +1,10 @@
 from decimal import Decimal, InvalidOperation
 from django import forms
+from django.forms import modelformset_factory
 from .models import (
     Vehicle, VehicleType, Wheeler, VehicleTyre, Staff, Vendor, SupplierType,
-    City, Route, Client, ClientType, Expense, ClientRate, DedicatedRate, DriverSalary
+    City, Route, Client, ClientType, Expense, ClientRate, DedicatedRate, DriverSalary,
+    StaffAttendanceEntry, StaffAccountEntry,
 )
 from operations.models import Trip
 
@@ -227,6 +229,42 @@ class DriverSalaryForm(forms.ModelForm):
             "status": forms.TextInput(attrs={"class": "form-control"}),
             "paid": forms.CheckboxInput(attrs={"class": "form-check-input"}),
         }
+
+################ STAFF MONTHLY ACCOUNT & EXPENSE STATEMENT ################
+
+class StaffAttendanceEntryForm(forms.ModelForm):
+    class Meta:
+        model = StaffAttendanceEntry
+        fields = ["status", "remarks"]
+        widgets = {
+            # RadioSelect (not a dropdown) so the template can lay Present/Leave/Absent
+            # out as three separate columns, matching the "STAFF" spreadsheet format.
+            "status": forms.RadioSelect(attrs={"class": "form-check-input"}),
+            "remarks": forms.TextInput(attrs={"class": "form-control form-control-sm", "placeholder": "Remarks"}),
+        }
+
+
+StaffAttendanceFormSet = modelformset_factory(
+    StaffAttendanceEntry, form=StaffAttendanceEntryForm, extra=0,
+)
+
+
+class StaffAccountEntryForm(forms.ModelForm):
+    class Meta:
+        model = StaffAccountEntry
+        fields = ["date", "amount", "paid", "expense", "remarks"]
+        widgets = {
+            "date": forms.DateInput(attrs={"class": "form-control form-control-sm datepicker"}),
+            "amount": forms.NumberInput(attrs={"class": "form-control form-control-sm", "step": "0.01"}),
+            "paid": forms.NumberInput(attrs={"class": "form-control form-control-sm", "step": "0.01"}),
+            "expense": forms.NumberInput(attrs={"class": "form-control form-control-sm", "step": "0.01"}),
+            "remarks": forms.TextInput(attrs={"class": "form-control form-control-sm", "placeholder": "Remarks"}),
+        }
+
+
+StaffAccountEntryFormSet = modelformset_factory(
+    StaffAccountEntry, form=StaffAccountEntryForm, extra=1, can_delete=True,
+)
 
 ################ MASTERS ################
 

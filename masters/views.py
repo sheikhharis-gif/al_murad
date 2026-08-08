@@ -1,6 +1,9 @@
 import json
+from calendar import monthrange
+from urllib.parse import urlencode
 from django.contrib import messages
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
+from django.urls import reverse
 from django.db.models import Sum, Count
 from django.db.models.deletion import ProtectedError
 from datetime import date
@@ -8,7 +11,8 @@ from datetime import date
 from .models import (
     Staff, Vehicle, VehicleType, Wheeler, City, Route,
     Vendor, SupplierType, Client, Expense, VehicleTyre,
-    ClientRate, DriverSalary
+    ClientRate, DriverSalary,
+    StaffMonthlyAccount, StaffAttendanceEntry, StaffAccountEntry,
 )
 
 from .forms import (
@@ -17,7 +21,8 @@ from .forms import (
     CityForm, RouteForm,
     VendorForm, SupplierTypeForm, ClientForm,
     ExpenseForm, ClientRateForm,
-    DriverSalaryForm
+    DriverSalaryForm,
+    StaffAttendanceFormSet, StaffAccountEntryFormSet,
 )
 
 
@@ -78,6 +83,120 @@ def staff_delete(request, staff_id):
     staff_member = get_object_or_404(Staff, id=staff_id)
     staff_member.delete()
     return redirect("staff_list")
+
+
+# ================= STAFF MONTHLY ACCOUNT & EXPENSE STATEMENT =================
+def staff_account_select(request):
+    staff = Staff.objects.filter(is_active=True).order_by("name")
+    return render(request, "staff/staff_account_select.html", {"staff": staff})
+
+
+def staff_account(request, staff_id):
+    staff_member = get_object_or_404(Staff, id=staff_id)
+
+    month_param = request.GET.get("month")
+    try:
+        requested_month = date(int(month_param[:4]), int(month_param[5:7]), 1) if month_param else date.today().replace(day=1)
+    except (ValueError, IndexError):
+        requested_month = date.today().replace(day=1)
+
+    # Reporting month can't move forward until the currently open month for
+    # this staff member is closed - snap back to it if a different month was requested.
+    active = StaffMonthlyAccount.objects.filter(staff=staff_member, is_closed=False).order_by("-month").first()
+    if active and active.month != requested_month:
+        messages.warning(
+            request,
+            f"{active.month:%B %Y} ka account abhi close nahi hua - pehle usay close karen, phir naya reporting month khulega."
+        )
+        requested_month = active.month
+
+    account, created = StaffMonthlyAccount.objects.get_or_create(staff=staff_member, month=requested_month)
+    if created:
+        previous = StaffMonthlyAccount.objects.filter(
+            staff=staff_member, month__lt=requested_month
+        ).order_by("-month").first()
+        if previous:
+            account.opening_balance = previous.closing_balance
+            account.save()
+
+        days_in_month = monthrange(requested_month.year, requested_month.month)[1]
+        StaffAttendanceEntry.objects.bulk_create([
+            StaffAttendanceEntry(account=account, date=requested_month.replace(day=d))
+            for d in range(1, days_in_month + 1)
+        ])
+
+    redirect_url = f"{reverse('staff_account', args=[staff_member.id])}?month={account.month:%Y-%m}"
+
+    if request.method == "POST":
+        if account.is_closed:
+            messages.error(request, "Ye month band ho chuka hai - ab isay edit nahi kiya ja sakta.")
+            return redirect(redirect_url)
+
+        if "save_attendance" in request.POST:
+            attendance_formset = StaffAttendanceFormSet(request.POST, queryset=account.attendance.all(), prefix="att")
+            if attendance_formset.is_valid():
+                attendance_formset.save()
+                messages.success(request, "Attendance sheet updated successfully.")
+            else:
+                messages.error(request, "Attendance mein kuch masla hai - dobara check karen.")
+            return redirect(redirect_url)
+
+        if "save_account" in request.POST:
+            account_formset = StaffAccountEntryFormSet(request.POST, queryset=account.entries.all(), prefix="acc")
+            if account_formset.is_valid():
+                entries = account_formset.save(commit=False)
+                for entry in entries:
+                    entry.account = account
+                    entry.save()
+                for obj in account_formset.deleted_objects:
+                    obj.delete()
+                messages.success(request, "Staff account updated successfully.")
+            else:
+                messages.error(request, "Staff account mein kuch masla hai - dobara check karen.")
+            return redirect(redirect_url)
+
+        if "close_month" in request.POST:
+            account.is_closed = True
+            account.closed_date = date.today()
+            account.save()
+            messages.success(request, f"{account.month:%B %Y} ka account close ho gaya. Ab Payslip generate ki ja sakti hai.")
+            return redirect(redirect_url)
+
+    attendance_formset = StaffAttendanceFormSet(queryset=account.attendance.all(), prefix="att")
+    account_formset = StaffAccountEntryFormSet(queryset=account.entries.all(), prefix="acc")
+
+    if account.is_closed:
+        for f in list(attendance_formset) + list(account_formset):
+            for field in f.fields.values():
+                field.widget.attrs["disabled"] = True
+
+    running = account.opening_balance or 0
+    account_rows = []
+    for form in account_formset:
+        entry = form.instance
+        if entry.pk:
+            running = running + (entry.amount or 0) - (entry.paid or 0) - (entry.expense or 0)
+            account_rows.append((form, running))
+        else:
+            account_rows.append((form, None))
+
+    payslip_params = urlencode({
+        "staff": staff_member.id,
+        "month": f"{account.month:%Y-%m-%d}",
+        "present_days": account.total_present,
+        "absent_days": account.total_absent,
+        "previous_advance": account.opening_balance,
+    })
+
+    return render(request, "staff/staff_account.html", {
+        "staff": staff_member,
+        "account": account,
+        "attendance_formset": attendance_formset,
+        "account_formset": account_formset,
+        "account_rows": account_rows,
+        "month_value": f"{account.month:%Y-%m}",
+        "payslip_params": payslip_params,
+    })
 
 
 from django.shortcuts import render, redirect, get_object_or_404
@@ -886,10 +1005,23 @@ def salary_slip_pdf(request, salary_id):
 
 
 def salary_add(request):
-    form = DriverSalaryForm(request.POST or None)
-    if request.method == "POST" and form.is_valid():
-        form.save()
-        return redirect("salary_list")
+    if request.method == "POST":
+        form = DriverSalaryForm(request.POST)
+        if form.is_valid():
+            form.save()
+            return redirect("salary_list")
+    else:
+        # Prefilled from the Staff Monthly Account statement's "Generate
+        # Payslip" button (?staff=&month=&present_days=&absent_days=&previous_advance=).
+        initial = {}
+        if request.GET.get("staff"):
+            initial["driver"] = request.GET["staff"]
+        if request.GET.get("month"):
+            initial["month"] = request.GET["month"]
+        for field in ("present_days", "absent_days", "previous_advance"):
+            if request.GET.get(field):
+                initial[field] = request.GET[field]
+        form = DriverSalaryForm(initial=initial)
     return render(request, "salary/salary_form.html", {"form": form})
 
 

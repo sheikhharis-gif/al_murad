@@ -650,3 +650,88 @@ class DriverAdvance(models.Model):
 
     def __str__(self):
         return f"{self.driver} Advance {self.amount}"
+
+
+# ================= STAFF MONTHLY ACCOUNT & EXPENSE STATEMENT =================
+# One row per (staff, reporting month). The reporting month is locked to
+# whichever month is currently open for that staff member - a new month can
+# only be opened once the current one is closed (is_closed=True), and the
+# closing balance of the last closed month becomes the next month's opening
+# balance, so a due amount always carries forward.
+class StaffMonthlyAccount(models.Model):
+    staff = models.ForeignKey(Staff, on_delete=models.CASCADE, related_name="monthly_accounts")
+    month = models.DateField("Reporting Month")
+    opening_balance = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    is_closed = models.BooleanField(default=False)
+    closed_date = models.DateField(null=True, blank=True)
+
+    class Meta:
+        unique_together = ("staff", "month")
+        ordering = ["-month"]
+
+    def __str__(self):
+        return f"{self.staff} - {self.month:%B %Y}"
+
+    @property
+    def total_present(self):
+        return self.attendance.filter(status="PRESENT").count()
+
+    @property
+    def total_leave(self):
+        return self.attendance.filter(status="LEAVE").count()
+
+    @property
+    def total_absent(self):
+        return self.attendance.filter(status="ABSENT").count()
+
+    @property
+    def total_amount(self):
+        return self.entries.aggregate(t=models.Sum("amount"))["t"] or 0
+
+    @property
+    def total_paid(self):
+        return self.entries.aggregate(t=models.Sum("paid"))["t"] or 0
+
+    @property
+    def total_expense(self):
+        return self.entries.aggregate(t=models.Sum("expense"))["t"] or 0
+
+    @property
+    def closing_balance(self):
+        return (self.opening_balance or 0) + self.total_amount - self.total_paid - self.total_expense
+
+
+# ================= STAFF ATTENDANCE SHEET (one row per day of the month) =================
+class StaffAttendanceEntry(models.Model):
+    STATUS_CHOICES = [
+        ("PRESENT", "Present"),
+        ("LEAVE", "Leave"),
+        ("ABSENT", "Absent"),
+    ]
+    account = models.ForeignKey(StaffMonthlyAccount, on_delete=models.CASCADE, related_name="attendance")
+    date = models.DateField()
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default="PRESENT")
+    remarks = models.CharField(max_length=200, blank=True)
+
+    class Meta:
+        unique_together = ("account", "date")
+        ordering = ["date"]
+
+    def __str__(self):
+        return f"{self.account} {self.date} {self.status}"
+
+
+# ================= STAFF ACCOUNT (ledger entries: amount / paid / expense) =================
+class StaffAccountEntry(models.Model):
+    account = models.ForeignKey(StaffMonthlyAccount, on_delete=models.CASCADE, related_name="entries")
+    date = models.DateField()
+    amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    paid = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    expense = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    remarks = models.CharField(max_length=200, blank=True)
+
+    class Meta:
+        ordering = ["date", "id"]
+
+    def __str__(self):
+        return f"{self.account} {self.date}"

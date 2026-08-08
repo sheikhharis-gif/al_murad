@@ -8,6 +8,8 @@ urlpatterns = [
     path("staff/add/", views.staff_add, name="staff_add"),
     path("staff/edit/<int:staff_id>/", views.staff_edit, name="staff_edit"),
     path("staff/delete/<int:staff_id>/", views.staff_delete, name="staff_delete"),
+    path("staff/account/", views.staff_account_select, name="staff_account_select"),
+    path("staff/<int:staff_id>/account/", views.staff_account, name="staff_account"),
 
     # VEHICLES
     path("vehicles/", views.vehicle_list, name="vehicle_list"),

@@ -1,0 +1,248 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid py-4">
+
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+        <div>
+            <h3 class="fw-bold text-dark mb-1"><i class="bi bi-journal-text text-primary me-2"></i>Staff Monthly Account &amp; Expense Statement</h3>
+            <p class="text-muted small mb-0">Reporting month locks until this account is closed - the closing balance then carries into the next month automatically.</p>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="{% url 'staff_account_select' %}" class="btn btn-light border px-3">
+                <i class="bi bi-arrow-left me-1"></i>Change Staff
+            </a>
+            <a href="{% url 'staff_edit' staff.id %}" class="btn btn-outline-primary px-3">
+                <i class="bi bi-pencil-square me-1"></i>Edit Staff
+            </a>
+        </div>
+    </div>
+
+    {% if account.is_closed %}
+    <div class="alert alert-success border-0 rounded-3 py-2 small">
+        <i class="bi bi-lock-fill me-1"></i>{{ account.month|date:"F Y" }} is closed (on {{ account.closed_date|date:"d-M-y" }}). This month is now read-only.
+    </div>
+    {% else %}
+    <div class="alert alert-warning border-0 rounded-3 py-2 small">
+        <i class="bi bi-unlock-fill me-1"></i>{{ account.month|date:"F Y" }} is open. Close it to unlock a new reporting month and enable Generate Payslip.
+    </div>
+    {% endif %}
+
+    <!-- Statement Header -->
+    <div class="card border-0 shadow-sm rounded-4 mb-4">
+        <div class="card-body p-4">
+            <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                <h5 class="fw-bold text-primary mb-0">Staff Monthly Account &amp; Expense Statement</h5>
+                <form method="get" class="d-flex gap-2 align-items-center">
+                    <label class="small fw-bold text-muted mb-0">Reporting Month</label>
+                    <input type="month" name="month" value="{{ month_value }}" class="form-control form-control-sm" style="width:160px">
+                    <button type="submit" class="btn btn-sm btn-dark">Go</button>
+                </form>
+            </div>
+            <div class="row g-3">
+                <div class="col-md-3 col-6">
+                    <div class="x-small text-muted">Employee ID</div>
+                    <div class="fw-bold">{{ staff.employee_id|default:"--" }}</div>
+                </div>
+                <div class="col-md-3 col-6">
+                    <div class="x-small text-muted">Employee Name</div>
+                    <div class="fw-bold">{{ staff.name }}</div>
+                </div>
+                <div class="col-md-3 col-6">
+                    <div class="x-small text-muted">Designation</div>
+                    <div class="fw-bold">{{ staff.designation|default:"--" }}</div>
+                </div>
+                <div class="col-md-3 col-6">
+                    <div class="x-small text-muted">CNIC</div>
+                    <div class="fw-bold">{{ staff.cnic }}</div>
+                </div>
+                <div class="col-md-3 col-6">
+                    <div class="x-small text-muted">Mobile Number</div>
+                    <div class="fw-bold">{{ staff.mobile1 }}</div>
+                </div>
+                <div class="col-md-3 col-6">
+                    <div class="x-small text-muted">Father's Name</div>
+                    <div class="fw-bold">{{ staff.father_name }}</div>
+                </div>
+                <div class="col-md-3 col-6">
+                    <div class="x-small text-muted">Monthly Salary</div>
+                    <div class="fw-bold">{{ staff.salary|default:"--" }}</div>
+                </div>
+                <div class="col-md-3 col-6">
+                    <div class="x-small text-muted">Account Balance</div>
+                    <div class="fw-bold {% if account.closing_balance < 0 %}text-danger{% else %}text-success{% endif %}">{{ account.closing_balance }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Attendance Sheet -->
+    <div class="card border-0 shadow-sm rounded-4 mb-4">
+        <div class="card-header bg-white border-0 pt-3 px-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <h5 class="fw-bold mb-0 text-primary">Attendance Sheet</h5>
+            <div class="small text-muted">Present: <strong class="text-success">{{ account.total_present }}</strong> &nbsp; Leave: <strong class="text-warning">{{ account.total_leave }}</strong> &nbsp; Absent: <strong class="text-danger">{{ account.total_absent }}</strong></div>
+        </div>
+        <div class="card-body p-3">
+            <form method="post">
+                {% csrf_token %}
+                {{ attendance_formset.management_form }}
+                <div class="table-responsive" style="max-height: 420px; overflow-y: auto;">
+                    <table class="table table-hover align-middle custom-table mb-0">
+                        <thead class="sticky-top bg-white">
+                            <tr class="text-muted small text-uppercase">
+                                <th>Date</th>
+                                <th class="text-center">Present</th>
+                                <th class="text-center">Leave</th>
+                                <th class="text-center">Absent</th>
+                                <th>Remarks</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for f in attendance_formset %}
+                            <tr>
+                                {% for hidden in f.hidden_fields %}{{ hidden }}{% endfor %}
+                                <td class="fw-bold text-dark">{{ f.instance.date|date:"d-M-y" }}</td>
+                                {% for radio in f.status %}
+                                <td class="text-center">{{ radio.tag }}</td>
+                                {% endfor %}
+                                <td>{{ f.remarks }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% if not account.is_closed %}
+                <div class="text-end mt-3">
+                    <button type="submit" name="save_attendance" class="btn btn-primary fw-bold px-4">
+                        <i class="bi bi-save me-1"></i>Save Attendance
+                    </button>
+                </div>
+                {% endif %}
+            </form>
+        </div>
+    </div>
+
+    <!-- Staff Account -->
+    <div class="card border-0 shadow-sm rounded-4 mb-4">
+        <div class="card-header bg-white border-0 pt-3 px-3">
+            <h5 class="fw-bold mb-0 text-primary">Staff Account</h5>
+        </div>
+        <div class="card-body p-3">
+            <form method="post">
+                {% csrf_token %}
+                {{ account_formset.management_form }}
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle custom-table mb-0">
+                        <thead>
+                            <tr class="text-muted small text-uppercase">
+                                <th>Date</th>
+                                <th>Amount</th>
+                                <th>Paid</th>
+                                <th>Expense</th>
+                                <th>Balance</th>
+                                <th>Remarks</th>
+                                {% if not account.is_closed %}<th></th>{% endif %}
+                            </tr>
+                        </thead>
+                        <tbody id="acc-formset">
+                            <tr class="small text-muted">
+                                <td colspan="4">Opening Balance</td>
+                                <td class="fw-bold">{{ account.opening_balance }}</td>
+                                <td colspan="2"></td>
+                            </tr>
+                            {% for f, balance in account_rows %}
+                            <tr class="acc-row">
+                                {% for hidden in f.hidden_fields %}{{ hidden }}{% endfor %}
+                                <td>{{ f.date }}</td>
+                                <td>{{ f.amount }}</td>
+                                <td>{{ f.paid }}</td>
+                                <td>{{ f.expense }}</td>
+                                <td class="fw-bold">{{ balance|default:"--" }}</td>
+                                <td>{{ f.remarks }}</td>
+                                {% if not account.is_closed %}
+                                <td class="text-center">
+                                    {% if f.instance.pk %}
+                                    <div class="form-check">
+                                        {{ f.DELETE }}
+                                        <label class="form-check-label small text-danger">Del</label>
+                                    </div>
+                                    {% endif %}
+                                </td>
+                                {% endif %}
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% if not account.is_closed %}
+                <div class="d-flex justify-content-between align-items-center mt-3 flex-wrap gap-2">
+                    <button type="button" id="add-acc-row" class="btn btn-sm btn-outline-primary rounded-pill px-3">
+                        <i class="bi bi-plus-lg me-1"></i>Add Row
+                    </button>
+                    <button type="submit" name="save_account" class="btn btn-primary fw-bold px-4">
+                        <i class="bi bi-save me-1"></i>Save Entry
+                    </button>
+                </div>
+                {% endif %}
+            </form>
+        </div>
+    </div>
+
+    <!-- Close Month / Generate Payslip -->
+    <div class="card border-0 shadow-sm rounded-4">
+        <div class="card-body p-4 d-flex justify-content-end gap-3 flex-wrap">
+            {% if not account.is_closed %}
+            <form method="post" onsubmit="return confirm('Close this month\'s account? It cannot be edited after this.');">
+                {% csrf_token %}
+                <button type="submit" name="close_month" class="btn btn-dark fw-bold px-4">
+                    <i class="bi bi-lock-fill me-1"></i>Close Month
+                </button>
+            </form>
+            {% endif %}
+            <a href="{% if account.is_closed %}{% url 'salary_add' %}?{{ payslip_params }}{% else %}#{% endif %}"
+               class="btn btn-success fw-bold px-4 {% if not account.is_closed %}disabled{% endif %}"
+               {% if not account.is_closed %}tabindex="-1" aria-disabled="true" title="Close this month first"{% endif %}>
+                <i class="bi bi-receipt me-1"></i>Generate Payslip
+            </a>
+        </div>
+    </div>
+</div>
+
+<style>
+    .x-small { font-size: 0.7rem; text-transform: uppercase; font-weight: bold; color: #64748b; }
+    .custom-table th { border: none; background-color: #f8f9fa; color: #6c757d; font-weight: 600; padding: 10px; }
+    .custom-table td { padding: 8px 10px; border-bottom: 1px solid #f1f4f8; }
+    .custom-table td input, .custom-table td select { min-width: 90px; }
+</style>
+
+<script>
+    document.getElementById('add-acc-row') && document.getElementById('add-acc-row').addEventListener('click', function () {
+        const container = document.getElementById('acc-formset');
+        const totalForms = document.getElementById('id_acc-TOTAL_FORMS');
+        const formNum = parseInt(totalForms.value, 10);
+        const rows = container.querySelectorAll('.acc-row');
+        const templateRow = rows[rows.length - 1];
+        const newRow = templateRow.cloneNode(true);
+
+        newRow.querySelectorAll('input, select').forEach(function (field) {
+            const name = field.getAttribute('name');
+            const id = field.getAttribute('id');
+            if (name) field.setAttribute('name', name.replace(/-\d+-/, '-' + formNum + '-'));
+            if (id) field.setAttribute('id', id.replace(/-\d+-/, '-' + formNum + '-'));
+            if (field.type === 'checkbox') {
+                field.checked = false;
+            } else if (field.type === 'hidden') {
+                field.value = '';
+            } else {
+                field.value = field.tagName === 'SELECT' ? field.options[0].value : '';
+            }
+        });
+        const deleteCol = newRow.querySelector('.form-check');
+        if (deleteCol) deleteCol.closest('td').innerHTML = '';
+        newRow.querySelector('.fw-bold').textContent = '--';
+
+        container.appendChild(newRow);
+        totalForms.value = formNum + 1;
+    });
+</script>
+{% endblock %}
