@@ -984,7 +984,15 @@ body {
     border: 1px solid var(--border);
     border-radius: 16px;
     box-shadow: var(--shadow-lg);
-    padding: 10px 12px 12px;
+    /* Horizontal padding here used to clip the Sunday column: flatpickr sizes
+       .flatpickr-days/.dayContainer/.flatpickr-rContainer to a fixed px width
+       (7 day-cells) independent of this element's padding, while
+       .flatpickr-innerContainer (which has overflow-x: hidden) shrinks to
+       this element's content box - so left/right padding here silently ate
+       into the innerContainer's width and sliced off the last column. Only
+       pad vertically; let the day-grid's own cell spacing provide the inset
+       look horizontally. */
+    padding: 10px 0 12px;
 }
 
 .flatpickr-calendar.arrowTop:before,
