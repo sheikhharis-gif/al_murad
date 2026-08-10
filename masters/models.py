@@ -636,13 +636,30 @@ class Route(models.Model):
     origin = models.ForeignKey(City, on_delete=models.CASCADE, related_name="routes_from")
     destination = models.ForeignKey(City, on_delete=models.CASCADE, related_name="routes_to")
     distance_km = models.PositiveIntegerField("KMs")
-    tt_hours = models.DecimalField("TT Hours", max_digits=5, decimal_places=1, null=True, blank=True)
+    tt_hours = models.DecimalField("Transit Duration (Hours)", max_digits=5, decimal_places=1, null=True, blank=True)
     route_code = models.CharField(max_length=20, blank=True, editable=False)
 
     def save(self, *args, **kwargs):
         # Route code auto-merges from the two city codes, e.g. ISB-KHI.
         self.route_code = f"{self.origin.code}-{self.destination.code}"
         super().save(*args, **kwargs)
+
+    @property
+    def transit_duration_display(self):
+        # tt_hours is still stored/entered as a plain number of hours (e.g.
+        # 50) - this just renders it as "2 Days 2 Hours" for display.
+        if self.tt_hours is None:
+            return None
+        total_hours = float(self.tt_hours)
+        days = int(total_hours // 24)
+        hours = total_hours - (days * 24)
+        hours = int(hours) if hours == int(hours) else round(hours, 1)
+        parts = []
+        if days:
+            parts.append(f"{days} Day{'s' if days != 1 else ''}")
+        if hours or not parts:
+            parts.append(f"{hours} Hour{'s' if hours != 1 else ''}")
+        return " ".join(parts)
 
     def __str__(self):
         return self.route_code
