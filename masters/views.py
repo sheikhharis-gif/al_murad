@@ -13,6 +13,7 @@ from .models import (
     Vendor, SupplierType, Client, Expense, VehicleTyre,
     ClientRate, DriverSalary,
     StaffMonthlyAccount, StaffAttendanceEntry, StaffAccountEntry,
+    FuelProduct, VendorFuelPrice,
 )
 
 from .forms import (
@@ -23,6 +24,7 @@ from .forms import (
     ExpenseForm, ClientRateForm,
     DriverSalaryForm,
     StaffAttendanceFormSet, StaffAccountEntryFormSet,
+    FuelProductForm, VendorFuelPriceFormSet,
 )
 
 
@@ -583,23 +585,35 @@ def vendor_list(request):
     })
 
 def vendor_add(request):
-    form = VendorForm(request.POST or None)
-    if form.is_valid():
-        form.save()
-        return redirect("vendor_list")
-    return render(request, "vendors/vendor_form.html", {"form": form})
+    if request.method == "POST":
+        form = VendorForm(request.POST)
+        if form.is_valid():
+            vendor = form.save()
+            fuel_formset = VendorFuelPriceFormSet(request.POST, instance=vendor)
+            if fuel_formset.is_valid():
+                fuel_formset.save()
+                return redirect("vendor_list")
+        else:
+            fuel_formset = VendorFuelPriceFormSet(request.POST)
+    else:
+        form = VendorForm()
+        fuel_formset = VendorFuelPriceFormSet()
+    return render(request, "vendors/vendor_form.html", {"form": form, "fuel_formset": fuel_formset})
 
 # ✅ NAYA: Vendor Edit function
 def vendor_edit(request, vendor_id):
     vendor = get_object_or_404(Vendor, id=vendor_id)
     if request.method == "POST":
         form = VendorForm(request.POST, instance=vendor)
-        if form.is_valid():
+        fuel_formset = VendorFuelPriceFormSet(request.POST, instance=vendor)
+        if form.is_valid() and fuel_formset.is_valid():
             form.save()
+            fuel_formset.save()
             return redirect("vendor_list")
     else:
         form = VendorForm(instance=vendor)
-    return render(request, "vendors/vendor_form.html", {"form": form, "vendor": vendor})
+        fuel_formset = VendorFuelPriceFormSet(instance=vendor)
+    return render(request, "vendors/vendor_form.html", {"form": form, "vendor": vendor, "fuel_formset": fuel_formset})
 
 # ✅ NAYA: Vendor Delete function
 def vendor_delete(request, vendor_id):
@@ -651,6 +665,48 @@ def supplier_type_delete(request, type_id):
         except ProtectedError:
             messages.error(request, f"Cannot delete '{stype.name}' - it's still assigned to a supplier.")
     return redirect("supplier_type_config")
+
+
+# ================= FUEL PRODUCT (admin-extensible registry, shared by Suppliers & Vehicles) =================
+def fuel_product_config(request):
+    fuel_products = FuelProduct.objects.all()
+
+    if request.method == "POST":
+        form = FuelProductForm(request.POST)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f"Product '{form.instance.name}' registered successfully.")
+        else:
+            messages.error(request, "Could not register that Product - it may already exist.")
+        return redirect("fuel_product_config")
+
+    return render(request, "vendors/fuel_product_config.html", {
+        "fuel_products": fuel_products,
+    })
+
+
+def fuel_product_edit(request, product_id):
+    product = get_object_or_404(FuelProduct, id=product_id)
+    if request.method == "POST":
+        form = FuelProductForm(request.POST, instance=product)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f"Product updated to '{product.name}'.")
+        else:
+            messages.error(request, "That Product name is already registered.")
+    return redirect("fuel_product_config")
+
+
+def fuel_product_delete(request, product_id):
+    product = get_object_or_404(FuelProduct, id=product_id)
+    if request.method == "POST":
+        try:
+            name = product.name
+            product.delete()
+            messages.success(request, f"Product '{name}' deleted successfully.")
+        except ProtectedError:
+            messages.error(request, f"Cannot delete '{product.name}' - it's still in use.")
+    return redirect("fuel_product_config")
 
 from django.shortcuts import render, redirect, get_object_or_404
 from .models import Client, ClientType, ClientRate, DedicatedRate, Expense

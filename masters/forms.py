@@ -4,8 +4,9 @@ from django.forms import modelformset_factory
 from .models import (
     Vehicle, VehicleType, Wheeler, VehicleTyre, Staff, Vendor, SupplierType,
     City, Route, Client, ClientType, Expense, ClientRate, DedicatedRate, DriverSalary,
-    StaffAttendanceEntry, StaffAccountEntry,
+    StaffAttendanceEntry, StaffAccountEntry, FuelProduct, VendorFuelPrice,
 )
+from django.forms import inlineformset_factory
 from operations.models import Trip
 
 ################ VEHICLES ################
@@ -56,6 +57,7 @@ class VehicleForm(forms.ModelForm):
             "vehicle_mode": forms.Select(attrs={"class": "form-select", "autofocus": "autofocus"}),
             "vehicle_type": forms.Select(attrs={"class": "form-select"}),
             "wheeler": forms.Select(attrs={"class": "form-select"}),
+            "fuel_type": forms.Select(attrs={"class": "form-select"}),
             "current_location": forms.Select(attrs={"class": "form-select"}),
             "dedicated_client": forms.Select(attrs={"class": "form-select"}),
             "status": forms.Select(attrs={"class": "form-select"}),
@@ -82,6 +84,7 @@ class VehicleForm(forms.ModelForm):
         self.fields["vendor"].empty_label = "--- No Supplier ---"
         self.fields["vehicle_type"].empty_label = "--- Select Type ---"
         self.fields["wheeler"].empty_label = "--- Select Wheeler ---"
+        self.fields["fuel_type"].empty_label = "--- Select Fuel Type ---"
         self.fields["current_location"].empty_label = "--- Select City ---"
         self.fields["dedicated_client"].empty_label = "--- Not Dedicated ---"
 
@@ -302,6 +305,20 @@ class SupplierTypeForm(forms.ModelForm):
         return name
 
 
+class SupplierTypeSelect(forms.Select):
+    # Tags each <option> with data-name="<SUPPLIER TYPE NAME>" so the Vendor
+    # form's JS can show/hide the Fuel Prices section without a page reload
+    # when Supplier Type = FUEL is picked.
+    def create_option(self, name, value, label, selected, index, subindex=None, attrs=None):
+        option = super().create_option(name, value, label, selected, index, subindex, attrs)
+        raw_value = getattr(value, "value", value)
+        if raw_value:
+            supplier_type = SupplierType.objects.filter(pk=raw_value).values_list("name", flat=True).first()
+            if supplier_type:
+                option["attrs"]["data-name"] = supplier_type
+        return option
+
+
 class VendorForm(forms.ModelForm):
     class Meta:
         model = Vendor
@@ -322,7 +339,7 @@ class VendorForm(forms.ModelForm):
             widgets[field].attrs["data-uppercase"] = "1"
         widgets["name"].attrs["autofocus"] = "autofocus"
         widgets.update({
-            "supplier_type": forms.Select(attrs={"class": "form-select"}),
+            "supplier_type": SupplierTypeSelect(attrs={"class": "form-select", "id": "id_supplier_type"}),
             "poc1_email": forms.EmailInput(attrs={"class": "form-control text-uppercase", "data-uppercase": "1"}),
             "poc2_email": forms.EmailInput(attrs={"class": "form-control text-uppercase", "data-uppercase": "1"}),
             "address": forms.Textarea(attrs={"class": "form-control text-uppercase", "rows": 3, "data-uppercase": "1"}),
@@ -332,6 +349,36 @@ class VendorForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["supplier_type"].empty_label = "--- Select Supplier Type ---"
+
+
+class FuelProductForm(forms.ModelForm):
+    class Meta:
+        model = FuelProduct
+        fields = ["name"]
+        widgets = {"name": forms.TextInput(attrs={"class": "form-control", "placeholder": "e.g. HI CETANE", "autofocus": "autofocus"})}
+
+    def clean_name(self):
+        name = (self.cleaned_data.get("name") or "").strip().upper()
+        qs = FuelProduct.objects.filter(name=name)
+        if self.instance and self.instance.pk:
+            qs = qs.exclude(pk=self.instance.pk)
+        if qs.exists():
+            raise forms.ValidationError("This Product is already registered.")
+        return name
+
+
+VendorFuelPriceFormSet = inlineformset_factory(
+    Vendor,
+    VendorFuelPrice,
+    fields=["product", "fuel_price", "effective_date"],
+    widgets={
+        "product": forms.Select(attrs={"class": "form-select form-select-sm"}),
+        "fuel_price": forms.NumberInput(attrs={"class": "form-control form-control-sm", "step": "0.01", "placeholder": "Fuel Price"}),
+        "effective_date": forms.DateInput(attrs={"class": "form-control form-control-sm datepicker"}),
+    },
+    extra=1,
+    can_delete=True,
+)
 
 class ClientTypeForm(forms.ModelForm):
     class Meta:

@@ -93,6 +93,35 @@ class Vendor(models.Model):
         return self.name
 
 
+# ================= FUEL PRODUCT (admin-extensible registry) =================
+class FuelProduct(models.Model):
+    name = models.CharField(max_length=50, unique=True)
+
+    def save(self, *args, **kwargs):
+        self.name = (self.name or "").strip().upper()
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        ordering = ["name"]
+
+
+# ================= VENDOR FUEL PRICE (only relevant for Supplier Type = FUEL) =================
+class VendorFuelPrice(models.Model):
+    vendor = models.ForeignKey(Vendor, on_delete=models.CASCADE, related_name="fuel_prices")
+    product = models.ForeignKey(FuelProduct, on_delete=models.PROTECT, related_name="vendor_prices")
+    fuel_price = models.DecimalField("Fuel Price", max_digits=10, decimal_places=2)
+    effective_date = models.DateField()
+
+    class Meta:
+        ordering = ["-effective_date", "-id"]
+
+    def __str__(self):
+        return f"{self.vendor} - {self.product} ({self.effective_date})"
+
+
 # ================= VENDOR RATE =================
 class VendorRate(models.Model):
     vendor = models.ForeignKey(Vendor, on_delete=models.CASCADE)
@@ -180,6 +209,9 @@ class Vehicle(models.Model):
     chassis_no = models.CharField(max_length=50, blank=True, null=True)
     container_no = models.CharField(max_length=50, blank=True, null=True)
     wheeler = models.ForeignKey(Wheeler, on_delete=models.PROTECT, null=True, blank=True, related_name='vehicles')
+    fuel_type = models.ForeignKey(
+        'FuelProduct', on_delete=models.SET_NULL, null=True, blank=True, related_name='vehicles'
+    )
     color = models.CharField(max_length=30, blank=True)
 
     # Expiry Dates

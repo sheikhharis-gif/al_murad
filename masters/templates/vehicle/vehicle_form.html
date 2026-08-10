@@ -49,6 +49,7 @@
 
                             <div class="col-md-3"><label class="form-label small">Type</label>{{ form.vehicle_type }}{{ form.vehicle_type.errors }}</div>
                             <div class="col-md-3"><label class="form-label small">Wheeler</label>{{ form.wheeler }}{{ form.wheeler.errors }}</div>
+                            <div class="col-md-3"><label class="form-label small">Fuel Type</label>{{ form.fuel_type }}{{ form.fuel_type.errors }}</div>
                             <div class="col-md-3"><label class="form-label small">Vehicle Color</label>{{ form.color }}{{ form.color.errors }}</div>
                             <div class="col-md-3"><label class="form-label small">Chassis No</label>{{ form.chassis_no }}{{ form.chassis_no.errors }}</div>
 
@@ -122,8 +123,11 @@
                     </a>
                 </div>
 
-                <a href="{% url 'vehicle_type_wheeler_config' %}" class="btn btn-outline-secondary btn-sm w-100">
+                <a href="{% url 'vehicle_type_wheeler_config' %}" class="btn btn-outline-secondary btn-sm w-100 mb-2">
                     <i class="bi bi-truck-front me-1"></i>Vehicle Types &amp; Wheelers
+                </a>
+                <a href="{% url 'fuel_product_config' %}" class="btn btn-outline-secondary btn-sm w-100">
+                    <i class="bi bi-fuel-pump me-1"></i>Fuel Products
                 </a>
             </div>
         </div>
