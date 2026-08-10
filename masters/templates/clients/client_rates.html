@@ -78,6 +78,14 @@
                     {{ form.updated_fuel_price }}
                 </div>
                 <div class="col-md-1">
+                    <label class="form-label small fw-bold">Weight (Tons)</label>
+                    {{ form.weight_tons }}
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small fw-bold">Vehicle Type</label>
+                    {{ form.vehicle_type }}
+                </div>
+                <div class="col-md-1">
                     <label class="form-label small fw-bold">Eff. Date</label>
                     {{ form.effective_date }}
                 </div>
@@ -91,17 +99,19 @@
             <div style="max-height: 400px; overflow-y: auto;">
                 <table class="table table-hover align-middle custom-table rate-table mb-0">
                     <colgroup>
+                        <col style="width:5%">
+                        <col style="width:8%">
+                        <col style="width:8%">
                         <col style="width:6%">
                         <col style="width:9%">
+                        <col style="width:8%">
+                        <col style="width:9%">
+                        <col style="width:8%">
                         <col style="width:9%">
                         <col style="width:7%">
-                        <col style="width:11%">
                         <col style="width:9%">
-                        <col style="width:10%">
-                        <col style="width:9%">
-                        <col style="width:10%">
-                        <col style="width:9%">
-                        <col style="width:11%">
+                        <col style="width:8%">
+                        <col style="width:6%">
                     </colgroup>
                     <thead class="sticky-top">
                         <tr class="text-uppercase">
@@ -114,6 +124,8 @@
                             <th class="text-center">Fuel Price Change %</th>
                             <th class="text-center">Rate Adjustment</th>
                             <th class="text-center">Updated Trip Cost</th>
+                            <th class="text-center">Weight (Tons)</th>
+                            <th class="text-center">Vehicle Type</th>
                             <th class="text-center">Effective Date</th>
                             <th class="text-center">Actions</th>
                         </tr>
@@ -130,6 +142,8 @@
                             <td class="text-center {% if r.fuel_price_change_percent < 0 %}text-danger{% elif r.fuel_price_change_percent > 0 %}text-success{% endif %}">{{ r.fuel_price_change_percent|pct }}</td>
                             <td class="text-center {% if r.rate_adjustment < 0 %}text-danger{% elif r.rate_adjustment > 0 %}text-success{% endif %}">{{ r.rate_adjustment|acct }}</td>
                             <td class="text-center utc-col">{{ r.updated_trip_cost|acct }}</td>
+                            <td class="text-center">{{ r.weight_tons|default:"--" }}</td>
+                            <td class="text-center">{{ r.vehicle_type.name|default:"--" }}</td>
                             <td class="text-center">{{ r.effective_date|date:"j-M-y" }}</td>
                             <td class="text-center">
                                 <div class="btn-group btn-group-sm shadow-sm rounded-2 overflow-hidden bg-white border">
@@ -141,6 +155,8 @@
                                         data-current-rate="{{ r.current_rate }}"
                                         data-effective-percent="{{ r.effective_percent }}"
                                         data-updated-fuel-price="{{ r.updated_fuel_price }}"
+                                        data-weight-tons="{{ r.weight_tons|default:'' }}"
+                                        data-vehicle-type="{{ r.vehicle_type_id|default:'' }}"
                                         data-effective-date="{{ r.effective_date|date:'Y-m-d' }}"
                                         title="Edit Entry">
                                         <i class="bi bi-pencil-square"></i>
@@ -156,7 +172,7 @@
                             </td>
                         </tr>
                         {% empty %}
-                        <tr><td colspan="11" class="text-center py-4 text-muted">No rate entries recorded for this client yet.</td></tr>
+                        <tr><td colspan="13" class="text-center py-4 text-muted">No rate entries recorded for this client yet.</td></tr>
                         {% endfor %}
                     </tbody>
                 </table>
@@ -195,6 +211,14 @@
                     {{ dedicated_form.route }}{{ dedicated_form.route.errors }}
                 </div>
                 <div class="col-md-1">
+                    <label class="form-label small fw-bold">Weight (Tons)</label>
+                    {{ dedicated_form.weight_tons }}
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small fw-bold">Vehicle Type</label>
+                    {{ dedicated_form.vehicle_type }}
+                </div>
+                <div class="col-md-1">
                     <label class="form-label small fw-bold">Eff. Date</label>
                     {{ dedicated_form.effective_date }}
                 </div>
@@ -224,17 +248,19 @@
             <div style="max-height: 400px; overflow-y: auto;">
                 <table class="table table-hover align-middle custom-table rate-table mb-0">
                     <colgroup>
-                        <col style="width:10%">
-                        <col style="width:10%">
-                        <col style="width:8%">
-                        <col style="width:8%">
-                        <col style="width:9%">
-                        <col style="width:10%">
-                        <col style="width:9%">
                         <col style="width:9%">
                         <col style="width:8%">
-                        <col style="width:9%">
-                        <col style="width:10%">
+                        <col style="width:7%">
+                        <col style="width:7%">
+                        <col style="width:8%">
+                        <col style="width:8%">
+                        <col style="width:8%">
+                        <col style="width:8%">
+                        <col style="width:7%">
+                        <col style="width:7%">
+                        <col style="width:8%">
+                        <col style="width:8%">
+                        <col style="width:7%">
                     </colgroup>
                     <thead class="sticky-top">
                         <tr class="text-uppercase">
@@ -247,6 +273,8 @@
                             <th class="text-center">Route</th>
                             <th class="text-center">Distance Source</th>
                             <th class="text-center">Distance (Km)</th>
+                            <th class="text-center">Weight (Tons)</th>
+                            <th class="text-center">Vehicle Type</th>
                             <th class="text-center">Effective Date</th>
                             <th class="text-center">Actions</th>
                         </tr>
@@ -263,6 +291,8 @@
                             <td class="text-center">{{ r.route.route_code }}</td>
                             <td class="text-center">{{ r.get_distance_mode_display }}</td>
                             <td class="text-center">{{ r.distance_km|acct }}</td>
+                            <td class="text-center">{{ r.weight_tons|default:"--" }}</td>
+                            <td class="text-center">{{ r.vehicle_type.name|default:"--" }}</td>
                             <td class="text-center">{{ r.effective_date|date:"j-M-y" }}</td>
                             <td class="text-center">
                                 <div class="btn-group btn-group-sm shadow-sm rounded-2 overflow-hidden bg-white border">
@@ -277,6 +307,8 @@
                                         data-route="{{ r.route_id }}"
                                         data-distance-mode="{{ r.distance_mode }}"
                                         data-distance-km="{{ r.distance_km }}"
+                                        data-weight-tons="{{ r.weight_tons|default:'' }}"
+                                        data-vehicle-type="{{ r.vehicle_type_id|default:'' }}"
                                         data-effective-date="{{ r.effective_date|date:'Y-m-d' }}"
                                         title="Edit Entry">
                                         <i class="bi bi-pencil-square"></i>
@@ -292,7 +324,7 @@
                             </td>
                         </tr>
                         {% empty %}
-                        <tr><td colspan="11" class="text-center py-4 text-muted">No dedicated rate entries recorded for this client yet.</td></tr>
+                        <tr><td colspan="13" class="text-center py-4 text-muted">No dedicated rate entries recorded for this client yet.</td></tr>
                         {% endfor %}
                     </tbody>
                 </table>
@@ -337,6 +369,19 @@
                     <div class="mb-2">
                         <label class="form-label small fw-bold">Updated Fuel Price</label>
                         <input type="number" step="0.01" name="updated_fuel_price" id="editUpdatedFuelPrice" class="form-control" required>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label small fw-bold">Weight (Tons)</label>
+                        <input type="number" step="0.01" name="weight_tons" id="editWeightTons" class="form-control">
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label small fw-bold">Vehicle Type</label>
+                        <select name="vehicle_type" id="editVehicleType" class="form-select">
+                            <option value="">--- Select Type ---</option>
+                            {% for vt in form.vehicle_type.field.queryset %}
+                            <option value="{{ vt.id }}">{{ vt.name }}</option>
+                            {% endfor %}
+                        </select>
                     </div>
                     <div class="mb-2">
                         <label class="form-label small fw-bold">Effective Date</label>
@@ -406,6 +451,19 @@
                     <div class="mb-2">
                         <label class="form-label small fw-bold">Distance (Km)</label>
                         <input type="number" step="0.01" name="distance_km" id="editDedDistanceKm" class="form-control" required>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label small fw-bold">Weight (Tons)</label>
+                        <input type="number" step="0.01" name="weight_tons" id="editDedWeightTons" class="form-control">
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label small fw-bold">Vehicle Type</label>
+                        <select name="vehicle_type" id="editDedVehicleType" class="form-select">
+                            <option value="">--- Select Type ---</option>
+                            {% for vt in dedicated_form.vehicle_type.field.queryset %}
+                            <option value="{{ vt.id }}">{{ vt.name }}</option>
+                            {% endfor %}
+                        </select>
                     </div>
                     <div class="mb-2">
                         <label class="form-label small fw-bold">Effective Date</label>
@@ -501,6 +559,8 @@ document.addEventListener('DOMContentLoaded', function () {
             document.getElementById('editCurrentRate').value = this.dataset.currentRate;
             document.getElementById('editEffectivePercent').value = this.dataset.effectivePercent;
             document.getElementById('editUpdatedFuelPrice').value = this.dataset.updatedFuelPrice;
+            document.getElementById('editWeightTons').value = this.dataset.weightTons;
+            document.getElementById('editVehicleType').value = this.dataset.vehicleType;
             document.getElementById('editEffectiveDate').value = this.dataset.effectiveDate;
             rateModal.show();
         });
@@ -570,6 +630,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 document.getElementById('editDedRoute').value = this.dataset.route;
                 document.getElementById('editDedDistanceMode').value = this.dataset.distanceMode;
                 document.getElementById('editDedDistanceKm').value = this.dataset.distanceKm;
+                document.getElementById('editDedWeightTons').value = this.dataset.weightTons;
+                document.getElementById('editDedVehicleType').value = this.dataset.vehicleType;
                 document.getElementById('editDedEffectiveDate').value = this.dataset.effectiveDate;
                 dedicatedModal.show();
             });

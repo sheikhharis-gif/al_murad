@@ -463,7 +463,7 @@ class ClientRateForm(forms.ModelForm):
         model = ClientRate
         fields = [
             "route", "current_fuel_price", "current_rate", "effective_percent",
-            "updated_fuel_price", "effective_date",
+            "updated_fuel_price", "weight_tons", "vehicle_type", "effective_date",
         ]
         widgets = {
             "route": forms.Select(attrs={
@@ -475,8 +475,14 @@ class ClientRateForm(forms.ModelForm):
             "current_rate": forms.NumberInput(attrs={"class": "form-control", "step": "0.01"}),
             "effective_percent": forms.NumberInput(attrs={"class": "form-control", "step": "0.01", "placeholder": "e.g. 50"}),
             "updated_fuel_price": forms.NumberInput(attrs={"class": "form-control", "step": "0.01"}),
+            "weight_tons": forms.NumberInput(attrs={"class": "form-control", "step": "0.01", "placeholder": "Tons"}),
+            "vehicle_type": forms.Select(attrs={"class": "form-select"}),
             "effective_date": forms.DateInput(attrs={"class": "form-control datepicker"}),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["vehicle_type"].empty_label = "--- Select Type ---"
 
 
 class DedicatedRateForm(forms.ModelForm):
@@ -484,7 +490,7 @@ class DedicatedRateForm(forms.ModelForm):
         model = DedicatedRate
         fields = [
             "vehicle", "fixed_cost", "month", "fuel_avg", "fuel_price",
-            "route", "distance_mode", "distance_km", "effective_date",
+            "route", "distance_mode", "distance_km", "weight_tons", "vehicle_type", "effective_date",
         ]
         widgets = {
             "vehicle": forms.Select(attrs={
@@ -502,6 +508,8 @@ class DedicatedRateForm(forms.ModelForm):
             }),
             "distance_mode": forms.RadioSelect(),
             "distance_km": forms.NumberInput(attrs={"class": "form-control", "step": "0.01"}),
+            "weight_tons": forms.NumberInput(attrs={"class": "form-control", "step": "0.01", "placeholder": "Tons"}),
+            "vehicle_type": forms.Select(attrs={"class": "form-select"}),
             "effective_date": forms.DateInput(attrs={"class": "form-control datepicker"}),
         }
 
@@ -510,6 +518,7 @@ class DedicatedRateForm(forms.ModelForm):
         self.fields["vehicle"].empty_label = "--- Select Vehicle ---"
         self.fields["vehicle"].label_from_instance = lambda obj: obj.vehicle_number
         self.fields["route"].empty_label = "--- Select Route ---"
+        self.fields["vehicle_type"].empty_label = "--- Select Type ---"
 
 
 from django import forms

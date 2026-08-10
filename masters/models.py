@@ -494,6 +494,10 @@ class ClientRate(models.Model):
     fuel_price_change_percent = models.DecimalField(max_digits=6, decimal_places=2, editable=False)
     rate_adjustment = models.DecimalField(max_digits=12, decimal_places=2, editable=False)
     updated_trip_cost = models.DecimalField(max_digits=12, decimal_places=2, editable=False)
+    weight_tons = models.DecimalField("Weight (Tons)", max_digits=8, decimal_places=2, null=True, blank=True)
+    vehicle_type = models.ForeignKey(
+        VehicleType, on_delete=models.SET_NULL, null=True, blank=True, related_name="client_rates"
+    )
     effective_date = models.DateField()
 
     class Meta:
@@ -538,6 +542,10 @@ class DedicatedRate(models.Model):
     route = models.ForeignKey("Route", on_delete=models.PROTECT, related_name="dedicated_rates")
     distance_mode = models.CharField(max_length=10, choices=DISTANCE_MODE_CHOICES, default="STANDARD")
     distance_km = models.DecimalField("Distance (Km)", max_digits=10, decimal_places=2)
+    weight_tons = models.DecimalField("Weight (Tons)", max_digits=8, decimal_places=2, null=True, blank=True)
+    vehicle_type = models.ForeignKey(
+        VehicleType, on_delete=models.SET_NULL, null=True, blank=True, related_name="dedicated_rates"
+    )
     effective_date = models.DateField()
 
     class Meta:
