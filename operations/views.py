@@ -21,8 +21,9 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.platypus import Image as RLImage, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
-from .forms import JobForm, TripForm
-from .models import Job, Trip
+from django.contrib import messages
+from .forms import JobForm, TripForm, TripFormSet, JobExpenseForm, JobFuelEntryFormSet
+from .models import Job, Trip, JobExpense, JobFuelEntry
 
 from masters.models import (
     City,
@@ -201,18 +202,66 @@ def job_update_status(request, job_id):
 def job_add(request):
     form = JobForm(request.POST or None)
     if request.method == "POST" and form.is_valid():
-        form.save()
-        return redirect("job_list")
+        job = form.save()
+        messages.success(request, f"Job #{job.job_code} created - now add its trips, expenses and fuel entries.")
+        return redirect("job_edit", job_id=job.job_number)
     return render(request, "operations/job_form.html", {"form": form})
 
+
+# ================= JOB SHEET (the full multi-section page: header + trips + expense + fuel) =================
 def job_edit(request, job_id):
-    # ERROR FIX: id=job_id ko job_number=job_id kar diya
     job = get_object_or_404(Job, job_number=job_id)
-    form = JobForm(request.POST or None, instance=job)
-    if request.method == "POST" and form.is_valid():
-        form.save()
-        return redirect("job_list")
-    return render(request, "operations/job_form.html", {"form": form, "job": job})
+    expense, _ = JobExpense.objects.get_or_create(job=job)
+
+    if request.method == "POST":
+        if "save_job" in request.POST:
+            job_form = JobForm(request.POST, instance=job)
+            if job_form.is_valid():
+                job_form.save()
+                messages.success(request, "Job details updated.")
+            else:
+                messages.error(request, "Could not update job details - check the highlighted field(s).")
+            return redirect("job_edit", job_id=job.job_number)
+
+        if "save_trips" in request.POST:
+            trip_formset = TripFormSet(request.POST, instance=job, prefix="trips")
+            if trip_formset.is_valid():
+                trip_formset.save()
+                messages.success(request, "Trips updated.")
+            else:
+                messages.error(request, "Could not save trips - check the highlighted field(s).")
+            return redirect("job_edit", job_id=job.job_number)
+
+        if "save_expense" in request.POST:
+            expense_form = JobExpenseForm(request.POST, instance=expense)
+            if expense_form.is_valid():
+                expense_form.save()
+                messages.success(request, "Expense breakdown updated.")
+            else:
+                messages.error(request, "Could not save expense breakdown - check the highlighted field(s).")
+            return redirect("job_edit", job_id=job.job_number)
+
+        if "save_fuel" in request.POST:
+            fuel_formset = JobFuelEntryFormSet(request.POST, instance=job, prefix="fuel")
+            if fuel_formset.is_valid():
+                fuel_formset.save()
+                messages.success(request, "Fuel entries updated.")
+            else:
+                messages.error(request, "Could not save fuel entries - check the highlighted field(s).")
+            return redirect("job_edit", job_id=job.job_number)
+
+    job_form = JobForm(instance=job)
+    trip_formset = TripFormSet(instance=job, prefix="trips")
+    expense_form = JobExpenseForm(instance=expense)
+    fuel_formset = JobFuelEntryFormSet(instance=job, prefix="fuel")
+
+    return render(request, "operations/job_sheet.html", {
+        "job": job,
+        "job_form": job_form,
+        "trip_formset": trip_formset,
+        "expense_form": expense_form,
+        "fuel_formset": fuel_formset,
+    })
 
 def job_delete(request, job_id):
     # ERROR FIX: id=job_id ko job_number=job_id kar diya
@@ -389,8 +438,8 @@ def trips_excel(request):
             set_cell(16, value_col, str(trip.route))
             set_cell(18, label_col, 'Freight', bold=True)
             set_cell(18, value_col, float(trip.freight))
-            set_cell(19, label_col, 'Detention', bold=True)
-            set_cell(19, value_col, float(trip.detention))
+            set_cell(19, label_col, 'Additional Charges', bold=True)
+            set_cell(19, value_col, float(trip.additional_charges))
             set_cell(20, label_col, 'Additional Stop', bold=True)
             set_cell(20, value_col, 0)
             set_cell(21, label_col, 'Total Freight', bold=True)
@@ -552,7 +601,7 @@ def trips_pdf(request):
         "Client",
         "Route",
         "Freight",
-        "Detention",
+        "Addl. Charges",
         "Total Freight",
         "Date",
     ]
@@ -567,7 +616,7 @@ def trips_pdf(request):
             Paragraph(client_name, cell_style),
             Paragraph(route_text, cell_style),
             Paragraph(f"{trip.freight:.0f}", cell_style),
-            Paragraph(f"{trip.detention:.0f}", cell_style),
+            Paragraph(f"{trip.additional_charges:.0f}", cell_style),
             Paragraph(f"{trip.freight:.0f}", cell_style),
             Paragraph(trip.trip_date.strftime("%d %b, %Y"), cell_style),
         ])
@@ -600,19 +649,18 @@ def trips_pdf(request):
 
 
 def trip_add(request):
-    form = TripForm(request.POST or None)
-    if request.method == "POST" and form.is_valid():
-        form.save()
-        return redirect("trip_list")
-    return render(request, "operations/trip_form.html", {"form": form})
+    # Trips only make sense inside a Job (meter chaining, freight lookup,
+    # shared expense/fuel log) - hand off to that Job's Job Sheet page,
+    # where trips are added inline.
+    job_id = request.GET.get("job")
+    if job_id:
+        return redirect("job_edit", job_id=job_id)
+    messages.info(request, "Select (or create) a Job first, then add trips to it from its Job Sheet.")
+    return redirect("job_list")
 
 def trip_edit(request, trip_id):
     trip = get_object_or_404(Trip, id=trip_id)
-    form = TripForm(request.POST or None, instance=trip)
-    if request.method == "POST" and form.is_valid():
-        form.save()
-        return redirect("trip_list")
-    return render(request, "operations/trip_form.html", {"form": form, "trip": trip})
+    return redirect("job_edit", job_id=trip.job_id)
 
 def trip_delete(request, trip_id):
     trip = get_object_or_404(Trip, id=trip_id)
@@ -723,51 +771,27 @@ def job_invoice_pdf(request, job_id):
 
     # Is job se linked saari trips fetch karein
     trips = job.trips.select_related("client", "route").order_by("trip_date")
+    fuel_rows = job.fuel_entries.select_related("supplier", "product").order_by("date")
+    expense = getattr(job, "expense_breakdown", None)
 
-    # Har trip ke sath uska fuel/expense data attach karein taake template mein
-    # dobara query na karni pare
-    fuel_rows = []
-    for trip in trips:
-        fuel_rows.extend(trip.expenses.all())
-
-    expense_totals = Expense.objects.filter(trip__job=job).aggregate(
-        toll_tax=Sum("toll_tax"),
-        inam=Sum("inam"),
-        police=Sum("police"),
-        food=Sum("food"),
-        card=Sum("card"),
-        maintenance=Sum("maintenance"),
-        other=Sum("other"),
-        fuel_liter=Sum("fuel_liter"),
-        fuel_amount=Sum("fuel_amount"),
-    )
-    for key, value in expense_totals.items():
-        expense_totals[key] = float(value or 0)
-
-    trip_expense_total = (
-        expense_totals["toll_tax"] + expense_totals["inam"] + expense_totals["police"]
-        + expense_totals["food"] + expense_totals["card"] + expense_totals["maintenance"]
-        + expense_totals["other"]
-    )
-    fuel_expense_total = expense_totals["fuel_amount"]
+    trip_expense_total = float(job.trip_expense)
+    fuel_expense_total = float(job.fuel_expense)
     total_expenses = trip_expense_total + fuel_expense_total
-
-    total_kms = sum(trip.route.distance_km for trip in trips)
-    fuel_average = round(total_kms / expense_totals["fuel_liter"], 2) if expense_totals["fuel_liter"] else 0
-
-    total_freight = sum(float(trip.freight) for trip in trips)
-    net_profit = total_freight - total_expenses
-    nr_percent = round((net_profit / total_freight) * 100, 1) if total_freight else 0
+    total_kms = float(job.running_kms) if job.running_kms is not None else 0
+    fuel_average = job.fuel_avg_km_ltr or 0
+    total_freight = float(job.total_freight)
+    net_profit = float(job.trip_profit)
+    nr_percent = job.tp_percent or 0
 
     context = {
         'job': job,
         'vehicle': job.vehicle,
         'trips': trips,
         'fuel_rows': fuel_rows,
+        'expense': expense,
         'total_kms': total_kms,
-        'fuel_liters': expense_totals["fuel_liter"],
+        'fuel_liters': float(job.fuel_in_liters),
         'fuel_average': fuel_average,
-        'expense_totals': expense_totals,
         'trip_expense_total': trip_expense_total,
         'fuel_expense_total': fuel_expense_total,
         'total_expenses': total_expenses,
@@ -788,4 +812,148 @@ def job_invoice_pdf(request, job_id):
 
     if pisa_status.err:
         return HttpResponse('PDF banane mein masla hua', status=400)
+    return response
+
+
+def job_sheet_excel(request, job_id):
+    # The "proper" Trip Sheet report - mirrors the job.xlsx layout the
+    # customer supplied: Job summary block, one block per Trip, a shared
+    # Expense breakdown, and a shared Fuel log, all with real computed data.
+    job = get_object_or_404(Job, job_number=job_id)
+    trips = list(job.trips.select_related("client", "route").order_by("id"))
+    expense = getattr(job, "expense_breakdown", None)
+    fuel_entries = list(job.fuel_entries.select_related("supplier", "product").order_by("date"))
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = f"Job {job.job_code}"
+
+    label_font = Font(bold=True)
+    header_font = Font(bold=True, size=13)
+
+    def cell(row, col, value, bold=False, align="left", number_format=None):
+        c = ws.cell(row=row, column=col, value=value)
+        if bold:
+            c.font = label_font
+        if number_format:
+            c.number_format = number_format
+        c.alignment = Alignment(horizontal=align, vertical="center", wrap_text=True)
+        return c
+
+    row = 1
+    cell(row, 1, "AL MURAD LOGISTICS - TRIP SHEET", bold=True).font = header_font
+    row += 2
+
+    # ---- Job summary block ----
+    cell(row, 1, "Job #", bold=True); cell(row, 2, job.job_code)
+    cell(row, 3, "Date", bold=True); cell(row, 4, job.job_date.strftime("%d-%b-%y") if job.job_date else "")
+    cell(row, 5, "Vehicle", bold=True); cell(row, 6, job.vehicle.vehicle_number)
+    cell(row, 7, "Status", bold=True); cell(row, 8, job.get_status_display())
+    row += 1
+    cell(row, 1, "Trip Advance", bold=True); cell(row, 2, float(job.trip_advance or 0), number_format="#,##0.00")
+    cell(row, 3, "Expense", bold=True); cell(row, 4, float(job.expense_total or 0), number_format="#,##0.00")
+    cell(row, 5, "Difference", bold=True); cell(row, 6, float(job.difference or 0), number_format="#,##0.00")
+    row += 1
+    cell(row, 1, "Meter Out", bold=True); cell(row, 2, float(job.meter_out) if job.meter_out is not None else "")
+    cell(row, 3, "Meter In", bold=True); cell(row, 4, float(job.meter_in) if job.meter_in is not None else "")
+    cell(row, 5, "Running KMs", bold=True); cell(row, 6, float(job.running_kms) if job.running_kms is not None else "")
+    row += 1
+    cell(row, 1, "Fuel In Liters", bold=True); cell(row, 2, float(job.fuel_in_liters or 0), number_format="#,##0.00")
+    cell(row, 3, "Fuel Avg KM/Ltr", bold=True); cell(row, 4, job.fuel_avg_km_ltr if job.fuel_avg_km_ltr is not None else "")
+    row += 1
+    cell(row, 1, "Total Freight", bold=True); cell(row, 2, float(job.total_freight or 0), number_format="#,##0.00")
+    cell(row, 3, "Trip Expense", bold=True); cell(row, 4, float(job.trip_expense or 0), number_format="#,##0.00")
+    cell(row, 5, "Fuel Expense", bold=True); cell(row, 6, float(job.fuel_expense or 0), number_format="#,##0.00")
+    row += 1
+    cell(row, 1, "Trip Profit", bold=True); cell(row, 2, float(job.trip_profit or 0), number_format="#,##0.00")
+    cell(row, 3, "TP%", bold=True); cell(row, 4, f"{job.tp_percent}%" if job.tp_percent is not None else "")
+    row += 2
+
+    # ---- Trip blocks ----
+    for trip in trips:
+        cell(row, 1, f"Trip # {trip.trip_no}", bold=True).font = Font(bold=True, size=11)
+        row += 1
+        cell(row, 1, "Date", bold=True); cell(row, 2, trip.trip_date.strftime("%d-%b-%y") if trip.trip_date else "")
+        cell(row, 3, "Client", bold=True); cell(row, 4, trip.client.name)
+        cell(row, 5, "Bilty #", bold=True); cell(row, 6, trip.bilty_number)
+        row += 1
+        cell(row, 1, "Vehicle", bold=True); cell(row, 2, trip.vehicle.vehicle_number)
+        cell(row, 3, "Driver 1", bold=True); cell(row, 4, trip.vehicle.driver.name if trip.vehicle.driver else "")
+        cell(row, 5, "Phone", bold=True); cell(row, 6, trip.vehicle.driver.mobile1 if trip.vehicle.driver else "")
+        row += 1
+        cell(row, 1, "Driver 2", bold=True); cell(row, 2, trip.vehicle.driver2.name if trip.vehicle.driver2 else "")
+        cell(row, 3, "Phone", bold=True); cell(row, 4, trip.vehicle.driver2.mobile1 if trip.vehicle.driver2 else "")
+        row += 1
+        cell(row, 1, "Route", bold=True); cell(row, 2, str(trip.route))
+        cell(row, 3, "Weight (Tons)", bold=True); cell(row, 4, float(trip.weight) if trip.weight is not None else "")
+        cell(row, 5, "Distance KMs", bold=True); cell(row, 6, trip.route.distance_km)
+        row += 1
+        cell(row, 1, "Origin", bold=True); cell(row, 2, trip.route.origin.name)
+        cell(row, 3, "Destination", bold=True); cell(row, 4, trip.route.destination.name)
+        row += 1
+        cell(row, 1, "Standard Transit Duration", bold=True); cell(row, 2, trip.standard_transit_display or "")
+        cell(row, 3, "Actual Transit Duration", bold=True); cell(row, 4, trip.actual_transit_display or "")
+        row += 1
+        cell(row, 1, "Departure Meter", bold=True); cell(row, 2, float(trip.departure_meter) if trip.departure_meter is not None else "")
+        cell(row, 3, "Reached", bold=True); cell(row, 4, trip.reached_at.strftime("%d-%b-%y %H:%M") if trip.reached_at else "")
+        cell(row, 5, "Departed", bold=True); cell(row, 6, trip.departed_at.strftime("%d-%b-%y %H:%M") if trip.departed_at else "")
+        cell(row, 7, "Duration", bold=True); cell(row, 8, trip.loading_duration_display or "")
+        row += 1
+        cell(row, 1, "Arrival Meter", bold=True); cell(row, 2, float(trip.arrival_meter) if trip.arrival_meter is not None else "")
+        cell(row, 3, "Arrived", bold=True); cell(row, 4, trip.arrived_at.strftime("%d-%b-%y %H:%M") if trip.arrived_at else "")
+        cell(row, 5, "Delivered", bold=True); cell(row, 6, trip.delivered_at.strftime("%d-%b-%y %H:%M") if trip.delivered_at else "")
+        cell(row, 7, "Duration", bold=True); cell(row, 8, trip.unloading_duration_display or "")
+        row += 1
+        cell(row, 1, "Additional Charges", bold=True); cell(row, 2, float(trip.additional_charges or 0), number_format="#,##0.00")
+        cell(row, 3, "Remarks", bold=True); cell(row, 4, trip.remarks)
+        cell(row, 5, "Trip Freight", bold=True); cell(row, 6, float(trip.freight or 0), number_format="#,##0.00")
+        row += 2
+
+    # ---- Expense breakdown ----
+    cell(row, 1, "EXPENSE", bold=True).font = Font(bold=True, size=11)
+    row += 1
+    expense_fields = [
+        ("Toll Plaza", "toll_plaza"), ("Food", "food"), ("Incentive", "incentive"),
+        ("Mobile Expense", "mobile_expense"), ("Challan", "challan"), ("Tyre Expense", "tyre_expense"),
+        ("Service", "service"), ("Loading", "loading"), ("Offloading", "offloading"),
+        ("Weighbridge", "weighbridge"), ("Maintenance", "maintenance"), ("Labor Charges", "labor_charges"),
+        ("Fuel", "fuel"), ("Other", "other"),
+    ]
+    for i in range(0, len(expense_fields), 5):
+        chunk = expense_fields[i:i + 5]
+        for j, (label, field) in enumerate(chunk):
+            cell(row, 1 + j * 2, label, bold=True)
+            cell(row, 2 + j * 2, float(getattr(expense, field, 0) or 0), number_format="#,##0.00")
+        row += 1
+    cell(row, 1, "Total", bold=True); cell(row, 2, float(expense.total if expense else 0), number_format="#,##0.00")
+    row += 2
+
+    # ---- Fuel log ----
+    cell(row, 1, "FUEL", bold=True).font = Font(bold=True, size=11)
+    row += 1
+    for i, label in enumerate(["Supplier", "Date", "Product", "Slip #", "Fuel in Liters", "Fuel Price", "Amount"]):
+        cell(row, i + 1, label, bold=True)
+    row += 1
+    for f in fuel_entries:
+        cell(row, 1, f.supplier.name)
+        cell(row, 2, f.date.strftime("%d-%b-%y") if f.date else "")
+        cell(row, 3, f.product.name)
+        cell(row, 4, f.slip_number)
+        cell(row, 5, float(f.liters), number_format="#,##0.00")
+        cell(row, 6, float(f.fuel_price), number_format="#,##0.00")
+        cell(row, 7, float(f.amount), number_format="#,##0.00")
+        row += 1
+    cell(row, 4, "Total", bold=True)
+    cell(row, 5, float(job.fuel_in_liters or 0), bold=True, number_format="#,##0.00")
+    cell(row, 7, float(job.fuel_expense or 0), bold=True, number_format="#,##0.00")
+
+    for col in range(1, 9):
+        ws.column_dimensions[get_column_letter(col)].width = 20
+    ws.sheet_view.showGridLines = False
+
+    response = HttpResponse(
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+    response["Content-Disposition"] = f'attachment; filename="Trip_Sheet_Job_{job.job_code}.xlsx"'
+    wb.save(response)
     return response

@@ -39,4 +39,5 @@ urlpatterns = [
     # --- PDF GENERATION (UPDATED) ---
     # Purana Trip PDF band, ab Job-based Invoice chalayenge
     path("jobs/invoice/<int:job_id>/", views.job_invoice_pdf, name="job_invoice_pdf"),
+    path("jobs/<int:job_id>/trip-sheet.xlsx", views.job_sheet_excel, name="job_sheet_excel"),
 ]

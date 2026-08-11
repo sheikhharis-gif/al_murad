@@ -143,8 +143,8 @@
                         </td>
                         <td class="text-end pe-4">
                             <div class="d-flex justify-content-end gap-2">
-                                <a href="{% url 'job_invoice_pdf' job.job_number %}" class="btn btn-sm btn-outline-success rounded-pill px-3 shadow-sm" title="Download Detailed Trip Sheet">
-                                    <i class="bi bi-file-earmark-pdf-fill me-1"></i> Trip Sheet
+                                <a href="{% url 'job_sheet_excel' job.job_number %}" class="btn btn-sm btn-outline-success rounded-pill px-3 shadow-sm" title="Download Detailed Trip Sheet">
+                                    <i class="bi bi-file-earmark-excel-fill me-1"></i> Trip Sheet
                                 </a>
 
                                 <a href="{% url 'trip_add' %}?job={{ job.job_number }}" class="btn btn-sm btn-outline-primary rounded-pill px-3 shadow-sm">
@@ -161,8 +161,13 @@
                                     </button>
                                     <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0 rounded-3">
                                         <li>
+                                            <a class="dropdown-item py-2" href="{% url 'job_sheet_excel' job.job_number %}">
+                                                <i class="bi bi-file-earmark-excel me-2 text-success"></i> Trip Sheet (Excel)
+                                            </a>
+                                        </li>
+                                        <li>
                                             <a class="dropdown-item py-2" href="{% url 'job_invoice_pdf' job.job_number %}">
-                                                <i class="bi bi-printer me-2 text-success"></i> Print Trip Sheet
+                                                <i class="bi bi-printer me-2 text-secondary"></i> Print Trip Sheet (PDF)
                                             </a>
                                         </li>
                                         <li><hr class="dropdown-divider"></li>

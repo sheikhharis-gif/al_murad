@@ -143,7 +143,7 @@
                         <th class="py-3">Vehicle Details</th>
                         <th class="py-3">Route & Distance</th>
                         <th class="text-end py-3">Weight (Tons)</th>
-                        <th class="text-end py-3">Rate</th>
+                        <th class="text-end py-3">Addl. Charges</th>
                         <th class="text-end py-3">Freight (Rs)</th>
                         <th class="text-end py-3">Total Exp (Rs)</th>
                         <th class="text-end py-3">Net Profit (Rs)</th>
@@ -180,7 +180,7 @@
                             </div>
                         </td>
                         <td class="text-end fw-semibold">{{ t.weight }}</td>
-                        <td class="text-end fw-semibold">{{ t.rate|floatformat:0 }}</td>
+                        <td class="text-end fw-semibold">{{ t.additional_charges|floatformat:0 }}</td>
                         <td class="text-end fw-bold text-success">{{ t.freight|floatformat:0 }}</td>
                         <td class="text-end fw-bold text-danger">
                             {% if t.expenses.all %}

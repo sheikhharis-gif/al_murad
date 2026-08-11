@@ -75,7 +75,7 @@
                 <th>Route</th>
                 <th>Weight</th>
                 <th>Freight</th>
-                <th>Detention</th>
+                <th>Addl. Charges</th>
                 <th>Total Freight</th>
                 <th>Date</th>
             </tr>
@@ -87,9 +87,9 @@
                 <td>{{ trip.bilty_number|default:"---" }}</td>
                 <td>{{ trip.client.name }}</td>
                 <td>{{ trip.route }}</td>
-                <td>{{ trip.weight }} T</td>
+                <td>{{ trip.weight|default:"---" }} T</td>
                 <td>Rs {{ trip.freight|floatformat:0 }}</td>
-                <td>Rs {{ trip.detention|floatformat:0 }}</td>
+                <td>Rs {{ trip.additional_charges|floatformat:0 }}</td>
                 <td style="font-weight: bold;">Rs {{ trip.freight|floatformat:0 }}</td>
                 <td>{{ trip.trip_date|date:"d-M-y" }}</td>
             </tr>
@@ -109,28 +109,50 @@
     <table class="data-table">
         <thead>
             <tr>
-                <th>Toll Tax</th>
-                <th>Incentive</th>
+                <th>Toll Plaza</th>
                 <th>Food</th>
-                <th>Police</th>
-                <th>Card</th>
+                <th>Incentive</th>
+                <th>Mobile Expense</th>
+                <th>Challan</th>
+                <th>Tyre Expense</th>
+                <th>Service</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>Rs {{ expense.toll_plaza|default:0|floatformat:0 }}</td>
+                <td>Rs {{ expense.food|default:0|floatformat:0 }}</td>
+                <td>Rs {{ expense.incentive|default:0|floatformat:0 }}</td>
+                <td>Rs {{ expense.mobile_expense|default:0|floatformat:0 }}</td>
+                <td>Rs {{ expense.challan|default:0|floatformat:0 }}</td>
+                <td>Rs {{ expense.tyre_expense|default:0|floatformat:0 }}</td>
+                <td>Rs {{ expense.service|default:0|floatformat:0 }}</td>
+            </tr>
+        </tbody>
+    </table>
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Loading</th>
+                <th>Offloading</th>
+                <th>Weighbridge</th>
                 <th>Maintenance</th>
+                <th>Labor Charges</th>
+                <th>Fuel</th>
                 <th>Other</th>
-                <th>Fuel Amount</th>
                 <th>Total Expense</th>
             </tr>
         </thead>
         <tbody>
             <tr>
-                <td>Rs {{ expense_totals.toll_tax|floatformat:0 }}</td>
-                <td>Rs {{ expense_totals.inam|floatformat:0 }}</td>
-                <td>Rs {{ expense_totals.food|floatformat:0 }}</td>
-                <td>Rs {{ expense_totals.police|floatformat:0 }}</td>
-                <td>Rs {{ expense_totals.card|floatformat:0 }}</td>
-                <td>Rs {{ expense_totals.maintenance|floatformat:0 }}</td>
-                <td>Rs {{ expense_totals.other|floatformat:0 }}</td>
-                <td>Rs {{ fuel_expense_total|floatformat:0 }}</td>
-                <td style="font-weight: bold;">Rs {{ total_expenses|floatformat:0 }}</td>
+                <td>Rs {{ expense.loading|default:0|floatformat:0 }}</td>
+                <td>Rs {{ expense.offloading|default:0|floatformat:0 }}</td>
+                <td>Rs {{ expense.weighbridge|default:0|floatformat:0 }}</td>
+                <td>Rs {{ expense.maintenance|default:0|floatformat:0 }}</td>
+                <td>Rs {{ expense.labor_charges|default:0|floatformat:0 }}</td>
+                <td>Rs {{ expense.fuel|default:0|floatformat:0 }}</td>
+                <td>Rs {{ expense.other|default:0|floatformat:0 }}</td>
+                <td style="font-weight: bold;">Rs {{ trip_expense_total|floatformat:0 }}</td>
             </tr>
         </tbody>
     </table>
@@ -140,10 +162,11 @@
         <thead>
             <tr>
                 <th>Date</th>
-                <th>Pump Name</th>
+                <th>Supplier</th>
+                <th>Product</th>
                 <th>Slip #</th>
                 <th>Liters</th>
-                <th>Rate</th>
+                <th>Price</th>
                 <th>Amount</th>
             </tr>
         </thead>
@@ -151,19 +174,20 @@
             {% for e in fuel_rows %}
             <tr>
                 <td>{{ e.date|date:"d-M-y" }}</td>
-                <td>{{ e.pump_name|default:"---" }}</td>
-                <td>{{ e.slip_no|default:"---" }}</td>
-                <td>{{ e.fuel_liter|floatformat:1 }}</td>
-                <td>{{ e.fuel_rate|floatformat:2 }}</td>
-                <td>Rs {{ e.fuel_amount|floatformat:0 }}</td>
+                <td>{{ e.supplier.name|default:"---" }}</td>
+                <td>{{ e.product.name|default:"---" }}</td>
+                <td>{{ e.slip_number|default:"---" }}</td>
+                <td>{{ e.liters|floatformat:1 }}</td>
+                <td>{{ e.fuel_price|floatformat:2 }}</td>
+                <td>Rs {{ e.amount|floatformat:0 }}</td>
             </tr>
             {% empty %}
             <tr>
-                <td colspan="6" style="text-align: center;">No fuel entries recorded for this job.</td>
+                <td colspan="7" style="text-align: center;">No fuel entries recorded for this job.</td>
             </tr>
             {% endfor %}
             <tr class="total-row">
-                <td colspan="3" style="text-align: right;">Total</td>
+                <td colspan="4" style="text-align: right;">Total</td>
                 <td>{{ fuel_liters|floatformat:1 }}</td>
                 <td>-</td>
                 <td>Rs {{ fuel_expense_total|floatformat:0 }}</td>
