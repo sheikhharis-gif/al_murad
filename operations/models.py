@@ -161,10 +161,6 @@ class Trip(models.Model):
     def save(self, *args, **kwargs):
         self.vehicle = self.job.vehicle
 
-        if not self.trip_no:
-            count = Trip.objects.filter(job=self.job).count()
-            self.trip_no = f"{count + 1:06d}"
-
         # Departure meter chains from the previous trip's arrival meter in
         # this same job, else the vehicle's current KM (first leg).
         previous = Trip.objects.filter(job=self.job).exclude(pk=self.pk).order_by("id").last()
@@ -189,6 +185,12 @@ class Trip(models.Model):
         self.freight = base_freight + (self.additional_charges or 0)
 
         super().save(*args, **kwargs)
+
+        # Trip ID is globally unique and keeps counting up regardless of
+        # vehicle, job or date - it simply mirrors this row's own serial pk.
+        if not self.trip_no:
+            self.trip_no = f"{self.pk:06d}"
+            super().save(update_fields=["trip_no"])
 
     @property
     def standard_transit_display(self):
