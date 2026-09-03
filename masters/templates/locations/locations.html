@@ -178,7 +178,7 @@
                             <tbody id="routeListBody">
                                 {% for r in routes %}
                                 <tr class="route-row" data-name="{{ r.route_code|lower }} {{ r.origin.name|lower }} {{ r.destination.name|lower }}">
-                                    <td><span class="badge bg-success-subtle text-success fw-bold">{{ r.route_code }}</span></td>
+                                    <td><span class="badge bg-success-subtle text-success fw-bold">{{ r.route_code|upper }}</span></td>
                                     <td>
                                         <div class="d-flex align-items-center">
                                             <span class="fw-semibold">{{ r.origin.name }}</span>
@@ -207,7 +207,7 @@
                                             <form method="post" action="{% url 'route_delete' r.id %}" class="d-inline">
                                                 {% csrf_token %}
                                                 <button type="submit" class="btn btn-sm btn-white text-danger" title="Delete Route"
-                                                    onclick="return confirm('Delete route {{ r.route_code }}? This cannot be undone.')">
+                                                    onclick="return confirm('Delete route {{ r.route_code|upper }}? This cannot be undone.')">
                                                     <i class="bi bi-trash"></i>
                                                 </button>
                                             </form>

@@ -133,7 +133,7 @@
                     <tbody id="rateTableBody">
                         {% for r in rates %}
                         <tr>
-                            <td class="fw-bold text-dark">{{ r.route.route_code }}</td>
+                            <td class="fw-bold text-dark">{{ r.route.route_code|upper }}</td>
                             <td class="text-center">{{ r.current_fuel_price|acct }}</td>
                             <td class="text-center">{{ r.current_rate|acct }}</td>
                             <td class="text-center">{{ r.effective_percent|pct_trim }}</td>
@@ -164,7 +164,7 @@
                                     <form method="post" action="{% url 'client_rate_delete' client.id r.id %}" class="d-inline">
                                         {% csrf_token %}
                                         <button type="submit" class="btn btn-sm btn-white text-danger" title="Delete Entry"
-                                            onclick="return confirm('Delete this rate entry for {{ r.route.route_code }}?')">
+                                            onclick="return confirm('Delete this rate entry for {{ r.route.route_code|upper }}?')">
                                             <i class="bi bi-trash"></i>
                                         </button>
                                     </form>
@@ -288,7 +288,7 @@
                             <td class="text-center">{{ r.fuel_avg|acct }}</td>
                             <td class="text-center">{{ r.fuel_price|acct }}</td>
                             <td class="text-center rsr-col">{{ r.variable_cost|acct }}</td>
-                            <td class="text-center">{{ r.route.route_code }}</td>
+                                            <td class="text-center">{{ r.route.route_code|upper }}</td>
                             <td class="text-center">{{ r.get_distance_mode_display }}</td>
                             <td class="text-center">{{ r.distance_km|acct }}</td>
                             <td class="text-center">{{ r.weight_tons|default:"--" }}</td>
@@ -350,7 +350,7 @@
                         <label class="form-label small fw-bold">Route</label>
                         <select name="route" id="editRoute" class="form-select" required>
                             {% for rt in form.route.field.queryset %}
-                            <option value="{{ rt.id }}">{{ rt.route_code }}</option>
+                                            <option value="{{ rt.id }}">{{ rt.route_code|upper }}</option>
                             {% endfor %}
                         </select>
                     </div>
@@ -436,7 +436,7 @@
                         <label class="form-label small fw-bold">Route</label>
                         <select name="route" id="editDedRoute" class="form-select" required>
                             {% for rt in dedicated_form.route.field.queryset %}
-                            <option value="{{ rt.id }}">{{ rt.route_code }}</option>
+                                            <option value="{{ rt.id }}">{{ rt.route_code|upper }}</option>
                             {% endfor %}
                         </select>
                     </div>

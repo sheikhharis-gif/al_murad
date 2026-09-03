@@ -641,7 +641,7 @@ class Route(models.Model):
 
     def save(self, *args, **kwargs):
         # Route code auto-merges from the two city codes, e.g. ISB-KHI.
-        self.route_code = f"{self.origin.code}-{self.destination.code}"
+        self.route_code = f"{self.origin.code}-{self.destination.code}".upper()
         super().save(*args, **kwargs)
 
     @property
