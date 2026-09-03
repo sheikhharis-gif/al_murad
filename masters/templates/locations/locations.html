@@ -114,7 +114,7 @@
 
                         <div class="mb-3">
                             <label class="form-label small fw-bold text-muted">Origin</label>
-                            <select name="origin" id="originSelect" class="form-select border-0 shadow-sm" required>
+                            <select name="origin" id="originSelect" class="form-select border-0 shadow-sm dropdown-search-select" data-placeholder="Type origin city..." required>
                                 <option value="">Select Origin</option>
                                 {% for c in cities %}
                                 <option value="{{ c.id }}" data-code="{{ c.code }}">{{ c.name }}</option>
@@ -128,7 +128,7 @@
 
                         <div class="mb-3">
                             <label class="form-label small fw-bold text-muted">Destination</label>
-                            <select name="destination" id="destinationSelect" class="form-select border-0 shadow-sm" required>
+                            <select name="destination" id="destinationSelect" class="form-select border-0 shadow-sm dropdown-search-select" data-placeholder="Type destination city..." required>
                                 <option value="">Select Destination</option>
                                 {% for c in cities %}
                                 <option value="{{ c.id }}" data-code="{{ c.code }}">{{ c.name }}</option>
@@ -269,7 +269,7 @@
                 <div class="modal-body pt-2">
                     <div class="mb-3">
                         <label class="form-label small fw-bold">Origin</label>
-                        <select name="origin" id="editRouteOrigin" class="form-select" required>
+                        <select name="origin" id="editRouteOrigin" class="form-select dropdown-search-select" data-placeholder="Type origin city..." required>
                             <option value="">Select Origin</option>
                             {% for c in cities %}
                             <option value="{{ c.id }}">{{ c.name }}</option>
@@ -278,7 +278,7 @@
                     </div>
                     <div class="mb-3">
                         <label class="form-label small fw-bold">Destination</label>
-                        <select name="destination" id="editRouteDestination" class="form-select" required>
+                        <select name="destination" id="editRouteDestination" class="form-select dropdown-search-select" data-placeholder="Type destination city..." required>
                             <option value="">Select Destination</option>
                             {% for c in cities %}
                             <option value="{{ c.id }}">{{ c.name }}</option>
