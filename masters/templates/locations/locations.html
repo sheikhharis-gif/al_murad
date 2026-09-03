@@ -161,7 +161,7 @@
                     <label class="form-label small fw-bold">Search Registered Routes</label>
                     <div class="input-group mb-2">
                         <span class="input-group-text bg-light border-0"><i class="bi bi-search"></i></span>
-                        <input type="text" id="routeSearchBox" class="form-control bg-light border-0" placeholder="Type a route or city name to search...">
+                        <input type="search" id="routeSearchBox" class="form-control bg-light border-0" placeholder="Type a route or city name to search..." autocomplete="off">
                     </div>
 
                     <div class="table-responsive">
@@ -333,7 +333,7 @@
         const noSearch = document.getElementById('cityNoSearch');
         if (!box) return;
 
-        box.addEventListener('keyup', function () {
+        box.addEventListener('input', function () {
             const q = this.value.trim().toLowerCase();
             if (!q) {
                 rows.forEach(row => row.style.display = '');
@@ -342,7 +342,8 @@
             }
             let anyMatch = false;
             rows.forEach(row => {
-                const matches = row.dataset.name.includes(q);
+                const searchableText = (row.dataset.name || row.textContent).toLowerCase();
+                const matches = searchableText.includes(q);
                 row.style.display = matches ? '' : 'none';
                 if (matches) anyMatch = true;
             });
