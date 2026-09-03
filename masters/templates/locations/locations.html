@@ -474,7 +474,8 @@
             }
             let anyMatch = false;
             rows.forEach(row => {
-                const matches = row.dataset.name.includes(query);
+                const searchableText = (row.dataset.name || row.textContent).toLowerCase();
+                const matches = searchableText.includes(query);
                 row.style.display = matches ? '' : 'none';
                 if (matches) anyMatch = true;
             });
