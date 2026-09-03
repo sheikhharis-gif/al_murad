@@ -158,6 +158,12 @@
                         </button>
                     </form>
 
+                    <label class="form-label small fw-bold">Search Registered Routes</label>
+                    <div class="input-group mb-2">
+                        <span class="input-group-text bg-light border-0"><i class="bi bi-search"></i></span>
+                        <input type="text" id="routeSearchBox" class="form-control bg-light border-0" placeholder="Type a route or city name to search...">
+                    </div>
+
                     <div class="table-responsive">
                         <table class="table table-hover align-middle custom-table text-start">
                             <thead class="bg-light">
@@ -169,9 +175,9 @@
                                     <th class="text-end">Actions</th>
                                 </tr>
                             </thead>
-                            <tbody>
+                            <tbody id="routeListBody">
                                 {% for r in routes %}
-                                <tr>
+                                <tr class="route-row" data-name="{{ r.route_code|lower }} {{ r.origin.name|lower }} {{ r.destination.name|lower }}">
                                     <td><span class="badge bg-success-subtle text-success fw-bold">{{ r.route_code }}</span></td>
                                     <td>
                                         <div class="d-flex align-items-center">
@@ -214,6 +220,7 @@
                             </tbody>
                         </table>
                     </div>
+                    <div id="routeNoSearch" class="text-center text-muted small py-3" style="display:none;">No matching route found.</div>
                 </div>
             </div>
         </div>
@@ -324,6 +331,31 @@
         const box = document.getElementById('citySearchBox');
         const rows = document.querySelectorAll('#cityListBody tr.city-row');
         const noSearch = document.getElementById('cityNoSearch');
+        if (!box) return;
+
+        box.addEventListener('keyup', function () {
+            const q = this.value.trim().toLowerCase();
+            if (!q) {
+                rows.forEach(row => row.style.display = '');
+                noSearch.style.display = 'none';
+                return;
+            }
+            let anyMatch = false;
+            rows.forEach(row => {
+                const matches = row.dataset.name.includes(q);
+                row.style.display = matches ? '' : 'none';
+                if (matches) anyMatch = true;
+            });
+            noSearch.style.display = anyMatch ? 'none' : '';
+        });
+    })();
+
+    // Route list search - all registered routes show by default;
+    // typing narrows the list down by route code or city name live.
+    (function () {
+        const box = document.getElementById('routeSearchBox');
+        const rows = document.querySelectorAll('#routeListBody tr.route-row');
+        const noSearch = document.getElementById('routeNoSearch');
         if (!box) return;
 
         box.addEventListener('keyup', function () {
