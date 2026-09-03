@@ -462,8 +462,6 @@ def locations_master(request):
 
             if not origin_id or not dest_id:
                 messages.error(request, "Please select both Origin and Destination.")
-            elif origin_id == dest_id:
-                messages.error(request, "Origin and Destination cannot be the same city.")
             elif not distance_km:
                 messages.error(request, "Please enter the distance in KMs.")
             elif Route.objects.filter(origin_id=origin_id, destination_id=dest_id).exists():
@@ -534,8 +532,6 @@ def route_edit(request, route_id):
 
         if not origin_id or not dest_id:
             messages.error(request, "Please select both Origin and Destination.")
-        elif origin_id == dest_id:
-            messages.error(request, "Origin and Destination cannot be the same city.")
         elif not distance_km:
             messages.error(request, "Please enter the distance in KMs.")
         elif Route.objects.exclude(id=route.id).filter(origin_id=origin_id, destination_id=dest_id).exists():
