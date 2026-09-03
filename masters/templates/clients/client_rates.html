@@ -51,48 +51,52 @@
             {% if form.errors %}
             <div class="alert alert-danger border-0 rounded-3 py-2 small">Please fix the highlighted field(s) below.</div>
             {% endif %}
-            <form method="post" class="row g-2 align-items-end bg-light p-3 rounded-4 mb-3 border border-light-subtle">
+            <form method="post" class="rate-entry-form bg-light p-3 rounded-4 mb-3 border border-light-subtle">
                 {% csrf_token %}
-                <div class="col-md-2">
-                    <label class="form-label small fw-bold">Route</label>
-                    {{ form.route }}{{ form.route.errors }}
+                <div class="row g-2 align-items-end">
+                    <div class="col-md-3">
+                        <label class="form-label small fw-bold">Route</label>
+                        {{ form.route }}{{ form.route.errors }}
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small fw-bold">Vehicle Type</label>
+                        {{ form.vehicle_type }}
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label small fw-bold">Weight (Tons)</label>
+                        {{ form.weight_tons }}
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label small fw-bold">Eff. Date</label>
+                        {{ form.effective_date }}
+                    </div>
+                    <div class="col-md-1">
+                        <button type="submit" class="btn btn-primary w-100 fw-bold">
+                            <i class="bi bi-plus-lg"></i>
+                        </button>
+                    </div>
                 </div>
-                <div class="col-md-2">
-                    <label class="form-label small fw-bold">Vehicle Type</label>
-                    {{ form.vehicle_type }}
-                </div>
-                <div class="col-md-1">
-                    <label class="form-label small fw-bold">Weight (Tons)</label>
-                    {{ form.weight_tons }}
-                </div>
-                <div class="col-md-2">
-                    <label class="form-label small fw-bold">
-                        Current Fuel Price
-                        <i class="bi bi-info-circle text-muted" data-bs-toggle="tooltip" data-bs-placement="top"
-                           title="Auto-filled and locked once this route already has an entry. Only editable for the first entry."></i>
-                    </label>
-                    {{ form.current_fuel_price }}
-                </div>
-                <div class="col-md-2">
-                    <label class="form-label small fw-bold">Current Rate</label>
-                    {{ form.current_rate }}
-                </div>
-                <div class="col-md-2">
-                    <label class="form-label small fw-bold">Effective %</label>
-                    {{ form.effective_percent }}
-                </div>
-                <div class="col-md-2">
-                    <label class="form-label small fw-bold">Updated Fuel Price</label>
-                    {{ form.updated_fuel_price }}
-                </div>
-                <div class="col-md-1">
-                    <label class="form-label small fw-bold">Eff. Date</label>
-                    {{ form.effective_date }}
-                </div>
-                <div class="col-md-1">
-                    <button type="submit" class="btn btn-primary w-100 fw-bold">
-                        <i class="bi bi-plus-lg"></i>
-                    </button>
+                <div class="row g-2 align-items-end mt-1">
+                    <div class="col-md-3">
+                        <label class="form-label small fw-bold">
+                            Current Fuel Price
+                            <i class="bi bi-info-circle text-muted" data-bs-toggle="tooltip" data-bs-placement="top"
+                               title="Auto-filled and locked once this route, vehicle type, and weight already has an entry. Only editable for the first entry."></i>
+                        </label>
+                        {{ form.current_fuel_price }}
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small fw-bold">Current Rate</label>
+                        {{ form.current_rate }}
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small fw-bold">Effective %</label>
+                        {{ form.effective_percent }}
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small fw-bold">Updated Fuel Price</label>
+                        {{ form.updated_fuel_price }}
+                    </div>
                 </div>
             </form>
 
