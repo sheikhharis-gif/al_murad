@@ -177,7 +177,7 @@
                             </thead>
                             <tbody id="routeListBody">
                                 {% for r in routes %}
-                                <tr class="route-row" data-name="{{ r.route_code|lower }} {{ r.origin.name|lower }} {{ r.destination.name|lower }}">
+                                <tr class="route-row" data-name="{{ r.route_code }} {{ r.origin.name }} {{ r.destination.name }}">
                                     <td><span class="badge bg-success-subtle text-success fw-bold">{{ r.route_code|upper }}</span></td>
                                     <td>
                                         <div class="d-flex align-items-center">

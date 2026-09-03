@@ -662,7 +662,7 @@ class Route(models.Model):
         return " ".join(parts)
 
     def __str__(self):
-        return self.route_code
+        return self.route_code.upper()
 
     class Meta:
         ordering = ["origin__name", "destination__name"]

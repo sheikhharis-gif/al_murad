@@ -143,7 +143,7 @@
                             <td class="text-center {% if r.rate_adjustment < 0 %}text-danger{% elif r.rate_adjustment > 0 %}text-success{% endif %}">{{ r.rate_adjustment|acct }}</td>
                             <td class="text-center utc-col">{{ r.updated_trip_cost|acct }}</td>
                             <td class="text-center">{{ r.weight_tons|default:"--" }}</td>
-                            <td class="text-center">{{ r.vehicle_type.name|default:"--" }}</td>
+                            <td class="text-center">{{ r.vehicle_type.name|upper|default:"--" }}</td>
                             <td class="text-center">{{ r.effective_date|date:"j-M-y" }}</td>
                             <td class="text-center">
                                 <div class="btn-group btn-group-sm shadow-sm rounded-2 overflow-hidden bg-white border">
@@ -292,7 +292,7 @@
                             <td class="text-center">{{ r.get_distance_mode_display }}</td>
                             <td class="text-center">{{ r.distance_km|acct }}</td>
                             <td class="text-center">{{ r.weight_tons|default:"--" }}</td>
-                            <td class="text-center">{{ r.vehicle_type.name|default:"--" }}</td>
+                            <td class="text-center">{{ r.vehicle_type.name|upper|default:"--" }}</td>
                             <td class="text-center">{{ r.effective_date|date:"j-M-y" }}</td>
                             <td class="text-center">
                                 <div class="btn-group btn-group-sm shadow-sm rounded-2 overflow-hidden bg-white border">
@@ -379,7 +379,7 @@
                         <select name="vehicle_type" id="editVehicleType" class="form-select">
                             <option value="">--- Select Type ---</option>
                             {% for vt in form.vehicle_type.field.queryset %}
-                            <option value="{{ vt.id }}">{{ vt.name }}</option>
+                            <option value="{{ vt.id }}">{{ vt.name|upper }}</option>
                             {% endfor %}
                         </select>
                     </div>
@@ -461,7 +461,7 @@
                         <select name="vehicle_type" id="editDedVehicleType" class="form-select">
                             <option value="">--- Select Type ---</option>
                             {% for vt in dedicated_form.vehicle_type.field.queryset %}
-                            <option value="{{ vt.id }}">{{ vt.name }}</option>
+                            <option value="{{ vt.id }}">{{ vt.name|upper }}</option>
                             {% endfor %}
                         </select>
                     </div>
