@@ -58,6 +58,14 @@
                     {{ form.route }}{{ form.route.errors }}
                 </div>
                 <div class="col-md-2">
+                    <label class="form-label small fw-bold">Vehicle Type</label>
+                    {{ form.vehicle_type }}
+                </div>
+                <div class="col-md-1">
+                    <label class="form-label small fw-bold">Weight (Tons)</label>
+                    {{ form.weight_tons }}
+                </div>
+                <div class="col-md-2">
                     <label class="form-label small fw-bold">
                         Current Fuel Price
                         <i class="bi bi-info-circle text-muted" data-bs-toggle="tooltip" data-bs-placement="top"
@@ -76,14 +84,6 @@
                 <div class="col-md-2">
                     <label class="form-label small fw-bold">Updated Fuel Price</label>
                     {{ form.updated_fuel_price }}
-                </div>
-                <div class="col-md-1">
-                    <label class="form-label small fw-bold">Weight (Tons)</label>
-                    {{ form.weight_tons }}
-                </div>
-                <div class="col-md-2">
-                    <label class="form-label small fw-bold">Vehicle Type</label>
-                    {{ form.vehicle_type }}
                 </div>
                 <div class="col-md-1">
                     <label class="form-label small fw-bold">Eff. Date</label>
@@ -515,13 +515,21 @@ document.addEventListener('DOMContentLoaded', function () {
     // stay open for manual entry.
     var lastByRoute = JSON.parse('{{ last_by_route_json|escapejs }}');
     var routeSelect = document.getElementById('id_route');
+    var vehicleTypeSelect = document.getElementById('id_vehicle_type');
+    var weightTons = document.getElementById('id_weight_tons');
     var curFuel = document.getElementById('id_current_fuel_price');
     var curRate = document.getElementById('id_current_rate');
     var effPct = document.getElementById('id_effective_percent');
 
+    function rateCategoryKey() {
+        var weight = weightTons && weightTons.value.trim() ? String(parseFloat(weightTons.value)) : '';
+        return (routeSelect ? routeSelect.value : '') + '|' +
+            (vehicleTypeSelect ? vehicleTypeSelect.value : '') + '|' + weight;
+    }
+
     function syncCurrentFields() {
         if (!routeSelect || !curFuel || !curRate) return;
-        var info = lastByRoute[routeSelect.value];
+        var info = lastByRoute[rateCategoryKey()];
         if (info) {
             curFuel.value = info.fuel_price;
             curRate.value = info.trip_cost;
@@ -543,8 +551,10 @@ document.addEventListener('DOMContentLoaded', function () {
     }
     if (routeSelect) {
         routeSelect.addEventListener('change', syncCurrentFields);
-        syncCurrentFields();
     }
+    if (vehicleTypeSelect) vehicleTypeSelect.addEventListener('change', syncCurrentFields);
+    if (weightTons) weightTons.addEventListener('input', syncCurrentFields);
+    syncCurrentFields();
 
     document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function (el) {
         new bootstrap.Tooltip(el);

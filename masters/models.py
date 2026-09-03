@@ -504,6 +504,16 @@ class ClientRate(models.Model):
         ordering = ["route__route_code", "-effective_date", "-id"]
 
     def save(self, *args, **kwargs):
+        if not self.pk:
+            previous = ClientRate.objects.filter(
+                client=self.client,
+                route=self.route,
+                vehicle_type=self.vehicle_type,
+                weight_tons=self.weight_tons,
+            ).order_by("-effective_date", "-id").first()
+            if previous:
+                self.current_fuel_price = previous.updated_fuel_price
+                self.current_rate = previous.updated_trip_cost
         self.rate_subject_to_revision = self.current_rate * (self.effective_percent / 100)
         self.fuel_price_change_percent = (
             (self.updated_fuel_price - self.current_fuel_price) / self.current_fuel_price * 100
