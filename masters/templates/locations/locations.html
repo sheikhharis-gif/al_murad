@@ -361,6 +361,7 @@
             const input = document.createElement('input');
             input.type = 'text';
             input.className = 'form-control dropdown-search-input';
+            input.id = select.id + '-search-input';
             input.setAttribute('autocomplete', 'off');
             input.setAttribute('placeholder', select.dataset.placeholder || 'Type to search...');
             input.required = true;
@@ -443,6 +444,17 @@
                 });
             });
         });
+
+        const citySearchBox = document.getElementById('citySearchBox');
+        const originSearchInput = document.getElementById('originSelect-search-input');
+        if (citySearchBox && originSearchInput) {
+            citySearchBox.addEventListener('keydown', function (event) {
+                if (event.key === 'Tab' && !event.shiftKey) {
+                    event.preventDefault();
+                    originSearchInput.focus();
+                }
+            });
+        }
     });
 
     // Route list search - all registered routes show by default;
