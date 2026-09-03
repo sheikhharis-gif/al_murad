@@ -114,7 +114,7 @@
 
                         <div class="mb-3">
                             <label class="form-label small fw-bold text-muted">Origin</label>
-                            <select name="origin" id="originSelect" class="form-select border-0 shadow-sm dropdown-search-select" data-placeholder="Type origin city..." required>
+                            <select name="origin" id="originSelect" class="form-select border-0 shadow-sm route-city-select" data-placeholder="Type origin city..." required>
                                 <option value="">Select Origin</option>
                                 {% for c in cities %}
                                 <option value="{{ c.id }}" data-code="{{ c.code }}">{{ c.name }}</option>
@@ -128,7 +128,7 @@
 
                         <div class="mb-3">
                             <label class="form-label small fw-bold text-muted">Destination</label>
-                            <select name="destination" id="destinationSelect" class="form-select border-0 shadow-sm dropdown-search-select" data-placeholder="Type destination city..." required>
+                            <select name="destination" id="destinationSelect" class="form-select border-0 shadow-sm route-city-select" data-placeholder="Type destination city..." required>
                                 <option value="">Select Destination</option>
                                 {% for c in cities %}
                                 <option value="{{ c.id }}" data-code="{{ c.code }}">{{ c.name }}</option>
@@ -269,7 +269,7 @@
                 <div class="modal-body pt-2">
                     <div class="mb-3">
                         <label class="form-label small fw-bold">Origin</label>
-                        <select name="origin" id="editRouteOrigin" class="form-select dropdown-search-select" data-placeholder="Type origin city..." required>
+                        <select name="origin" id="editRouteOrigin" class="form-select route-city-select" data-placeholder="Type origin city..." required>
                             <option value="">Select Origin</option>
                             {% for c in cities %}
                             <option value="{{ c.id }}">{{ c.name }}</option>
@@ -278,7 +278,7 @@
                     </div>
                     <div class="mb-3">
                         <label class="form-label small fw-bold">Destination</label>
-                        <select name="destination" id="editRouteDestination" class="form-select dropdown-search-select" data-placeholder="Type destination city..." required>
+                        <select name="destination" id="editRouteDestination" class="form-select route-city-select" data-placeholder="Type destination city..." required>
                             <option value="">Select Destination</option>
                             {% for c in cities %}
                             <option value="{{ c.id }}">{{ c.name }}</option>
@@ -351,30 +351,124 @@
         });
     })();
 
+    // Keep route city search self-contained on this page. This also works when
+    // the shared static JavaScript is unavailable during deployment.
+    document.addEventListener('DOMContentLoaded', function () {
+        document.querySelectorAll('select.route-city-select').forEach(function (select) {
+            const options = Array.from(select.options).filter(function (option) { return option.value; });
+            const wrapper = document.createElement('div');
+            wrapper.className = 'dropdown-search-wrapper';
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.className = 'form-control dropdown-search-input';
+            input.setAttribute('autocomplete', 'off');
+            input.setAttribute('placeholder', select.dataset.placeholder || 'Type to search...');
+            input.required = true;
+            const list = document.createElement('div');
+            list.className = 'dropdown-search-list';
+            wrapper.appendChild(input);
+            wrapper.appendChild(list);
+            select.parentNode.insertBefore(wrapper, select);
+            select.style.display = 'none';
+            select.required = false;
+
+            let activeIndex = -1;
+            function closeList() {
+                list.classList.remove('show');
+                list.innerHTML = '';
+                activeIndex = -1;
+            }
+            function choose(option) {
+                select.value = option.value;
+                input.value = option.textContent.trim();
+                input.setCustomValidity('');
+                closeList();
+                select.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+            function renderList() {
+                const query = input.value.trim().toLowerCase();
+                const matches = options.filter(function (option) {
+                    return !query || option.textContent.trim().toLowerCase().includes(query);
+                });
+                list.innerHTML = '';
+                activeIndex = -1;
+                matches.forEach(function (option) {
+                    const item = document.createElement('div');
+                    item.className = 'dropdown-search-item';
+                    item.textContent = option.textContent.trim();
+                    item.addEventListener('mousedown', function (event) {
+                        event.preventDefault();
+                        choose(option);
+                    });
+                    list.appendChild(item);
+                });
+                if (!matches.length) {
+                    const empty = document.createElement('div');
+                    empty.className = 'dropdown-search-empty';
+                    empty.textContent = 'No matching city';
+                    list.appendChild(empty);
+                }
+                list.classList.add('show');
+            }
+
+            input.addEventListener('input', function () {
+                const value = input.value.trim().toLowerCase();
+                const match = options.find(function (option) {
+                    return option.textContent.trim().toLowerCase() === value;
+                });
+                if (match) {
+                    choose(match);
+                } else {
+                    select.value = '';
+                    input.setCustomValidity('Please select a city from the matching list.');
+                    renderList();
+                }
+            });
+            input.addEventListener('focus', function () { input.select(); renderList(); });
+            input.addEventListener('blur', function () { setTimeout(closeList, 150); });
+            input.addEventListener('keydown', function (event) {
+                const items = list.querySelectorAll('.dropdown-search-item');
+                if (event.key === 'ArrowDown' && items.length) {
+                    event.preventDefault();
+                    activeIndex = Math.min(activeIndex + 1, items.length - 1);
+                } else if (event.key === 'ArrowUp' && items.length) {
+                    event.preventDefault();
+                    activeIndex = Math.max(activeIndex - 1, 0);
+                } else if (event.key === 'Enter' && activeIndex >= 0 && items[activeIndex]) {
+                    event.preventDefault();
+                    items[activeIndex].dispatchEvent(new Event('mousedown'));
+                }
+                items.forEach(function (item, index) {
+                    item.classList.toggle('active', index === activeIndex);
+                });
+            });
+        });
+    });
+
     // Route list search - all registered routes show by default;
     // typing narrows the list down by route code or city name live.
-    (function () {
+    document.addEventListener('DOMContentLoaded', function () {
         const box = document.getElementById('routeSearchBox');
         const rows = document.querySelectorAll('#routeListBody tr.route-row');
         const noSearch = document.getElementById('routeNoSearch');
         if (!box) return;
 
-        box.addEventListener('keyup', function () {
-            const q = this.value.trim().toLowerCase();
-            if (!q) {
+        box.addEventListener('input', function () {
+            const query = this.value.trim().toLowerCase();
+            if (!query) {
                 rows.forEach(row => row.style.display = '');
                 noSearch.style.display = 'none';
                 return;
             }
             let anyMatch = false;
             rows.forEach(row => {
-                const matches = row.dataset.name.includes(q);
+                const matches = row.dataset.name.includes(query);
                 row.style.display = matches ? '' : 'none';
                 if (matches) anyMatch = true;
             });
             noSearch.style.display = anyMatch ? 'none' : '';
         });
-    })();
+    });
 
     function searchCity() {
         const city = document.getElementById('cityNameInput').value;
