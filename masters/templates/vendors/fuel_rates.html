@@ -56,7 +56,7 @@
                 <thead class="table-success">
                     <tr><th>Source</th><th>Product</th><th>City</th><th>Current Rate</th><th>Effective Date</th></tr>
                 </thead>
-                <tbody>
+                <tbody id="liveFuelRatesBody" data-api-url="https://fuel.trackmate.page/api/prices">
                     {% for price in live_prices %}
                     <tr>
                         <td class="text-uppercase">{{ price.source }}</td>
@@ -105,4 +105,34 @@
         </div>
     </div>
 </div>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var body = document.getElementById('liveFuelRatesBody');
+    if (!body || body.querySelector('tr[data-live-rate]')) return;
+
+    fetch(body.dataset.apiUrl, {headers: {Accept: 'application/json'}})
+        .then(function (response) {
+            if (!response.ok) throw new Error('API request failed');
+            return response.json();
+        })
+        .then(function (payload) {
+            var prices = (payload.prices || []).filter(function (price) {
+                return price.price_pkr !== null && price.price_pkr !== undefined;
+            });
+            if (!prices.length) return;
+            body.innerHTML = prices.map(function (price) {
+                var city = price.city || 'All Cities';
+                var date = price.effective_date || 'Latest available';
+                var rate = Number(price.price_pkr).toFixed(2);
+                return '<tr data-live-rate><td class="text-uppercase">' + price.source +
+                    '</td><td class="fw-semibold text-uppercase">' + price.product +
+                    '</td><td>' + city + '</td><td class="fw-bold">PKR ' + rate +
+                    ' / ' + price.unit + '</td><td>' + date + '</td></tr>';
+            }).join('');
+        })
+        .catch(function () {
+            // Keep the server-rendered fallback message when the browser cannot reach the API.
+        });
+});
+</script>
 {% endblock %}
