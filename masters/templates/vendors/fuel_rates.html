@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+        <div>
+            <h3 class="fw-bold text-dark mb-1"><i class="bi bi-fuel-pump text-primary me-2"></i>Present Fuel Rates</h3>
+            <p class="text-muted small mb-0">The newest effective date is automatically treated as the present rate.</p>
+        </div>
+    </div>
+
+    {% if form.errors %}
+    <div class="alert alert-danger border-0 rounded-3">Please fix the highlighted fields.</div>
+    {% endif %}
+
+    <div class="card border-0 shadow-sm rounded-4 mb-4">
+        <div class="card-header bg-white border-0 pt-4 px-4">
+            <h5 class="fw-bold mb-0 text-primary">Add Fuel Rate</h5>
+        </div>
+        <div class="card-body px-4">
+            <form method="post" class="row g-3 align-items-end bg-light p-3 rounded-4 border border-light-subtle">
+                {% csrf_token %}
+                <div class="col-md-3">
+                    <label class="form-label small fw-bold">Fuel Supplier</label>
+                    {{ form.vendor }}{{ form.vendor.errors }}
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small fw-bold">Fuel Product</label>
+                    {{ form.product }}{{ form.product.errors }}
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small fw-bold">Present Rate</label>
+                    {{ form.fuel_price }}{{ form.fuel_price.errors }}
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small fw-bold">Effective Date</label>
+                    {{ form.effective_date }}{{ form.effective_date.errors }}
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-primary w-100 fw-bold"><i class="bi bi-plus-lg me-1"></i>Add Rate</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm rounded-4">
+        <div class="card-header bg-white border-0 pt-4 px-4">
+            <h5 class="fw-bold mb-0 text-primary">Fuel Rate History</h5>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Supplier</th>
+                        <th>Fuel Product</th>
+                        <th>Fuel Rate</th>
+                        <th>Effective Date</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for rate in rates %}
+                    <tr>
+                        <td class="fw-semibold">{{ rate.vendor.name }}</td>
+                        <td>{{ rate.product.name }}</td>
+                        <td class="fw-bold">{{ rate.fuel_price|floatformat:2 }}</td>
+                        <td>{{ rate.effective_date|date:"j-M-y" }}</td>
+                        <td>{% if rate.pk in latest_ids %}<span class="badge bg-success">PRESENT</span>{% else %}<span class="text-muted small">Previous</span>{% endif %}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="5" class="text-center py-4 text-muted">No fuel rates recorded yet.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

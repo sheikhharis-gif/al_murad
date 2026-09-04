@@ -24,7 +24,7 @@ from .forms import (
     ExpenseForm, ClientRateForm,
     DriverSalaryForm,
     StaffAttendanceFormSet, StaffAccountEntryFormSet,
-    FuelProductForm, VendorFuelPriceFormSet,
+    FuelProductForm, FuelRateForm, VendorFuelPriceFormSet,
 )
 
 
@@ -703,6 +703,32 @@ def fuel_product_delete(request, product_id):
         except ProtectedError:
             messages.error(request, f"Cannot delete '{product.name}' - it's still in use.")
     return redirect("fuel_product_config")
+
+
+def fuel_rates(request):
+    if request.method == "POST":
+        form = FuelRateForm(request.POST)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Fuel rate added successfully.")
+            return redirect("fuel_rates")
+    else:
+        form = FuelRateForm()
+
+    rates = VendorFuelPrice.objects.select_related("vendor", "product").all()
+    latest_ids = set()
+    seen = set()
+    for rate in rates:
+        key = (rate.vendor_id, rate.product_id)
+        if key not in seen:
+            latest_ids.add(rate.pk)
+            seen.add(key)
+
+    return render(request, "vendors/fuel_rates.html", {
+        "form": form,
+        "rates": rates,
+        "latest_ids": latest_ids,
+    })
 
 from django.shortcuts import render, redirect, get_object_or_404
 from .models import Client, ClientType, ClientRate, DedicatedRate, Expense

@@ -1,5 +1,6 @@
 from decimal import Decimal, InvalidOperation
 from django import forms
+from django.utils import timezone
 from django.forms import modelformset_factory
 from .models import (
     Vehicle, VehicleType, Wheeler, VehicleTyre, Staff, Vendor, SupplierType,
@@ -365,6 +366,29 @@ class FuelProductForm(forms.ModelForm):
         if qs.exists():
             raise forms.ValidationError("This Product is already registered.")
         return name
+
+
+class FuelRateForm(forms.ModelForm):
+    class Meta:
+        model = VendorFuelPrice
+        fields = ["vendor", "product", "fuel_price", "effective_date"]
+        widgets = {
+            "vendor": forms.Select(attrs={"class": "form-select"}),
+            "product": forms.Select(attrs={"class": "form-select"}),
+            "fuel_price": forms.NumberInput(attrs={"class": "form-control", "step": "0.01", "placeholder": "e.g. 395.95"}),
+            "effective_date": forms.DateInput(attrs={"class": "form-control datepicker"}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["vendor"].queryset = Vendor.objects.filter(
+            supplier_type__name="FUEL", is_active=True
+        ).order_by("name")
+        self.fields["vendor"].empty_label = "--- Select Fuel Supplier ---"
+        self.fields["product"].queryset = FuelProduct.objects.all().order_by("name")
+        self.fields["product"].empty_label = "--- Select Fuel Product ---"
+        if not self.instance.pk:
+            self.initial["effective_date"] = timezone.localdate()
 
 
 VendorFuelPriceFormSet = inlineformset_factory(
