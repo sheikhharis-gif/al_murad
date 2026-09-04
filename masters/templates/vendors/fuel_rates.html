@@ -7,6 +7,9 @@
             <h3 class="fw-bold text-dark mb-1"><i class="bi bi-fuel-pump text-primary me-2"></i>Present Fuel Rates</h3>
             <p class="text-muted small mb-0">The newest effective date is automatically treated as the present rate.</p>
         </div>
+        <a href="{% url 'fuel_product_config' %}" class="btn btn-outline-primary fw-bold">
+            <i class="bi bi-plus-circle me-1"></i>Add Fuel Product
+        </a>
     </div>
 
     {% if form.errors %}
