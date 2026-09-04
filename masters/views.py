@@ -1,4 +1,5 @@
 import json
+from urllib.request import Request, urlopen
 from calendar import monthrange
 from urllib.parse import urlencode
 from django.contrib import messages
@@ -26,6 +27,18 @@ from .forms import (
     StaffAttendanceFormSet, StaffAccountEntryFormSet,
     FuelProductForm, FuelRateForm, VendorFuelPriceFormSet,
 )
+
+FUEL_PRICES_API_URL = "https://fuel.trackmate.page/api/prices"
+
+
+def _fetch_live_fuel_prices():
+    try:
+        request = Request(FUEL_PRICES_API_URL, headers={"User-Agent": "Al-Murad-Logistics/1.0"})
+        with urlopen(request, timeout=8) as response:
+            payload = json.loads(response.read().decode("utf-8"))
+        return [price for price in payload.get("prices", []) if price.get("price_pkr") is not None]
+    except Exception:
+        return []
 
 
 def _sorted_queryset(request, queryset, sort_fields, default_sort, default_order="asc"):
@@ -728,6 +741,7 @@ def fuel_rates(request):
         "form": form,
         "rates": rates,
         "latest_ids": latest_ids,
+        "live_prices": _fetch_live_fuel_prices(),
     })
 
 from django.shortcuts import render, redirect, get_object_or_404
