@@ -489,15 +489,15 @@ class ClientRate(models.Model):
     fuel_product = models.ForeignKey(
         FuelProduct, on_delete=models.SET_NULL, null=True, blank=True, related_name="client_rates"
     )
-    current_fuel_price = models.DecimalField("Current Fuel Price", max_digits=10, decimal_places=2)
-    current_rate = models.DecimalField("Current Rate", max_digits=12, decimal_places=2)
-    effective_percent = models.DecimalField("Effective %", max_digits=5, decimal_places=2)
-    rate_subject_to_revision = models.DecimalField(max_digits=12, decimal_places=2, editable=False)
-    updated_fuel_price = models.DecimalField("Updated Fuel Price", max_digits=10, decimal_places=2)
-    fuel_price_change_percent = models.DecimalField(max_digits=6, decimal_places=2, editable=False)
-    rate_adjustment = models.DecimalField(max_digits=12, decimal_places=2, editable=False)
-    updated_trip_cost = models.DecimalField(max_digits=12, decimal_places=2, editable=False)
-    weight_tons = models.DecimalField("Weight (Tons)", max_digits=8, decimal_places=2, null=True, blank=True)
+    current_fuel_price = models.DecimalField("Current Fuel Price", max_digits=20, decimal_places=2)
+    current_rate = models.DecimalField("Current Rate", max_digits=20, decimal_places=2)
+    effective_percent = models.DecimalField("Effective %", max_digits=10, decimal_places=2)
+    rate_subject_to_revision = models.DecimalField(max_digits=20, decimal_places=2, editable=False)
+    updated_fuel_price = models.DecimalField("Updated Fuel Price", max_digits=20, decimal_places=2)
+    fuel_price_change_percent = models.DecimalField(max_digits=12, decimal_places=2, editable=False)
+    rate_adjustment = models.DecimalField(max_digits=20, decimal_places=2, editable=False)
+    updated_trip_cost = models.DecimalField(max_digits=20, decimal_places=2, editable=False)
+    weight_tons = models.DecimalField("Weight (Tons)", max_digits=12, decimal_places=2, null=True, blank=True)
     vehicle_type = models.ForeignKey(
         VehicleType, on_delete=models.SET_NULL, null=True, blank=True, related_name="client_rates"
     )
