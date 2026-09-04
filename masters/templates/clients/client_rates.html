@@ -58,6 +58,10 @@
                         <label class="form-label small fw-bold">Route</label>
                         {{ form.route }}{{ form.route.errors }}
                     </div>
+                    <div class="col-md-2">
+                        <label class="form-label small fw-bold">Fuel Product</label>
+                        {{ form.fuel_product }}{{ form.fuel_product.errors }}
+                    </div>
                     <div class="col-md-3">
                         <label class="form-label small fw-bold">Vehicle Type</label>
                         {{ form.vehicle_type }}
@@ -120,6 +124,7 @@
                     <thead class="sticky-top">
                         <tr class="text-uppercase">
                             <th>Route</th>
+                            <th class="text-center">Fuel Product</th>
                             <th class="text-center">Current Fuel Price</th>
                             <th class="text-center">Current Rate</th>
                             <th class="text-center">Effective %</th>
@@ -138,6 +143,7 @@
                         {% for r in rates %}
                         <tr>
                             <td class="fw-bold text-dark">{{ r.route.route_code|upper }}</td>
+                            <td class="text-center">{{ r.fuel_product.name|upper|default:"--" }}</td>
                             <td class="text-center">{{ r.current_fuel_price|acct }}</td>
                             <td class="text-center">{{ r.current_rate|acct }}</td>
                             <td class="text-center">{{ r.effective_percent|pct_trim }}</td>
@@ -155,6 +161,7 @@
                                         class="btn btn-sm btn-white text-warning border-end edit-rate-btn"
                                         data-edit-url="{% url 'client_rate_edit' client.id r.id %}"
                                         data-route="{{ r.route_id }}"
+                                        data-fuel-product="{{ r.fuel_product_id|default:'' }}"
                                         data-current-fuel-price="{{ r.current_fuel_price }}"
                                         data-current-rate="{{ r.current_rate }}"
                                         data-effective-percent="{{ r.effective_percent }}"
@@ -359,6 +366,15 @@
                         </select>
                     </div>
                     <div class="mb-2">
+                        <label class="form-label small fw-bold">Fuel Product</label>
+                        <select name="fuel_product" id="editFuelProduct" class="form-select">
+                            <option value="">--- Select Fuel Product ---</option>
+                            {% for product in form.fuel_product.field.queryset %}
+                            <option value="{{ product.id }}">{{ product.name|upper }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-2">
                         <label class="form-label small fw-bold">Current Fuel Price</label>
                         <input type="number" step="0.01" name="current_fuel_price" id="editCurrentFuelPrice" class="form-control" required>
                     </div>
@@ -518,16 +534,20 @@ document.addEventListener('DOMContentLoaded', function () {
     // and lock (matches "CLIENT RATE FILE.xlsx"). No prior revision -> both
     // stay open for manual entry.
     var lastByRoute = JSON.parse('{{ last_by_route_json|escapejs }}');
+    var latestFuelPrices = JSON.parse('{{ latest_fuel_prices_json|escapejs }}');
     var routeSelect = document.getElementById('id_route');
+    var fuelProductSelect = document.getElementById('id_fuel_product');
     var vehicleTypeSelect = document.getElementById('id_vehicle_type');
     var weightTons = document.getElementById('id_weight_tons');
     var curFuel = document.getElementById('id_current_fuel_price');
     var curRate = document.getElementById('id_current_rate');
     var effPct = document.getElementById('id_effective_percent');
+    var updatedFuel = document.getElementById('id_updated_fuel_price');
 
     function rateCategoryKey() {
         var weight = weightTons && weightTons.value.trim() ? String(parseFloat(weightTons.value)) : '';
         return (routeSelect ? routeSelect.value : '') + '|' +
+            (fuelProductSelect ? fuelProductSelect.value : '') + '|' +
             (vehicleTypeSelect ? vehicleTypeSelect.value : '') + '|' + weight;
     }
 
@@ -545,18 +565,21 @@ document.addEventListener('DOMContentLoaded', function () {
             // stays editable - it's a convenience default, not a lock.
             if (effPct) effPct.value = info.effective_percent;
         } else {
-            curFuel.value = '';
+            var latestFuelPrice = fuelProductSelect && latestFuelPrices[fuelProductSelect.value];
+            curFuel.value = latestFuelPrice || '';
             curRate.value = '';
-            curFuel.readOnly = false;
+            curFuel.readOnly = Boolean(latestFuelPrice);
             curRate.readOnly = false;
-            curFuel.classList.remove('bg-light');
+            curFuel.classList.toggle('bg-light', Boolean(latestFuelPrice));
             curRate.classList.remove('bg-light');
+            if (updatedFuel) updatedFuel.value = latestFuelPrice || '';
         }
     }
     if (routeSelect) {
         routeSelect.addEventListener('change', syncCurrentFields);
     }
     if (vehicleTypeSelect) vehicleTypeSelect.addEventListener('change', syncCurrentFields);
+    if (fuelProductSelect) fuelProductSelect.addEventListener('change', syncCurrentFields);
     if (weightTons) weightTons.addEventListener('input', syncCurrentFields);
     syncCurrentFields();
 
@@ -569,6 +592,7 @@ document.addEventListener('DOMContentLoaded', function () {
         btn.addEventListener('click', function () {
             document.getElementById('rateEditForm').action = this.dataset.editUrl;
             document.getElementById('editRoute').value = this.dataset.route;
+            document.getElementById('editFuelProduct').value = this.dataset.fuelProduct;
             document.getElementById('editCurrentFuelPrice').value = this.dataset.currentFuelPrice;
             document.getElementById('editCurrentRate').value = this.dataset.currentRate;
             document.getElementById('editEffectivePercent').value = this.dataset.effectivePercent;

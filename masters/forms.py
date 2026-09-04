@@ -498,7 +498,7 @@ class ClientRateForm(forms.ModelForm):
     class Meta:
         model = ClientRate
         fields = [
-            "route", "current_fuel_price", "current_rate", "effective_percent",
+            "route", "fuel_product", "current_fuel_price", "current_rate", "effective_percent",
             "updated_fuel_price", "weight_tons", "vehicle_type", "effective_date",
         ]
         widgets = {
@@ -507,6 +507,7 @@ class ClientRateForm(forms.ModelForm):
                 "autofocus": "autofocus",
                 "data-placeholder": "Type route code (e.g. KHI)...",
             }),
+            "fuel_product": forms.Select(attrs={"class": "form-select"}),
             "current_fuel_price": forms.NumberInput(attrs={"class": "form-control", "step": "0.01"}),
             "current_rate": forms.NumberInput(attrs={"class": "form-control", "step": "0.01"}),
             "effective_percent": forms.NumberInput(attrs={"class": "form-control", "step": "0.01", "placeholder": "e.g. 50"}),
@@ -519,6 +520,8 @@ class ClientRateForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["vehicle_type"].empty_label = "--- Select Type ---"
+        self.fields["fuel_product"].empty_label = "--- Select Fuel Product ---"
+        self.fields["fuel_product"].queryset = FuelProduct.objects.all().order_by("name")
 
 
 class DedicatedRateForm(forms.ModelForm):

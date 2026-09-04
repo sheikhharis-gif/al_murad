@@ -864,7 +864,7 @@ def client_rates(request, client_id):
     last_by_route = {}
     for r in rates:
         weight_key = format(r.weight_tons.normalize(), "f") if r.weight_tons is not None else ""
-        key = f"{r.route_id}|{r.vehicle_type_id or ''}|{weight_key}"
+        key = f"{r.route_id}|{r.fuel_product_id or ''}|{r.vehicle_type_id or ''}|{weight_key}"
         if key not in last_by_route:
             last_by_route[key] = {
                 "fuel_price": str(r.updated_fuel_price),
@@ -875,6 +875,12 @@ def client_rates(request, client_id):
     dedicated_rates = DedicatedRate.objects.filter(client=client).select_related("vehicle", "route")
     dedicated_form = DedicatedRateForm(auto_id="id_ded_%s")
     routes_distance = {r.id: str(r.distance_km) for r in Route.objects.all()}
+    latest_fuel_prices = {}
+    for fuel_rate in VendorFuelPrice.objects.select_related("product").order_by(
+        "product_id", "-effective_date", "-id"
+    ):
+        if fuel_rate.product_id not in latest_fuel_prices:
+            latest_fuel_prices[fuel_rate.product_id] = str(fuel_rate.fuel_price)
 
     return render(request, "clients/client_rates.html", {
         "client": client,
@@ -884,6 +890,7 @@ def client_rates(request, client_id):
         "dedicated_rates": dedicated_rates,
         "dedicated_form": dedicated_form,
         "routes_distance_json": json.dumps(routes_distance),
+        "latest_fuel_prices_json": json.dumps(latest_fuel_prices),
     })
 
 

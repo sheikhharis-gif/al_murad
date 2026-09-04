@@ -486,6 +486,9 @@ class Client(models.Model):
 class ClientRate(models.Model):
     client = models.ForeignKey(Client, on_delete=models.CASCADE, related_name="rates")
     route = models.ForeignKey("Route", on_delete=models.CASCADE, related_name="client_rates")
+    fuel_product = models.ForeignKey(
+        FuelProduct, on_delete=models.SET_NULL, null=True, blank=True, related_name="client_rates"
+    )
     current_fuel_price = models.DecimalField("Current Fuel Price", max_digits=10, decimal_places=2)
     current_rate = models.DecimalField("Current Rate", max_digits=12, decimal_places=2)
     effective_percent = models.DecimalField("Effective %", max_digits=5, decimal_places=2)
@@ -508,6 +511,7 @@ class ClientRate(models.Model):
             previous = ClientRate.objects.filter(
                 client=self.client,
                 route=self.route,
+                fuel_product=self.fuel_product,
                 vehicle_type=self.vehicle_type,
                 weight_tons=self.weight_tons,
             ).order_by("-effective_date", "-id").first()
