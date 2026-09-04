@@ -434,6 +434,12 @@ from .models import Expense
 from operations.models import Trip
 
 class ExpenseForm(forms.ModelForm):
+    trip = forms.ModelChoiceField(
+        queryset=Trip.objects.none(),
+        empty_label="--- Select Trip ---",
+        widget=forms.Select(attrs={'class': 'form-select', 'autofocus': 'autofocus'}),
+    )
+
     class Meta:
         model = Expense
         # Hum 'total_expense' ko nikaal rahe hain kyunki ye auto-save hota hai
@@ -448,6 +454,12 @@ class ExpenseForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.fields['trip'].queryset = Trip.objects.select_related(
+            'job__vehicle', 'route'
+        ).order_by('-trip_date', '-id')
+        self.fields['trip'].label_from_instance = lambda trip: (
+            f"TRIP #{trip.trip_no or f'{trip.pk:06d}'} | {trip.route.route_code}"
+        )
         
         # Baaki saari fields par loop chala kar bootstrap class add karna
         for name, field in self.fields.items():
