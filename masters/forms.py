@@ -368,6 +368,26 @@ class FuelProductForm(forms.ModelForm):
         return name
 
 
+class PsoFuelPriceForm(forms.Form):
+    """PSO's own Petrol/HSD price for a date - no supplier picker, since
+    this card only ever tracks PSO (get_or_create'd behind the scenes)."""
+    effective_date = forms.DateField(widget=forms.DateInput(attrs={"class": "form-control datepicker"}))
+    petrol_price = forms.DecimalField(
+        max_digits=10, decimal_places=2, required=False,
+        widget=forms.NumberInput(attrs={"class": "form-control", "step": "0.01", "placeholder": "Petrol"}),
+    )
+    hsd_price = forms.DecimalField(
+        max_digits=10, decimal_places=2, required=False,
+        widget=forms.NumberInput(attrs={"class": "form-control", "step": "0.01", "placeholder": "HSD"}),
+    )
+
+    def clean(self):
+        cleaned = super().clean()
+        if cleaned.get("petrol_price") is None and cleaned.get("hsd_price") is None:
+            raise forms.ValidationError("Enter at least one of Petrol or HSD price.")
+        return cleaned
+
+
 class FuelRateForm(forms.ModelForm):
     class Meta:
         model = VendorFuelPrice

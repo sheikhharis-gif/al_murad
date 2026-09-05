@@ -6,6 +6,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse
 from django.db.models import Sum, Count
 from django.db.models.deletion import ProtectedError
+from django.utils import timezone
 from datetime import date
 
 from .models import (
@@ -24,7 +25,7 @@ from .forms import (
     ExpenseForm, ClientRateForm,
     DriverSalaryForm,
     StaffAttendanceFormSet, StaffAccountEntryFormSet,
-    FuelProductForm, FuelRateForm, VendorFuelPriceFormSet,
+    FuelProductForm, PsoFuelPriceForm, VendorFuelPriceFormSet,
 )
 
 def _sorted_queryset(request, queryset, sort_fields, default_sort, default_order="asc"):
@@ -705,14 +706,38 @@ def fuel_product_delete(request, product_id):
 
 
 def fuel_rates(request):
+    # PSO + Petrol/HSD are fixed and hidden from the user entirely - there's
+    # no supplier picker on this page, just a date and the two prices.
+    pso_vendor = Vendor.objects.filter(name__iexact="PSO").first()
+    if not pso_vendor:
+        pso_vendor = Vendor.objects.create(name="PSO")
+    petrol_product = FuelProduct.objects.filter(name="PETROL").first()
+    if not petrol_product:
+        petrol_product = FuelProduct.objects.create(name="PETROL")
+    hsd_product = FuelProduct.objects.filter(name="HSD").first()
+    if not hsd_product:
+        hsd_product = FuelProduct.objects.create(name="HSD")
+
     if request.method == "POST":
-        form = FuelRateForm(request.POST)
-        if form.is_valid():
-            form.save()
-            messages.success(request, "Fuel rate added successfully.")
+        pso_form = PsoFuelPriceForm(request.POST)
+        if pso_form.is_valid():
+            eff_date = pso_form.cleaned_data["effective_date"]
+            petrol_price = pso_form.cleaned_data.get("petrol_price")
+            hsd_price = pso_form.cleaned_data.get("hsd_price")
+            if petrol_price is not None:
+                VendorFuelPrice.objects.update_or_create(
+                    vendor=pso_vendor, product=petrol_product, effective_date=eff_date,
+                    defaults={"fuel_price": petrol_price},
+                )
+            if hsd_price is not None:
+                VendorFuelPrice.objects.update_or_create(
+                    vendor=pso_vendor, product=hsd_product, effective_date=eff_date,
+                    defaults={"fuel_price": hsd_price},
+                )
+            messages.success(request, "PSO fuel price saved.")
             return redirect("fuel_rates")
     else:
-        form = FuelRateForm()
+        pso_form = PsoFuelPriceForm(initial={"effective_date": timezone.localdate()})
 
     rates = VendorFuelPrice.objects.select_related("vendor", "product").all()
     latest_ids = set()
@@ -723,30 +748,23 @@ def fuel_rates(request):
             latest_ids.add(rate.pk)
             seen.add(key)
 
-    # "Present Fuel Rate" = PSO only, pivoted so each effective date is one
-    # row with a column per fuel product - whatever was entered/updated last
-    # for a given date+product wins (ordering below puts it first).
-    pso_vendor = Vendor.objects.filter(name__iexact="PSO").first()
-    pso_products = []
-    pso_rows = []
-    if pso_vendor:
-        pso_products = list(
-            FuelProduct.objects.filter(vendor_prices__vendor=pso_vendor).distinct().order_by("name")
-        )
-        by_date = {}
-        for r in VendorFuelPrice.objects.filter(vendor=pso_vendor).order_by("-effective_date", "-id"):
-            row = by_date.setdefault(r.effective_date, {})
-            row.setdefault(r.product_id, r.fuel_price)
-        pso_rows = [
-            {"effective_date": eff_date, "prices": [row.get(p.id) for p in pso_products]}
-            for eff_date, row in sorted(by_date.items(), reverse=True)
-        ]
+    # "PSO Fuel Prices" pivot: each effective date is one row with a Petrol
+    # and HSD column - whatever was entered/updated last for a given
+    # date+product wins (ordering below puts it first).
+    pso_products = [petrol_product, hsd_product]
+    by_date = {}
+    for r in VendorFuelPrice.objects.filter(vendor=pso_vendor, product__in=pso_products).order_by("-effective_date", "-id"):
+        row = by_date.setdefault(r.effective_date, {})
+        row.setdefault(r.product_id, r.fuel_price)
+    pso_rows = [
+        {"effective_date": eff_date, "prices": [row.get(p.id) for p in pso_products]}
+        for eff_date, row in sorted(by_date.items(), reverse=True)
+    ]
 
     return render(request, "vendors/fuel_rates.html", {
-        "form": form,
+        "pso_form": pso_form,
         "rates": rates,
         "latest_ids": latest_ids,
-        "pso_vendor": pso_vendor,
         "pso_products": pso_products,
         "pso_rows": pso_rows,
     })
