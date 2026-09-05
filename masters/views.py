@@ -889,38 +889,17 @@ def client_rates(request, client_id):
 
     rates = ClientRate.objects.filter(client=client)
 
-    # Latest revision per route + vehicle type + weight. The add-rate form's
-    # JS uses this to auto-fill only when the full rate category matches.
-    last_by_route = {}
-    for r in rates:
-        weight_key = format(r.weight_tons.normalize(), "f") if r.weight_tons is not None else ""
-        key = f"{r.route_id}|{r.fuel_product_id or ''}|{r.vehicle_type_id or ''}|{weight_key}"
-        if key not in last_by_route:
-            last_by_route[key] = {
-                "fuel_price": str(r.updated_fuel_price),
-                "trip_cost": str(r.updated_trip_cost),
-                "effective_percent": str(r.effective_percent),
-            }
-
     dedicated_rates = DedicatedRate.objects.filter(client=client).select_related("vehicle", "route")
     dedicated_form = DedicatedRateForm(auto_id="id_ded_%s")
     routes_distance = {r.id: str(r.distance_km) for r in Route.objects.all()}
-    latest_fuel_prices = {}
-    for fuel_rate in VendorFuelPrice.objects.select_related("product").order_by(
-        "product_id", "-effective_date", "-id"
-    ):
-        if fuel_rate.product_id not in latest_fuel_prices:
-            latest_fuel_prices[fuel_rate.product_id] = str(fuel_rate.fuel_price)
 
     return render(request, "clients/client_rates.html", {
         "client": client,
         "form": form,
         "rates": rates,
-        "last_by_route_json": json.dumps(last_by_route),
         "dedicated_rates": dedicated_rates,
         "dedicated_form": dedicated_form,
         "routes_distance_json": json.dumps(routes_distance),
-        "latest_fuel_prices_json": json.dumps(latest_fuel_prices),
     })
 
 

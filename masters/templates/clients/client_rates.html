@@ -74,19 +74,10 @@
                         <label class="form-label small fw-bold">Eff. Date</label>
                         {{ form.effective_date }}
                     </div>
-                    <div class="col-md-1">
-                        <button type="submit" class="btn btn-primary w-100 fw-bold">
-                            <i class="bi bi-plus-lg"></i>
-                        </button>
-                    </div>
                 </div>
                 <div class="row g-2 align-items-end mt-1">
                     <div class="col-md-3">
-                        <label class="form-label small fw-bold">
-                            Current Fuel Price
-                            <i class="bi bi-info-circle text-muted" data-bs-toggle="tooltip" data-bs-placement="top"
-                               title="Auto-filled from the previous entry for this route, vehicle type, and weight - still editable if you need to correct it."></i>
-                        </label>
+                        <label class="form-label small fw-bold">Current Fuel Price</label>
                         {{ form.current_fuel_price }}
                     </div>
                     <div class="col-md-3">
@@ -100,6 +91,13 @@
                     <div class="col-md-3">
                         <label class="form-label small fw-bold">Updated Fuel Price</label>
                         {{ form.updated_fuel_price }}
+                    </div>
+                </div>
+                <div class="row g-2 mt-1">
+                    <div class="col-12 d-flex justify-content-end">
+                        <button type="submit" class="btn btn-primary px-4 fw-bold">
+                            <i class="bi bi-plus-lg me-1"></i>Add Entry
+                        </button>
                     </div>
                 </div>
             </form>
@@ -530,52 +528,9 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-    // Route already has a prior revision -> Current Fuel Price/Current Rate
-    // auto-fill from that revision's Updated Fuel Price/Updated Trip Cost
-    // and lock (matches "CLIENT RATE FILE.xlsx"). No prior revision -> both
-    // stay open for manual entry.
-    var lastByRoute = JSON.parse('{{ last_by_route_json|escapejs }}');
-    var latestFuelPrices = JSON.parse('{{ latest_fuel_prices_json|escapejs }}');
-    var routeSelect = document.getElementById('id_route');
-    var fuelProductSelect = document.getElementById('id_fuel_product');
-    var vehicleTypeSelect = document.getElementById('id_vehicle_type');
-    var weightTons = document.getElementById('id_weight_tons');
-    var curFuel = document.getElementById('id_current_fuel_price');
-    var curRate = document.getElementById('id_current_rate');
-    var effPct = document.getElementById('id_effective_percent');
-    var updatedFuel = document.getElementById('id_updated_fuel_price');
-
-    function rateCategoryKey() {
-        var weight = weightTons && weightTons.value.trim() ? String(parseFloat(weightTons.value)) : '';
-        return (routeSelect ? routeSelect.value : '') + '|' +
-            (fuelProductSelect ? fuelProductSelect.value : '') + '|' +
-            (vehicleTypeSelect ? vehicleTypeSelect.value : '') + '|' + weight;
-    }
-
-    function syncCurrentFields() {
-        if (!routeSelect || !curFuel || !curRate) return;
-        var info = lastByRoute[rateCategoryKey()];
-        if (info) {
-            curFuel.value = info.fuel_price;
-            curRate.value = info.trip_cost;
-            // Effective % carries over from the previous entry too - both
-            // fields below are convenience defaults, not locks, so the
-            // user can correct any of them by hand.
-            if (effPct) effPct.value = info.effective_percent;
-        } else {
-            var latestFuelPrice = fuelProductSelect && latestFuelPrices[fuelProductSelect.value];
-            curFuel.value = latestFuelPrice || '';
-            curRate.value = '';
-            if (updatedFuel) updatedFuel.value = latestFuelPrice || '';
-        }
-    }
-    if (routeSelect) {
-        routeSelect.addEventListener('change', syncCurrentFields);
-    }
-    if (vehicleTypeSelect) vehicleTypeSelect.addEventListener('change', syncCurrentFields);
-    if (fuelProductSelect) fuelProductSelect.addEventListener('change', syncCurrentFields);
-    if (weightTons) weightTons.addEventListener('input', syncCurrentFields);
-    syncCurrentFields();
+    // Current Fuel Price/Current Rate/Effective %/Updated Fuel Price are
+    // always manual entry - no auto-fill from a previous entry or from the
+    // latest known fuel price, no matter what data already exists.
 
     document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function (el) {
         new bootstrap.Tooltip(el);
