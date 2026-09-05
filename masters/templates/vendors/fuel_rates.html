@@ -16,43 +16,74 @@
     <div class="alert alert-danger border-0 rounded-3 py-2 small">{{ pso_form.non_field_errors.0|default:"Please fix the highlighted fields." }}</div>
     {% endif %}
 
-    <div class="card border-0 shadow-sm rounded-4 mb-4">
-        <div class="card-header bg-white border-0 pt-4 px-4">
-            <h5 class="fw-bold mb-0 text-primary"><i class="bi bi-fuel-pump-fill me-2"></i>PSO Fuel Prices</h5>
-        </div>
-        <form method="post">
-            {% csrf_token %}
-            <div class="table-responsive">
-                <table class="table align-middle mb-0 pso-fuel-table">
-                    <thead>
-                        <tr>
-                            <th>Effective Date</th>
-                            <th class="text-center">Petrol</th>
-                            <th class="text-center">HSD</th>
-                            <th style="width:56px"></th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr class="pso-add-row">
-                            <td>{{ pso_form.effective_date }}</td>
-                            <td>{{ pso_form.petrol_price }}</td>
-                            <td>{{ pso_form.hsd_price }}</td>
-                            <td class="text-center">
-                                <button type="submit" class="btn btn-primary btn-sm fw-bold"><i class="bi bi-plus-lg"></i></button>
-                            </td>
-                        </tr>
-                        {% for row in pso_rows %}
-                        <tr>
-                            <td class="fw-semibold">{{ row.effective_date|date:"j-M-y" }}</td>
-                            <td class="text-center">{{ row.prices.0|default_if_none:"--"|floatformat:2 }}</td>
-                            <td class="text-center">{{ row.prices.1|default_if_none:"--"|floatformat:2 }}</td>
-                            <td></td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+    <div class="row g-3 mb-4">
+        <div class="col-lg-6">
+            <div class="card border-0 shadow-sm rounded-4 h-100">
+                <div class="card-header bg-white border-0 pt-4 px-4">
+                    <h5 class="fw-bold mb-0 text-primary"><i class="bi bi-fuel-pump-fill me-2"></i>PSO Fuel Prices</h5>
+                </div>
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="table-responsive">
+                        <table class="table align-middle mb-0 pso-fuel-table">
+                            <thead>
+                                <tr>
+                                    <th>Effective Date</th>
+                                    <th class="text-center">Petrol</th>
+                                    <th class="text-center">HSD</th>
+                                    <th style="width:56px"></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr class="pso-add-row">
+                                    <td>{{ pso_form.effective_date }}</td>
+                                    <td>{{ pso_form.petrol_price }}</td>
+                                    <td>{{ pso_form.hsd_price }}</td>
+                                    <td class="text-center">
+                                        <button type="submit" class="btn btn-primary btn-sm fw-bold"><i class="bi bi-plus-lg"></i></button>
+                                    </td>
+                                </tr>
+                                {% for row in pso_rows %}
+                                <tr>
+                                    <td class="fw-semibold">{{ row.effective_date|date:"j-M-y" }}</td>
+                                    <td class="text-center">{{ row.prices.0|default_if_none:"--"|floatformat:2 }}</td>
+                                    <td class="text-center">{{ row.prices.1|default_if_none:"--"|floatformat:2 }}</td>
+                                    <td></td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </form>
             </div>
-        </form>
+        </div>
+
+        <div class="col-lg-6">
+            <div class="card border-0 shadow-sm rounded-4 h-100">
+                <div class="card-header bg-white border-0 pt-4 px-4 d-flex justify-content-between align-items-center">
+                    <h5 class="fw-bold mb-0 text-success"><i class="bi bi-cloud-arrow-down me-2"></i>Live Fuel Rates</h5>
+                    <a href="{% url 'fuel_rates' %}" class="btn btn-outline-success btn-sm"><i class="bi bi-arrow-clockwise me-1"></i>Refresh</a>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-success">
+                            <tr><th>Product</th><th class="text-center">Rate</th><th>Effective Date</th></tr>
+                        </thead>
+                        <tbody id="liveFuelRatesBody" data-api-url="https://fuel.trackmate.page/api/prices">
+                            {% for price in live_prices %}
+                            <tr>
+                                <td class="text-uppercase fw-semibold">{{ price.source }} - {{ price.product }}</td>
+                                <td class="text-center fw-bold">PKR {{ price.price_pkr|floatformat:2 }} / {{ price.unit }}</td>
+                                <td>{{ price.effective_date|default:"Latest available" }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="3" class="text-center py-4 text-muted">Live API is temporarily unavailable.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
     </div>
 
     <style>
@@ -90,4 +121,32 @@
         </div>
     </div>
 </div>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var body = document.getElementById('liveFuelRatesBody');
+    if (!body || body.querySelector('tr[data-live-rate]')) return;
+
+    fetch(body.dataset.apiUrl, {headers: {Accept: 'application/json'}})
+        .then(function (response) {
+            if (!response.ok) throw new Error('API request failed');
+            return response.json();
+        })
+        .then(function (payload) {
+            var prices = (payload.prices || []).filter(function (price) {
+                return price.price_pkr !== null && price.price_pkr !== undefined;
+            });
+            if (!prices.length) return;
+            body.innerHTML = prices.map(function (price) {
+                var date = price.effective_date || 'Latest available';
+                var rate = Number(price.price_pkr).toFixed(2);
+                return '<tr data-live-rate><td class="text-uppercase fw-semibold">' + price.source + ' - ' + price.product +
+                    '</td><td class="text-center fw-bold">PKR ' + rate + ' / ' + price.unit +
+                    '</td><td>' + date + '</td></tr>';
+            }).join('');
+        })
+        .catch(function () {
+            // Keep the server-rendered fallback message when the browser cannot reach the API.
+        });
+});
+</script>
 {% endblock %}
