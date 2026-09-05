@@ -176,6 +176,31 @@
             activeIndex = idx;
         }
 
+        // Typing a partial prefix (e.g. "khi-q") and moving on - blurring,
+        // tabbing, or hitting Enter without arrowing down to a suggestion -
+        // used to leave the raw partial text sitting in the box with nothing
+        // actually selected. Commit whatever the text currently prefix-matches
+        // so the full route name always ends up in the field.
+        function commitBestMatch() {
+            var typed = textInput.value.trim();
+            if (!typed) {
+                select.value = '';
+                return;
+            }
+            var current = options.filter(function (o) { return o.value === select.value; })[0];
+            if (current && current.textContent.trim().toUpperCase() === typed.toUpperCase()) {
+                textInput.value = current.textContent.trim();
+                return;
+            }
+            var q = typed.toUpperCase();
+            var match = options.filter(function (o) { return o.textContent.trim().toUpperCase().indexOf(q) === 0; })[0];
+            if (match) {
+                select.value = match.value;
+                textInput.value = match.textContent.trim();
+                select.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+        }
+
         textInput.addEventListener('input', function () {
             if (!textInput.value) {
                 select.value = '';
@@ -188,6 +213,7 @@
             renderList();
         });
         textInput.addEventListener('blur', function () {
+            commitBestMatch();
             setTimeout(closeList, 150);
         });
         textInput.addEventListener('keydown', function (e) {
@@ -204,6 +230,8 @@
                 if (activeIndex > -1 && items[activeIndex]) {
                     e.preventDefault();
                     items[activeIndex].dispatchEvent(new Event('mousedown'));
+                } else {
+                    commitBestMatch();
                 }
             } else if (e.key === 'Escape') {
                 closeList();

@@ -1,5 +1,4 @@
 import json
-from urllib.request import Request, urlopen
 from calendar import monthrange
 from urllib.parse import urlencode
 from django.contrib import messages
@@ -27,19 +26,6 @@ from .forms import (
     StaffAttendanceFormSet, StaffAccountEntryFormSet,
     FuelProductForm, FuelRateForm, VendorFuelPriceFormSet,
 )
-
-FUEL_PRICES_API_URL = "https://fuel.trackmate.page/api/prices"
-
-
-def _fetch_live_fuel_prices():
-    try:
-        request = Request(FUEL_PRICES_API_URL, headers={"User-Agent": "Al-Murad-Logistics/1.0"})
-        with urlopen(request, timeout=8) as response:
-            payload = json.loads(response.read().decode("utf-8"))
-        return [price for price in payload.get("prices", []) if price.get("price_pkr") is not None]
-    except Exception:
-        return []
-
 
 def _sorted_queryset(request, queryset, sort_fields, default_sort, default_order="asc"):
     sort_by = request.GET.get("sort_by", default_sort)
@@ -737,11 +723,32 @@ def fuel_rates(request):
             latest_ids.add(rate.pk)
             seen.add(key)
 
+    # "Present Fuel Rate" = PSO only, pivoted so each effective date is one
+    # row with a column per fuel product - whatever was entered/updated last
+    # for a given date+product wins (ordering below puts it first).
+    pso_vendor = Vendor.objects.filter(name__iexact="PSO").first()
+    pso_products = []
+    pso_rows = []
+    if pso_vendor:
+        pso_products = list(
+            FuelProduct.objects.filter(vendor_prices__vendor=pso_vendor).distinct().order_by("name")
+        )
+        by_date = {}
+        for r in VendorFuelPrice.objects.filter(vendor=pso_vendor).order_by("-effective_date", "-id"):
+            row = by_date.setdefault(r.effective_date, {})
+            row.setdefault(r.product_id, r.fuel_price)
+        pso_rows = [
+            {"effective_date": eff_date, "prices": [row.get(p.id) for p in pso_products]}
+            for eff_date, row in sorted(by_date.items(), reverse=True)
+        ]
+
     return render(request, "vendors/fuel_rates.html", {
         "form": form,
         "rates": rates,
         "latest_ids": latest_ids,
-        "live_prices": _fetch_live_fuel_prices(),
+        "pso_vendor": pso_vendor,
+        "pso_products": pso_products,
+        "pso_rows": pso_rows,
     })
 
 from django.shortcuts import render, redirect, get_object_or_404

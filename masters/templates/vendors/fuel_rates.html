@@ -49,32 +49,38 @@
     <div class="card border-0 shadow-sm rounded-4 mb-4">
         <div class="card-header bg-white border-0 pt-4 px-4 d-flex justify-content-between align-items-center">
             <div>
-                <h5 class="fw-bold mb-1 text-success"><i class="bi bi-cloud-arrow-down me-2"></i>Live Fuel Rates</h5>
-                <div class="text-muted small">Updated automatically from the fuel prices API when this page loads.</div>
+                <h5 class="fw-bold mb-0 text-primary"><i class="bi bi-fuel-pump-fill me-2"></i>PSO Fuel Prices</h5>
+                <div class="text-muted small">Whatever you last add below for PSO is what shows here as the present rate.</div>
             </div>
-            <a href="" class="btn btn-outline-success btn-sm"><i class="bi bi-arrow-clockwise me-1"></i>Refresh</a>
+            <button type="button" class="btn btn-primary btn-sm fw-bold" id="psoAddBtn" data-vendor-id="{{ pso_vendor.id|default:'' }}">
+                <i class="bi bi-plus-lg"></i>
+            </button>
         </div>
         <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0">
-                <thead class="table-success">
-                    <tr><th>Source</th><th>Product</th><th>City</th><th>Current Rate</th><th>Effective Date</th></tr>
-                </thead>
-                <tbody id="liveFuelRatesBody" data-api-url="https://fuel.trackmate.page/api/prices">
-                    {% for price in live_prices %}
+            <table class="table table-hover align-middle mb-0 pso-fuel-table">
+                <thead>
                     <tr>
-                        <td class="text-uppercase">{{ price.source }}</td>
-                        <td class="fw-semibold text-uppercase">{{ price.product }}</td>
-                        <td>{{ price.city|default:"All Cities" }}</td>
-                        <td class="fw-bold">PKR {{ price.price_pkr|floatformat:2 }} / {{ price.unit }}</td>
-                        <td>{{ price.effective_date|default:"Latest available" }}</td>
+                        <th>Effective Date</th>
+                        {% for p in pso_products %}<th class="text-center">{{ p.name|upper }}</th>{% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in pso_rows %}
+                    <tr>
+                        <td class="fw-semibold">{{ row.effective_date|date:"j-M-y" }}</td>
+                        {% for price in row.prices %}<td class="text-center">{{ price|default_if_none:"--"|floatformat:2 }}</td>{% endfor %}
                     </tr>
                     {% empty %}
-                    <tr><td colspan="5" class="text-center py-4 text-muted">Live API is temporarily unavailable. Manual rates are still available below.</td></tr>
+                    <tr><td colspan="{{ pso_products|length|add:1 }}" class="text-center py-4 text-muted">No PSO fuel prices recorded yet - add one below.</td></tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
     </div>
+
+    <style>
+        .pso-fuel-table thead th { background-color: #ed7d31; color: #fff; text-transform: uppercase; font-size: 0.75rem; border: none; }
+    </style>
 
     <div class="card border-0 shadow-sm rounded-4">
         <div class="card-header bg-white border-0 pt-4 px-4">
@@ -110,32 +116,20 @@
 </div>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-    var body = document.getElementById('liveFuelRatesBody');
-    if (!body || body.querySelector('tr[data-live-rate]')) return;
-
-    fetch(body.dataset.apiUrl, {headers: {Accept: 'application/json'}})
-        .then(function (response) {
-            if (!response.ok) throw new Error('API request failed');
-            return response.json();
-        })
-        .then(function (payload) {
-            var prices = (payload.prices || []).filter(function (price) {
-                return price.price_pkr !== null && price.price_pkr !== undefined;
-            });
-            if (!prices.length) return;
-            body.innerHTML = prices.map(function (price) {
-                var city = price.city || 'All Cities';
-                var date = price.effective_date || 'Latest available';
-                var rate = Number(price.price_pkr).toFixed(2);
-                return '<tr data-live-rate><td class="text-uppercase">' + price.source +
-                    '</td><td class="fw-semibold text-uppercase">' + price.product +
-                    '</td><td>' + city + '</td><td class="fw-bold">PKR ' + rate +
-                    ' / ' + price.unit + '</td><td>' + date + '</td></tr>';
-            }).join('');
-        })
-        .catch(function () {
-            // Keep the server-rendered fallback message when the browser cannot reach the API.
-        });
+    var psoAddBtn = document.getElementById('psoAddBtn');
+    if (!psoAddBtn) return;
+    psoAddBtn.addEventListener('click', function () {
+        var vendorSelect = document.getElementById('id_vendor');
+        var vendorId = this.dataset.vendorId;
+        if (vendorSelect && vendorId) {
+            vendorSelect.value = vendorId;
+            vendorSelect.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+        var addForm = document.querySelector('form');
+        if (addForm) addForm.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        var productSelect = document.getElementById('id_product');
+        if (productSelect) productSelect.focus();
+    });
 });
 </script>
 {% endblock %}

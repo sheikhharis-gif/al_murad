@@ -85,7 +85,7 @@
                         <label class="form-label small fw-bold">
                             Current Fuel Price
                             <i class="bi bi-info-circle text-muted" data-bs-toggle="tooltip" data-bs-placement="top"
-                               title="Auto-filled and locked once this route, vehicle type, and weight already has an entry. Only editable for the first entry."></i>
+                               title="Auto-filled from the previous entry for this route, vehicle type, and weight - still editable if you need to correct it."></i>
                         </label>
                         {{ form.current_fuel_price }}
                     </div>
@@ -107,18 +107,19 @@
             <div style="max-height: 400px; overflow-y: auto;">
                 <table class="table table-hover align-middle custom-table rate-table mb-0">
                     <colgroup>
-                        <col style="width:5%">
+                        <col style="width:10%">
                         <col style="width:8%">
                         <col style="width:8%">
                         <col style="width:6%">
-                        <col style="width:9%">
-                        <col style="width:8%">
-                        <col style="width:9%">
-                        <col style="width:8%">
-                        <col style="width:9%">
+                        <col style="width:6%">
                         <col style="width:7%">
-                        <col style="width:9%">
+                        <col style="width:7%">
+                        <col style="width:7%">
                         <col style="width:8%">
+                        <col style="width:8%">
+                        <col style="width:6%">
+                        <col style="width:8%">
+                        <col style="width:5%">
                         <col style="width:6%">
                     </colgroup>
                     <thead class="sticky-top">
@@ -557,21 +558,14 @@ document.addEventListener('DOMContentLoaded', function () {
         if (info) {
             curFuel.value = info.fuel_price;
             curRate.value = info.trip_cost;
-            curFuel.readOnly = true;
-            curRate.readOnly = true;
-            curFuel.classList.add('bg-light');
-            curRate.classList.add('bg-light');
-            // Effective % carries over from the previous entry too, but
-            // stays editable - it's a convenience default, not a lock.
+            // Effective % carries over from the previous entry too - both
+            // fields below are convenience defaults, not locks, so the
+            // user can correct any of them by hand.
             if (effPct) effPct.value = info.effective_percent;
         } else {
             var latestFuelPrice = fuelProductSelect && latestFuelPrices[fuelProductSelect.value];
             curFuel.value = latestFuelPrice || '';
             curRate.value = '';
-            curFuel.readOnly = Boolean(latestFuelPrice);
-            curRate.readOnly = false;
-            curFuel.classList.toggle('bg-light', Boolean(latestFuelPrice));
-            curRate.classList.remove('bg-light');
             if (updatedFuel) updatedFuel.value = latestFuelPrice || '';
         }
     }
