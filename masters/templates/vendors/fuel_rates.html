@@ -22,39 +22,46 @@
                 <div class="card-header bg-white border-0 pt-4 px-4">
                     <h5 class="fw-bold mb-0 text-primary"><i class="bi bi-fuel-pump-fill me-2"></i>PSO Fuel Prices</h5>
                 </div>
-                <form method="post">
-                    {% csrf_token %}
-                    <div class="table-responsive">
-                        <table class="table align-middle mb-0 pso-fuel-table">
-                            <thead>
-                                <tr>
-                                    <th>Effective Date</th>
-                                    <th class="text-center">Petrol</th>
-                                    <th class="text-center">HSD</th>
-                                    <th style="width:56px"></th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr class="pso-add-row">
-                                    <td>{{ pso_form.effective_date }}</td>
-                                    <td>{{ pso_form.petrol_price }}</td>
-                                    <td>{{ pso_form.hsd_price }}</td>
-                                    <td class="text-center">
-                                        <button type="submit" class="btn btn-primary btn-sm fw-bold"><i class="bi bi-plus-lg"></i></button>
-                                    </td>
-                                </tr>
-                                {% for row in pso_rows %}
-                                <tr>
-                                    <td class="fw-semibold">{{ row.effective_date|date:"j-M-y" }}</td>
-                                    <td class="text-center">{{ row.prices.0|default_if_none:"--"|floatformat:2 }}</td>
-                                    <td class="text-center">{{ row.prices.1|default_if_none:"--"|floatformat:2 }}</td>
-                                    <td></td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                </form>
+                <div class="px-4 pt-3">
+                    <form method="post" class="row g-2 align-items-end bg-light p-3 rounded-4 border border-light-subtle">
+                        {% csrf_token %}
+                        <div class="col-md-4">
+                            <label class="form-label small fw-bold">Fuel Product</label>
+                            {{ pso_form.product }}{{ pso_form.product.errors }}
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold">Price</label>
+                            {{ pso_form.fuel_price }}{{ pso_form.fuel_price.errors }}
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold">Effective Date</label>
+                            {{ pso_form.effective_date }}
+                        </div>
+                        <div class="col-md-2">
+                            <button type="submit" class="btn btn-primary w-100 fw-bold"><i class="bi bi-plus-lg me-1"></i>Add</button>
+                        </div>
+                    </form>
+                </div>
+                <div class="table-responsive">
+                    <table class="table align-middle mb-0 pso-fuel-table">
+                        <thead>
+                            <tr>
+                                <th>Effective Date</th>
+                                {% for p in pso_products %}<th class="text-center">{{ p.name|upper }}</th>{% endfor %}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in pso_rows %}
+                            <tr>
+                                <td class="fw-semibold">{{ row.effective_date|date:"j-M-y" }}</td>
+                                {% for price in row.prices %}<td class="text-center">{{ price|default_if_none:"--"|floatformat:2 }}</td>{% endfor %}
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="{{ pso_products|length|add:1 }}" class="text-center py-4 text-muted">No PSO fuel prices recorded yet - add one above.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
 
@@ -88,7 +95,6 @@
 
     <style>
         .pso-fuel-table thead th { background-color: #ed7d31; color: #fff; text-transform: uppercase; font-size: 0.75rem; border: none; }
-        .pso-add-row td { background-color: #fbfbfd; }
     </style>
 
     <div class="card border-0 shadow-sm rounded-4">
