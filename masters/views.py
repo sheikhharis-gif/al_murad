@@ -912,7 +912,7 @@ def client_rates(request, client_id):
     client = get_object_or_404(Client, id=client_id)
 
     if request.method == "POST":
-        form = ClientRateForm(request.POST)
+        form = ClientRateForm(request.POST, client=client)
         if form.is_valid():
             rate = form.save(commit=False)
             rate.client = client
@@ -920,7 +920,7 @@ def client_rates(request, client_id):
             messages.success(request, "Rate entry added successfully.")
             return redirect("client_rates", client_id=client.id)
     else:
-        form = ClientRateForm()
+        form = ClientRateForm(client=client)
 
     rates = ClientRate.objects.filter(client=client)
 
@@ -942,12 +942,13 @@ def client_rate_edit(request, client_id, rate_id):
     client = get_object_or_404(Client, id=client_id)
     rate = get_object_or_404(ClientRate, id=rate_id, client=client)
     if request.method == "POST":
-        form = ClientRateForm(request.POST, instance=rate)
+        form = ClientRateForm(request.POST, instance=rate, client=client)
         if form.is_valid():
             form.save()
             messages.success(request, "Rate entry updated successfully.")
         else:
-            messages.error(request, "Could not update that rate entry - check the highlighted field(s).")
+            errors = " ".join(e for errs in form.errors.values() for e in errs)
+            messages.error(request, errors or "Could not update that rate entry - check the highlighted field(s).")
     return redirect("client_rates", client_id=client.id)
 
 

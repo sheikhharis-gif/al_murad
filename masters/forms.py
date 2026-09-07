@@ -539,11 +539,34 @@ class ClientRateForm(forms.ModelForm):
             "effective_date": forms.DateInput(attrs={"class": "form-control datepicker"}),
         }
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, client=None, **kwargs):
         super().__init__(*args, **kwargs)
+        self.client = client or getattr(self.instance, "client", None)
         self.fields["vehicle_type"].empty_label = "--- Select Type ---"
         self.fields["fuel_product"].empty_label = "--- Select Fuel Product ---"
         self.fields["fuel_product"].queryset = FuelProduct.objects.all().order_by("name")
+
+    def clean(self):
+        cleaned = super().clean()
+        route = cleaned.get("route")
+        effective_date = cleaned.get("effective_date")
+        if self.client and route and effective_date:
+            dupes = ClientRate.objects.filter(
+                client=self.client,
+                route=route,
+                fuel_product=cleaned.get("fuel_product"),
+                vehicle_type=cleaned.get("vehicle_type"),
+                weight_tons=cleaned.get("weight_tons"),
+                effective_date=effective_date,
+            )
+            if self.instance.pk:
+                dupes = dupes.exclude(pk=self.instance.pk)
+            if dupes.exists():
+                raise forms.ValidationError(
+                    "A rate entry for this route, fuel product, vehicle type, and weight already "
+                    "exists on this date - edit that entry instead of adding a duplicate."
+                )
+        return cleaned
 
 
 class DedicatedRateForm(forms.ModelForm):
