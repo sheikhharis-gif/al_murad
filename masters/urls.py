@@ -46,6 +46,7 @@ urlpatterns = [
     path("vendors/fuel-products/<int:product_id>/edit/", views.fuel_product_edit, name="fuel_product_edit"),
     path("vendors/fuel-products/<int:product_id>/delete/", views.fuel_product_delete, name="fuel_product_delete"),
     path("vendors/fuel-rates/", views.fuel_rates, name="fuel_rates"),
+    path("vendors/fuel-rates/pso/<str:effective_date>/delete/", views.pso_fuel_price_delete, name="pso_fuel_price_delete"),
     # CLIENTS
     path("clients/", views.client_list, name="client_list"),
     path("clients/add/", views.client_add, name="client_add"),

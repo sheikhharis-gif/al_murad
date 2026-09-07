@@ -369,21 +369,23 @@ class FuelProductForm(forms.ModelForm):
 
 
 class PsoFuelPriceForm(forms.Form):
-    """PSO is fixed and hidden (no supplier picker) - the user just picks
-    which fuel product this price is for and enters the price/date."""
+    """PSO is fixed and hidden (no supplier picker) - just a date plus the
+    two fuel prices, HSD then Petrol."""
     effective_date = forms.DateField(widget=forms.DateInput(attrs={"class": "form-control datepicker"}))
-    product = forms.ModelChoiceField(
-        queryset=FuelProduct.objects.all(),
-        widget=forms.Select(attrs={"class": "form-select"}),
+    hsd_price = forms.DecimalField(
+        max_digits=10, decimal_places=2, required=False,
+        widget=forms.NumberInput(attrs={"class": "form-control", "step": "0.01", "placeholder": "e.g. 500.00"}),
     )
-    fuel_price = forms.DecimalField(
-        max_digits=10, decimal_places=2,
+    petrol_price = forms.DecimalField(
+        max_digits=10, decimal_places=2, required=False,
         widget=forms.NumberInput(attrs={"class": "form-control", "step": "0.01", "placeholder": "e.g. 300.00"}),
     )
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.fields["product"].empty_label = "--- Select Fuel Product ---"
+    def clean(self):
+        cleaned = super().clean()
+        if cleaned.get("hsd_price") is None and cleaned.get("petrol_price") is None:
+            raise forms.ValidationError("Enter at least one of HSD or Petrol price.")
+        return cleaned
 
 
 class FuelRateForm(forms.ModelForm):

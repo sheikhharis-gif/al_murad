@@ -23,21 +23,21 @@
                     <h5 class="fw-bold mb-0 text-primary"><i class="bi bi-fuel-pump-fill me-2"></i>PSO Fuel Prices</h5>
                 </div>
                 <div class="px-4 pt-3">
-                    <form method="post" class="row g-2 align-items-end bg-light p-3 rounded-4 border border-light-subtle">
+                    <form method="post" id="psoForm" class="row g-2 align-items-end bg-light p-3 rounded-4 border border-light-subtle">
                         {% csrf_token %}
-                        <div class="col-md-4">
-                            <label class="form-label small fw-bold">Fuel Product</label>
-                            {{ pso_form.product }}{{ pso_form.product.errors }}
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label small fw-bold">Price</label>
-                            {{ pso_form.fuel_price }}{{ pso_form.fuel_price.errors }}
-                        </div>
                         <div class="col-md-3">
                             <label class="form-label small fw-bold">Effective Date</label>
                             {{ pso_form.effective_date }}
                         </div>
-                        <div class="col-md-2">
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold">HSD</label>
+                            {{ pso_form.hsd_price }}
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold">Petrol</label>
+                            {{ pso_form.petrol_price }}
+                        </div>
+                        <div class="col-md-3">
                             <button type="submit" class="btn btn-primary w-100 fw-bold"><i class="bi bi-plus-lg me-1"></i>Add</button>
                         </div>
                     </form>
@@ -47,17 +47,38 @@
                         <thead>
                             <tr>
                                 <th>Effective Date</th>
-                                {% for p in pso_products %}<th class="text-center">{{ p.name|upper }}</th>{% endfor %}
+                                <th class="text-center">HSD</th>
+                                <th class="text-center">Petrol</th>
+                                <th style="width:70px"></th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for row in pso_rows %}
                             <tr>
                                 <td class="fw-semibold">{{ row.effective_date|date:"j-M-y" }}</td>
-                                {% for price in row.prices %}<td class="text-center">{{ price|default_if_none:"--"|floatformat:2 }}</td>{% endfor %}
+                                <td class="text-center">{{ row.hsd|default_if_none:"--"|floatformat:2 }}</td>
+                                <td class="text-center">{{ row.petrol|default_if_none:"--"|floatformat:2 }}</td>
+                                <td class="text-center">
+                                    <div class="btn-group btn-group-sm shadow-sm rounded-2 overflow-hidden bg-white border">
+                                        <button type="button" class="btn btn-sm btn-white text-warning border-end pso-edit-btn"
+                                            data-date="{{ row.effective_date|date:'Y-m-d' }}"
+                                            data-hsd="{{ row.hsd|default_if_none:'' }}"
+                                            data-petrol="{{ row.petrol|default_if_none:'' }}"
+                                            title="Edit">
+                                            <i class="bi bi-pencil-square"></i>
+                                        </button>
+                                        <form method="post" action="{% url 'pso_fuel_price_delete' row.effective_date|date:'Y-m-d' %}" class="d-inline">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-sm btn-white text-danger" title="Delete"
+                                                onclick="return confirm('Delete PSO fuel prices for {{ row.effective_date|date:'j-M-y' }}?')">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </form>
+                                    </div>
+                                </td>
                             </tr>
                             {% empty %}
-                            <tr><td colspan="{{ pso_products|length|add:1 }}" class="text-center py-4 text-muted">No PSO fuel prices recorded yet - add one above.</td></tr>
+                            <tr><td colspan="4" class="text-center py-4 text-muted">No PSO fuel prices recorded yet - add one above.</td></tr>
                             {% endfor %}
                         </tbody>
                     </table>
@@ -79,7 +100,7 @@
                         <tbody id="liveFuelRatesBody" data-api-url="https://fuel.trackmate.page/api/prices">
                             {% for price in live_prices %}
                             <tr>
-                                <td class="text-uppercase fw-semibold">{{ price.source }} - {{ price.product }}</td>
+                                <td class="text-uppercase fw-semibold">{{ price.source }} - {{ price.product }}{% if price.city %} {{ price.city|upper }}{% endif %}</td>
                                 <td class="text-center fw-bold">PKR {{ price.price_pkr|floatformat:2 }} / {{ price.unit }}</td>
                                 <td>{{ price.effective_date|default:"Latest available" }}</td>
                             </tr>
@@ -95,42 +116,35 @@
 
     <style>
         .pso-fuel-table thead th { background-color: #ed7d31; color: #fff; text-transform: uppercase; font-size: 0.75rem; border: none; }
+        .btn-white { background-color: #fff; border: none; }
+        .btn-white:hover { background-color: #f8fafc; }
     </style>
-
-    <div class="card border-0 shadow-sm rounded-4">
-        <div class="card-header bg-white border-0 pt-4 px-4">
-            <h5 class="fw-bold mb-0 text-primary">Fuel Rate History</h5>
-        </div>
-        <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0">
-                <thead class="table-light">
-                    <tr>
-                        <th>Fuel Product</th>
-                        <th>Fuel Rate</th>
-                        <th>Effective Date</th>
-                        <th>Status</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for rate in rates %}
-                    <tr>
-                        <td>{{ rate.product.name }}</td>
-                        <td class="fw-bold">{{ rate.fuel_price|floatformat:2 }}</td>
-                        <td>{{ rate.effective_date|date:"j-M-y" }}</td>
-                        <td>{% if rate.pk in latest_ids %}<span class="badge bg-success">PRESENT</span>{% else %}<span class="text-muted small">Previous</span>{% endif %}</td>
-                    </tr>
-                    {% empty %}
-                    <tr><td colspan="4" class="text-center py-4 text-muted">No fuel rates recorded yet.</td></tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    </div>
 </div>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+    // ===== PSO Fuel Prices: Edit fills the add-form above (which upserts
+    // by date), so saving overwrites that date's entry instead of adding a
+    // new one. =====
+    var effDateInput = document.getElementById('id_effective_date');
+    var hsdInput = document.getElementById('id_hsd_price');
+    var petrolInput = document.getElementById('id_petrol_price');
+    document.querySelectorAll('.pso-edit-btn').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            if (effDateInput) effDateInput.value = this.dataset.date;
+            if (hsdInput) hsdInput.value = this.dataset.hsd;
+            if (petrolInput) petrolInput.value = this.dataset.petrol;
+            var form = document.getElementById('psoForm');
+            if (form) form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+
+    // ===== Live Fuel Rates: re-fetch fresh data client-side, keeping only
+    // HSD/Petrol, PSO limited to Karachi, HSD group then Petrol group. =====
     var body = document.getElementById('liveFuelRatesBody');
     if (!body || body.querySelector('tr[data-live-rate]')) return;
+
+    var WANTED = ['HSD', 'PETROL'];
+    var ORDER = { HSD: 0, PETROL: 1 };
 
     fetch(body.dataset.apiUrl, {headers: {Accept: 'application/json'}})
         .then(function (response) {
@@ -138,14 +152,28 @@ document.addEventListener('DOMContentLoaded', function () {
             return response.json();
         })
         .then(function (payload) {
-            var prices = (payload.prices || []).filter(function (price) {
-                return price.price_pkr !== null && price.price_pkr !== undefined;
+            var byKey = {};
+            (payload.prices || []).forEach(function (price) {
+                if (price.price_pkr === null || price.price_pkr === undefined) return;
+                var product = (price.product || '').trim().toUpperCase();
+                if (WANTED.indexOf(product) === -1) return;
+                var source = (price.source || '').trim().toUpperCase();
+                var city = (price.city || '').trim();
+                if (source === 'PSO' && city && city.toUpperCase() !== 'KARACHI') return;
+                var key = product + '|' + source;
+                if (!(key in byKey)) byKey[key] = price;
+            });
+            var prices = Object.keys(byKey).map(function (k) { return byKey[k]; }).sort(function (a, b) {
+                var ap = (a.product || '').trim().toUpperCase(), bp = (b.product || '').trim().toUpperCase();
+                if (ORDER[ap] !== ORDER[bp]) return ORDER[ap] - ORDER[bp];
+                return (a.source || '').toUpperCase() < (b.source || '').toUpperCase() ? -1 : 1;
             });
             if (!prices.length) return;
             body.innerHTML = prices.map(function (price) {
                 var date = price.effective_date || 'Latest available';
                 var rate = Number(price.price_pkr).toFixed(2);
-                return '<tr data-live-rate><td class="text-uppercase fw-semibold">' + price.source + ' - ' + price.product +
+                var city = price.city ? ' ' + String(price.city).toUpperCase() : '';
+                return '<tr data-live-rate><td class="text-uppercase fw-semibold">' + price.source + ' - ' + price.product + city +
                     '</td><td class="text-center fw-bold">PKR ' + rate + ' / ' + price.unit +
                     '</td><td>' + date + '</td></tr>';
             }).join('');
