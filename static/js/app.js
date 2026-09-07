@@ -202,6 +202,13 @@
         }
 
         textInput.addEventListener('input', function () {
+            // Route codes are always uppercase - force it live instead of
+            // just at commit time, so the box never shows lowercase while
+            // typing. Cursor position is preserved like data-uppercase does.
+            var start = textInput.selectionStart, end = textInput.selectionEnd;
+            textInput.value = textInput.value.toUpperCase();
+            if (start !== null) textInput.setSelectionRange(start, end);
+
             if (!textInput.value) {
                 select.value = '';
                 select.dispatchEvent(new Event('change', { bubbles: true }));
