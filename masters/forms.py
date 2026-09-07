@@ -371,7 +371,9 @@ class FuelProductForm(forms.ModelForm):
 class PsoFuelPriceForm(forms.Form):
     """PSO is fixed and hidden (no supplier picker) - just a date plus the
     two fuel prices, HSD then Petrol."""
-    effective_date = forms.DateField(widget=forms.DateInput(attrs={"class": "form-control datepicker"}))
+    effective_date = forms.DateField(widget=forms.DateInput(attrs={
+        "class": "form-control datepicker", "autofocus": "autofocus",
+    }))
     hsd_price = forms.DecimalField(
         max_digits=10, decimal_places=2, required=False,
         widget=forms.NumberInput(attrs={"class": "form-control", "step": "0.01", "placeholder": "e.g. 500.00"}),

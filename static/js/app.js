@@ -283,6 +283,13 @@
                     // garbling the value and making flatpickr land on the
                     // wrong date. Select the existing text on focus so any
                     // typing cleanly replaces it.
+                    // flatpickr hides the original input and builds this
+                    // altInput after load, so a plain HTML autofocus attr on
+                    // the original element never lands - focus it here instead.
+                    if (el.hasAttribute('autofocus')) {
+                        setTimeout(function () { instance.altInput.focus(); }, 0);
+                    }
+
                     instance.altInput.addEventListener('focus', function () {
                         instance.altInput.select();
                     });
