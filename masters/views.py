@@ -1,14 +1,17 @@
 import json
+import re
+from decimal import Decimal
 from urllib.request import Request, urlopen
 from calendar import monthrange
 from urllib.parse import urlencode
+from bs4 import BeautifulSoup
 from django.contrib import messages
 from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse
 from django.db.models import Sum, Count
 from django.db.models.deletion import ProtectedError
 from django.utils import timezone
-from datetime import date
+from datetime import date, datetime
 
 from .models import (
     Staff, Vehicle, VehicleType, Wheeler, City, Route,
@@ -29,15 +32,59 @@ from .forms import (
     FuelProductForm, PsoFuelPriceForm, VendorFuelPriceFormSet,
 )
 
-FUEL_PRICES_API_URL = "https://fuel.trackmate.page/api/prices"
+PSO_ARCHIVE_URL = "https://psopk.com/fuel-prices/pol/archives"
+
+# PSO's own site labels -> the display label we use everywhere else.
+PSO_OFFICIAL_PRODUCTS = {
+    "PREMIER EURO 5": "Premier Euro5",
+    "HI-CETANE DIESEL EURO 5": "Hi-Cetane Diesel Euro5",
+}
 
 
 def _fetch_live_fuel_prices():
+    """Scrapes PSO's own published price archive for the two products this
+    client actually bills against - "Live Fuel Rates" only ever needs to
+    show these two, not a generic multi-supplier feed. The first accordion
+    entry on the page is always the latest effective date."""
     try:
-        request = Request(FUEL_PRICES_API_URL, headers={"User-Agent": "Al-Murad-Logistics/1.0"})
+        request = Request(PSO_ARCHIVE_URL, headers={"User-Agent": "Mozilla/5.0 (Al-Murad-Logistics)"})
         with urlopen(request, timeout=8) as response:
-            payload = json.loads(response.read().decode("utf-8"))
-        return [price for price in payload.get("prices", []) if price.get("price_pkr") is not None]
+            html = response.read().decode("utf-8", errors="ignore")
+
+        soup = BeautifulSoup(html, "html.parser")
+        first_item = soup.select_one("ul[uk-accordion] > li")
+        if not first_item:
+            return []
+
+        eff_date = None
+        title = first_item.select_one(".uk-accordion-title")
+        if title:
+            match = re.search(r"Effective From:\s*(.+)", title.get_text(strip=True))
+            if match:
+                try:
+                    eff_date = datetime.strptime(match.group(1).strip(), "%B %d, %Y").date()
+                except ValueError:
+                    eff_date = None
+
+        prices = []
+        for row in first_item.select("table.uk-table tbody tr"):
+            cells = row.find_all("td")
+            if len(cells) != 2:
+                continue
+            name = cells[0].get_text(strip=True).upper()
+            label = PSO_OFFICIAL_PRODUCTS.get(name)
+            if not label:
+                continue
+            price_match = re.search(r"\d+(?:\.\d+)?", cells[1].get_text(strip=True))
+            if not price_match:
+                continue
+            prices.append({
+                "product": label,
+                "price_pkr": Decimal(price_match.group(0)),
+                "effective_date": eff_date,
+                "unit": "litre",
+            })
+        return prices
     except Exception:
         return []
 
@@ -719,27 +766,6 @@ def fuel_product_delete(request, product_id):
     return redirect("fuel_product_config")
 
 
-def _present_live_prices(prices):
-    """Only HSD/Petrol matter here, one row per source - HSD group first,
-    then Petrol, each ordered PAKWHEELS/PSO/SHELL. PSO reports per-city, so
-    only its Karachi rate is kept; other sources report one national rate."""
-    wanted = {"HSD", "PETROL"}
-    order = {"HSD": 0, "PETROL": 1}
-    by_key = {}
-    for p in prices:
-        product = (p.get("product") or "").strip().upper()
-        if product not in wanted:
-            continue
-        source = (p.get("source") or "").strip().upper()
-        city = (p.get("city") or "").strip()
-        if source == "PSO" and city and city.upper() != "KARACHI":
-            continue
-        by_key.setdefault((product, source), p)
-    return sorted(
-        by_key.values(),
-        key=lambda p: (order.get((p.get("product") or "").strip().upper(), 99), (p.get("source") or "").strip().upper()),
-    )
-
 
 def fuel_rates(request):
     # PSO is fixed and hidden from the user entirely - there's no supplier
@@ -794,7 +820,7 @@ def fuel_rates(request):
         "pso_form": pso_form,
         "pso_products": pso_products,
         "pso_rows": pso_rows,
-        "live_prices": _present_live_prices(_fetch_live_fuel_prices()),
+        "live_prices": _fetch_live_fuel_prices(),
     })
 
 
