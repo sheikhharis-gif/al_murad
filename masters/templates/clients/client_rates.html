@@ -79,7 +79,11 @@
                 </div>
                 <div class="row g-2 align-items-end mt-1">
                     <div class="col-md-3">
-                        <label class="form-label small fw-bold">Current Fuel Price</label>
+                        <label class="form-label small fw-bold">
+                            Current Fuel Price
+                            <i class="bi bi-info-circle text-muted" data-bs-toggle="tooltip" data-bs-placement="top"
+                               title="Auto-filled from the previous entry for this route/vehicle type/weight, or the latest known fuel price - still fully editable."></i>
+                        </label>
                         {{ form.current_fuel_price }}
                     </div>
                     <div class="col-md-3">
@@ -530,9 +534,54 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-    // Current Fuel Price/Current Rate/Effective %/Updated Fuel Price are
-    // always manual entry - no auto-fill from a previous entry or from the
-    // latest known fuel price, no matter what data already exists.
+    // Route already has a prior revision -> Current Fuel Price/Current Rate/
+    // Effective % show that revision's Updated Fuel Price/Updated Trip Cost/
+    // Effective % as a starting point. No prior revision -> Current Fuel
+    // Price falls back to the latest known price for the chosen Fuel
+    // Product (now includes PSO Fuel Prices entries). Either way these are
+    // just starting values, not locks - every field stays fully editable.
+    var lastByRoute = JSON.parse('{{ last_by_route_json|escapejs }}');
+    var latestFuelPrices = JSON.parse('{{ latest_fuel_prices_json|escapejs }}');
+    var routeSelect = document.getElementById('id_route');
+    var fuelProductSelect = document.getElementById('id_fuel_product');
+    var vehicleTypeSelect = document.getElementById('id_vehicle_type');
+    var weightTons = document.getElementById('id_weight_tons');
+    var curFuel = document.getElementById('id_current_fuel_price');
+    var curRate = document.getElementById('id_current_rate');
+    var effPct = document.getElementById('id_effective_percent');
+    var updatedFuel = document.getElementById('id_updated_fuel_price');
+
+    function rateCategoryKey() {
+        var weight = weightTons && weightTons.value.trim() ? String(parseFloat(weightTons.value)) : '';
+        return (routeSelect ? routeSelect.value : '') + '|' +
+            (fuelProductSelect ? fuelProductSelect.value : '') + '|' +
+            (vehicleTypeSelect ? vehicleTypeSelect.value : '') + '|' + weight;
+    }
+
+    function syncCurrentFields() {
+        if (!routeSelect || !curFuel || !curRate) return;
+        // Never overwrite something the user already typed by hand.
+        if (curFuel.dataset.touched || curRate.dataset.touched) return;
+        var info = lastByRoute[rateCategoryKey()];
+        if (info) {
+            curFuel.value = info.fuel_price;
+            curRate.value = info.trip_cost;
+            if (effPct && !effPct.dataset.touched) effPct.value = info.effective_percent;
+        } else {
+            var latestFuelPrice = fuelProductSelect && latestFuelPrices[fuelProductSelect.value];
+            curFuel.value = latestFuelPrice || '';
+            if (updatedFuel && !updatedFuel.dataset.touched) updatedFuel.value = latestFuelPrice || '';
+        }
+    }
+    [curFuel, curRate, effPct, updatedFuel].forEach(function (el) {
+        if (!el) return;
+        el.addEventListener('input', function () { el.dataset.touched = '1'; });
+    });
+    if (routeSelect) routeSelect.addEventListener('change', syncCurrentFields);
+    if (vehicleTypeSelect) vehicleTypeSelect.addEventListener('change', syncCurrentFields);
+    if (fuelProductSelect) fuelProductSelect.addEventListener('change', syncCurrentFields);
+    if (weightTons) weightTons.addEventListener('input', syncCurrentFields);
+    syncCurrentFields();
 
     document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function (el) {
         new bootstrap.Tooltip(el);
