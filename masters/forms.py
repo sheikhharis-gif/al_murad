@@ -370,27 +370,24 @@ class FuelProductForm(forms.ModelForm):
 
 class PsoFuelPriceForm(forms.Form):
     """PSO is fixed and hidden (no supplier picker) - just a date plus the
-    three fuel prices, HSD/Petrol/Diesel."""
+    two fuel prices the client actually bills against: Premier Euro5 and
+    Hi-Cetane Diesel Euro5."""
     effective_date = forms.DateField(widget=forms.DateInput(attrs={
         "class": "form-control datepicker", "autofocus": "autofocus",
     }))
-    hsd_price = forms.DecimalField(
+    premier_price = forms.DecimalField(
         max_digits=10, decimal_places=2, required=False,
-        widget=forms.NumberInput(attrs={"class": "form-control", "step": "0.01", "placeholder": "e.g. 500.00"}),
+        widget=forms.NumberInput(attrs={"class": "form-control", "step": "0.01", "placeholder": "e.g. 391.22"}),
     )
-    petrol_price = forms.DecimalField(
+    hi_cetane_price = forms.DecimalField(
         max_digits=10, decimal_places=2, required=False,
-        widget=forms.NumberInput(attrs={"class": "form-control", "step": "0.01", "placeholder": "e.g. 300.00"}),
-    )
-    diesel_price = forms.DecimalField(
-        max_digits=10, decimal_places=2, required=False,
-        widget=forms.NumberInput(attrs={"class": "form-control", "step": "0.01", "placeholder": "e.g. 393.04"}),
+        widget=forms.NumberInput(attrs={"class": "form-control", "step": "0.01", "placeholder": "e.g. 421.45"}),
     )
 
     def clean(self):
         cleaned = super().clean()
-        if not any(cleaned.get(f) is not None for f in ("hsd_price", "petrol_price", "diesel_price")):
-            raise forms.ValidationError("Enter at least one of HSD, Petrol, or Diesel price.")
+        if cleaned.get("premier_price") is None and cleaned.get("hi_cetane_price") is None:
+            raise forms.ValidationError("Enter at least one of Premier Euro5 or Hi-Cetane Diesel Euro5 price.")
         return cleaned
 
 

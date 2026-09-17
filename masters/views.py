@@ -743,28 +743,25 @@ def _present_live_prices(prices):
 
 def fuel_rates(request):
     # PSO is fixed and hidden from the user entirely - there's no supplier
-    # picker on this page, just HSD/Petrol/Diesel prices and a date.
+    # picker on this page, just the two products the client actually bills
+    # against (Premier Euro5 / Hi-Cetane Diesel Euro5) and a date.
     pso_vendor = Vendor.objects.filter(name__iexact="PSO").first()
     if not pso_vendor:
         pso_vendor = Vendor.objects.create(name="PSO")
-    hsd_product = FuelProduct.objects.filter(name="HSD").first()
-    if not hsd_product:
-        hsd_product = FuelProduct.objects.create(name="HSD")
-    petrol_product = FuelProduct.objects.filter(name="PETROL").first()
-    if not petrol_product:
-        petrol_product = FuelProduct.objects.create(name="PETROL")
-    diesel_product = FuelProduct.objects.filter(name="DIESEL").first()
-    if not diesel_product:
-        diesel_product = FuelProduct.objects.create(name="DIESEL")
+    premier_product = FuelProduct.objects.filter(name="PREMIER EURO5").first()
+    if not premier_product:
+        premier_product = FuelProduct.objects.create(name="PREMIER EURO5")
+    hi_cetane_product = FuelProduct.objects.filter(name="HI-CETANE DIESEL EURO5").first()
+    if not hi_cetane_product:
+        hi_cetane_product = FuelProduct.objects.create(name="HI-CETANE DIESEL EURO5")
 
     if request.method == "POST":
         pso_form = PsoFuelPriceForm(request.POST)
         if pso_form.is_valid():
             eff_date = pso_form.cleaned_data["effective_date"]
             for product, price in (
-                (hsd_product, pso_form.cleaned_data.get("hsd_price")),
-                (petrol_product, pso_form.cleaned_data.get("petrol_price")),
-                (diesel_product, pso_form.cleaned_data.get("diesel_price")),
+                (premier_product, pso_form.cleaned_data.get("premier_price")),
+                (hi_cetane_product, pso_form.cleaned_data.get("hi_cetane_price")),
             ):
                 if price is not None:
                     VendorFuelPrice.objects.update_or_create(
@@ -776,10 +773,10 @@ def fuel_rates(request):
     else:
         pso_form = PsoFuelPriceForm(initial={"effective_date": timezone.localdate()})
 
-    # "PSO Fuel Prices" pivot: each effective date is one row, HSD/Petrol/
-    # Diesel columns - whatever was entered/updated last for a given
-    # date+product wins (ordering below puts it first).
-    pso_products = [hsd_product, petrol_product, diesel_product]
+    # "PSO Fuel Prices" pivot: each effective date is one row, Premier
+    # Euro5/Hi-Cetane Diesel Euro5 columns - whatever was entered/updated
+    # last for a given date+product wins (ordering below puts it first).
+    pso_products = [premier_product, hi_cetane_product]
     by_date = {}
     for r in VendorFuelPrice.objects.filter(vendor=pso_vendor, product__in=pso_products).order_by("-effective_date", "-id"):
         row = by_date.setdefault(r.effective_date, {})
@@ -787,9 +784,8 @@ def fuel_rates(request):
     pso_rows = [
         {
             "effective_date": eff_date,
-            "hsd": row.get(hsd_product.id),
-            "petrol": row.get(petrol_product.id),
-            "diesel": row.get(diesel_product.id),
+            "premier": row.get(premier_product.id),
+            "hi_cetane": row.get(hi_cetane_product.id),
         }
         for eff_date, row in sorted(by_date.items(), reverse=True)
     ]

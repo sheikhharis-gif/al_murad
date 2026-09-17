@@ -30,16 +30,12 @@
                             {{ pso_form.effective_date }}
                         </div>
                         <div class="col-md-3">
-                            <label class="form-label small fw-bold">HSD</label>
-                            {{ pso_form.hsd_price }}
+                            <label class="form-label small fw-bold">Premier Euro5</label>
+                            {{ pso_form.premier_price }}
                         </div>
                         <div class="col-md-3">
-                            <label class="form-label small fw-bold">Petrol</label>
-                            {{ pso_form.petrol_price }}
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label small fw-bold">Diesel</label>
-                            {{ pso_form.diesel_price }}
+                            <label class="form-label small fw-bold">Hi-Cetane Diesel Euro5</label>
+                            {{ pso_form.hi_cetane_price }}
                         </div>
                         <div class="col-12">
                             <button type="submit" class="btn btn-primary w-100 fw-bold"><i class="bi bi-plus-lg me-1"></i>Add</button>
@@ -51,9 +47,8 @@
                         <thead>
                             <tr>
                                 <th>Effective Date</th>
-                                <th class="text-center">HSD</th>
-                                <th class="text-center">Petrol</th>
-                                <th class="text-center">Diesel</th>
+                                <th class="text-center">Premier Euro5</th>
+                                <th class="text-center">Hi-Cetane Diesel Euro5</th>
                                 <th style="width:70px"></th>
                             </tr>
                         </thead>
@@ -61,16 +56,14 @@
                             {% for row in pso_rows %}
                             <tr>
                                 <td class="fw-semibold">{{ row.effective_date|date:"j-M-y" }}</td>
-                                <td class="text-center">{{ row.hsd|default_if_none:"--"|floatformat:2 }}</td>
-                                <td class="text-center">{{ row.petrol|default_if_none:"--"|floatformat:2 }}</td>
-                                <td class="text-center">{{ row.diesel|default_if_none:"--"|floatformat:2 }}</td>
+                                <td class="text-center">{{ row.premier|default_if_none:"--"|floatformat:2 }}</td>
+                                <td class="text-center">{{ row.hi_cetane|default_if_none:"--"|floatformat:2 }}</td>
                                 <td class="text-center">
                                     <div class="btn-group btn-group-sm shadow-sm rounded-2 overflow-hidden bg-white border">
                                         <button type="button" class="btn btn-sm btn-white text-warning border-end pso-edit-btn"
                                             data-date="{{ row.effective_date|date:'Y-m-d' }}"
-                                            data-hsd="{{ row.hsd|default_if_none:'' }}"
-                                            data-petrol="{{ row.petrol|default_if_none:'' }}"
-                                            data-diesel="{{ row.diesel|default_if_none:'' }}"
+                                            data-premier="{{ row.premier|default_if_none:'' }}"
+                                            data-hi-cetane="{{ row.hi_cetane|default_if_none:'' }}"
                                             title="Edit">
                                             <i class="bi bi-pencil-square"></i>
                                         </button>
@@ -85,7 +78,7 @@
                                 </td>
                             </tr>
                             {% empty %}
-                            <tr><td colspan="5" class="text-center py-4 text-muted">No PSO fuel prices recorded yet - add one above.</td></tr>
+                            <tr><td colspan="4" class="text-center py-4 text-muted">No PSO fuel prices recorded yet - add one above.</td></tr>
                             {% endfor %}
                         </tbody>
                     </table>
@@ -133,15 +126,13 @@ document.addEventListener('DOMContentLoaded', function () {
     // by date), so saving overwrites that date's entry instead of adding a
     // new one. =====
     var effDateInput = document.getElementById('id_effective_date');
-    var hsdInput = document.getElementById('id_hsd_price');
-    var petrolInput = document.getElementById('id_petrol_price');
-    var dieselInput = document.getElementById('id_diesel_price');
+    var premierInput = document.getElementById('id_premier_price');
+    var hiCetaneInput = document.getElementById('id_hi_cetane_price');
     document.querySelectorAll('.pso-edit-btn').forEach(function (btn) {
         btn.addEventListener('click', function () {
             if (effDateInput) effDateInput.value = this.dataset.date;
-            if (hsdInput) hsdInput.value = this.dataset.hsd;
-            if (petrolInput) petrolInput.value = this.dataset.petrol;
-            if (dieselInput) dieselInput.value = this.dataset.diesel;
+            if (premierInput) premierInput.value = this.dataset.premier;
+            if (hiCetaneInput) hiCetaneInput.value = this.dataset.hiCetane;
             var form = document.getElementById('psoForm');
             if (form) form.scrollIntoView({ behavior: 'smooth', block: 'start' });
         });
