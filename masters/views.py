@@ -1,5 +1,6 @@
 import json
 import re
+import sys
 from decimal import Decimal
 from urllib.request import Request, urlopen
 from calendar import monthrange
@@ -86,6 +87,13 @@ def _fetch_live_fuel_prices():
             })
         return prices
     except Exception:
+        # Printed (not logged) so it reliably lands in the WSGI error log
+        # regardless of Django's LOGGING config - this fetch failing should
+        # never break the page, but silently swallowing it left no trail
+        # when diagnosing why "Live Fuel Rates" was empty on production.
+        import traceback
+        print("PSO price scrape failed:", file=sys.stderr)
+        traceback.print_exc()
         return []
 
 
