@@ -89,31 +89,23 @@
         <div class="col-lg-6">
             <div class="card border-0 shadow-sm rounded-4 h-100">
                 <div class="card-header bg-white border-0 pt-4 px-4 d-flex justify-content-between align-items-center">
-                    <div>
-                        <h5 class="fw-bold mb-0 text-success"><i class="bi bi-cloud-arrow-down me-2"></i>Live Fuel Rates</h5>
-                        <div class="text-muted small">Scraped from PSO's own published price archive.</div>
-                    </div>
+                    <h5 class="fw-bold mb-0 text-success"><i class="bi bi-cloud-arrow-down me-2"></i>Live Fuel Rates</h5>
                     <a href="{% url 'fuel_rates' %}" class="btn btn-outline-success btn-sm"><i class="bi bi-arrow-clockwise me-1"></i>Refresh</a>
                 </div>
                 <div class="table-responsive">
                     <table class="table table-hover align-middle mb-0">
                         <thead class="table-success">
-                            <tr><th>Product</th><th class="text-center">Rate</th><th>Effective Date</th><th></th></tr>
+                            <tr><th>Product</th><th class="text-center">Rate</th><th>Effective Date</th></tr>
                         </thead>
-                        <tbody>
+                        <tbody id="liveFuelRatesBody" data-api-url="https://fuel.trackmate.page/api/prices">
                             {% for price in live_prices %}
                             <tr>
-                                <td class="fw-semibold">{{ price.product }}</td>
+                                <td class="text-uppercase fw-semibold">{{ price.source }} - {{ price.product }}{% if price.city %} {{ price.city|upper }}{% endif %}</td>
                                 <td class="text-center fw-bold">PKR {{ price.price_pkr|floatformat:2 }} / {{ price.unit }}</td>
-                                <td>{{ price.effective_date|date:"j-M-y"|default:"Latest available" }}</td>
-                                <td class="text-center">
-                                    <button type="button" class="btn btn-outline-primary btn-sm live-use-btn"
-                                        data-product="{{ price.product }}" data-price="{{ price.price_pkr }}"
-                                        data-date="{{ price.effective_date|date:'Y-m-d' }}">Use</button>
-                                </td>
+                                <td>{{ price.effective_date|default:"Latest available" }}</td>
                             </tr>
                             {% empty %}
-                            <tr><td colspan="4" class="text-center py-4 text-muted">PSO's price archive is temporarily unavailable.</td></tr>
+                            <tr><td colspan="3" class="text-center py-4 text-muted">Live API is temporarily unavailable.</td></tr>
                             {% endfor %}
                         </tbody>
                     </table>
@@ -146,18 +138,49 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
-    // ===== Live Fuel Rates: "Use" copies PSO's official price straight
-    // into the add-form above, still editable before saving. =====
-    document.querySelectorAll('.live-use-btn').forEach(function (btn) {
-        btn.addEventListener('click', function () {
-            var product = this.dataset.product;
-            if (effDateInput && this.dataset.date) effDateInput.value = this.dataset.date;
-            if (product === 'Premier Euro5' && premierInput) premierInput.value = this.dataset.price;
-            if (product === 'Hi-Cetane Diesel Euro5' && hiCetaneInput) hiCetaneInput.value = this.dataset.price;
-            var form = document.getElementById('psoForm');
-            if (form) form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    // ===== Live Fuel Rates: re-fetch fresh data client-side, keeping only
+    // HSD/Petrol, PSO limited to Karachi, HSD group then Petrol group. =====
+    var body = document.getElementById('liveFuelRatesBody');
+    if (!body || body.querySelector('tr[data-live-rate]')) return;
+
+    var WANTED = ['HSD', 'PETROL'];
+    var ORDER = { HSD: 0, PETROL: 1 };
+
+    fetch(body.dataset.apiUrl, {headers: {Accept: 'application/json'}})
+        .then(function (response) {
+            if (!response.ok) throw new Error('API request failed');
+            return response.json();
+        })
+        .then(function (payload) {
+            var byKey = {};
+            (payload.prices || []).forEach(function (price) {
+                if (price.price_pkr === null || price.price_pkr === undefined) return;
+                var product = (price.product || '').trim().toUpperCase();
+                if (WANTED.indexOf(product) === -1) return;
+                var source = (price.source || '').trim().toUpperCase();
+                var city = (price.city || '').trim();
+                if (source === 'PSO' && city && city.toUpperCase() !== 'KARACHI') return;
+                var key = product + '|' + source;
+                if (!(key in byKey)) byKey[key] = price;
+            });
+            var prices = Object.keys(byKey).map(function (k) { return byKey[k]; }).sort(function (a, b) {
+                var ap = (a.product || '').trim().toUpperCase(), bp = (b.product || '').trim().toUpperCase();
+                if (ORDER[ap] !== ORDER[bp]) return ORDER[ap] - ORDER[bp];
+                return (a.source || '').toUpperCase() < (b.source || '').toUpperCase() ? -1 : 1;
+            });
+            if (!prices.length) return;
+            body.innerHTML = prices.map(function (price) {
+                var date = price.effective_date || 'Latest available';
+                var rate = Number(price.price_pkr).toFixed(2);
+                var city = price.city ? ' ' + String(price.city).toUpperCase() : '';
+                return '<tr data-live-rate><td class="text-uppercase fw-semibold">' + price.source + ' - ' + price.product + city +
+                    '</td><td class="text-center fw-bold">PKR ' + rate + ' / ' + price.unit +
+                    '</td><td>' + date + '</td></tr>';
+            }).join('');
+        })
+        .catch(function () {
+            // Keep the server-rendered fallback message when the browser cannot reach the API.
         });
-    });
 });
 </script>
 {% endblock %}
