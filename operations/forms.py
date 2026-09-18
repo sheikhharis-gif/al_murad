@@ -7,8 +7,11 @@ from masters.models import Vehicle, Client, Route, Vendor, FuelProduct
 # JOB FORM (header only - date, vehicle, trip advance, remarks)
 # -----------------------
 class VehicleJobChoiceField(forms.ModelChoiceField):
-    """Shows each vehicle next to its current Job # - the still-open Job if
-    it has one, else the next Job # it will be assigned (last serial + 1)."""
+    """Shows each vehicle next to its current Job # if it already has a
+    still-open one. The real number for a brand-new Job is only decided by
+    the database at the moment it's actually created (AutoField), so it
+    can't be previewed here - showing a guessed "next serial" made every
+    vehicle without an open Job display the same fake number."""
 
     def label_from_instance(self, vehicle):
         open_job = (
@@ -18,11 +21,8 @@ class VehicleJobChoiceField(forms.ModelChoiceField):
             .first()
         )
         if open_job:
-            job_no = open_job.job_number
-        else:
-            last = Job.objects.order_by("-job_number").first()
-            job_no = (last.job_number + 1) if last else 1
-        return f"JOB #{job_no:05d} | {vehicle.vehicle_number}"
+            return f"JOB #{open_job.job_number:05d} | {vehicle.vehicle_number}"
+        return f"NEW JOB | {vehicle.vehicle_number}"
 
 
 class JobForm(forms.ModelForm):

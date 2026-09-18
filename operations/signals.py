@@ -1,28 +1,23 @@
 from django.db.models.signals import post_save
 from django.dispatch import receiver
-from .models import Trip  # Ensure Trip and Vehicle are in the same models.py
+from .models import Trip
 
 @receiver(post_save, sender=Trip)
 def update_vehicle_location(sender, instance, created, **kwargs):
     """
-    Jab bhi nayi Trip create hogi, ye function gari ki 
-    location ko destination city par update kar dega.
+    Vehicle ki current location sirf tab destination par jump karti hai jab
+    trip mein actual arrival record ho chuki ho (arrived_at set), na ke sirf
+    trip row create/save hone par - warna reached_at (origin pe pahunchna/
+    loading ke liye) bharne se hi location samay se pehle destination dikha
+    deti thi. Isi wajah se yeh har save (create aur edit dono) par chalta
+    hai, kyunke arrived_at aam tor par trip create hone ke baad, ek baad ki
+    edit mein bhara jata hai.
     """
-    if created and instance.vehicle:
-        vehicle = instance.vehicle
-        
-        # Scenario 1: Agar Trip model mein 'route' field hai (Recommended)
-        if hasattr(instance, 'route') and instance.route:
-            # current_location is a City FK now, so assign the City object directly.
-            vehicle.current_location = instance.route.destination
-            vehicle.save()
+    if not instance.arrived_at or not instance.vehicle_id or not instance.route_id:
+        return
 
-        # Scenario 2: Agar Trip model mein direct 'destination' field hai
-        elif hasattr(instance, 'destination') and instance.destination:
-            vehicle.current_location = instance.destination
-            vehicle.save()
-
-        # Scenario 3: Agar field ka naam 'destination_city' hai
-        elif hasattr(instance, 'destination_city') and instance.destination_city:
-            vehicle.current_location = instance.destination_city
-            vehicle.save()
+    vehicle = instance.vehicle
+    destination = instance.route.destination
+    if vehicle.current_location_id != destination.pk:
+        vehicle.current_location = destination
+        vehicle.save(update_fields=["current_location"])

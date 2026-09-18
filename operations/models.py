@@ -173,18 +173,28 @@ class Trip(models.Model):
         if self.departure_meter is not None and self.route_id:
             self.arrival_meter = self.departure_meter + self.route.distance_km
 
-        # Freight = latest matching Client Rate's Updated Trip Cost + Additional Charges.
+        # Freight = latest matching Client Rate's Updated Trip Cost + Additional
+        # Charges. Must match vehicle type AND weight exactly - a rate for a
+        # different tonnage on the same route/vehicle type must never be
+        # substituted in, even if it's the only one on file.
         from masters.models import ClientRate
-        rate_qs = ClientRate.objects.filter(client=self.client, route=self.route)
         matched = None
         if self.vehicle.vehicle_type_id:
-            matched = rate_qs.filter(vehicle_type=self.vehicle.vehicle_type).order_by("-effective_date", "-id").first()
-        if not matched:
-            matched = rate_qs.order_by("-effective_date", "-id").first()
+            matched = ClientRate.objects.filter(
+                client=self.client, route=self.route,
+                vehicle_type=self.vehicle.vehicle_type, weight_tons=self.weight,
+            ).order_by("-effective_date", "-id").first()
         base_freight = matched.updated_trip_cost if matched else 0
         self.freight = base_freight + (self.additional_charges or 0)
 
         super().save(*args, **kwargs)
+
+        # Vehicle's odometer keeps advancing with each trip leg's computed
+        # arrival meter - never regress it if this save recomputed an
+        # earlier/stale leg after a later one already moved it forward.
+        if self.arrival_meter is not None and self.arrival_meter > self.vehicle.current_km:
+            self.vehicle.current_km = self.arrival_meter
+            self.vehicle.save(update_fields=["current_km"])
 
         # Trip ID is globally unique and keeps counting up regardless of
         # vehicle, job or date - it simply mirrors this row's own serial pk.
