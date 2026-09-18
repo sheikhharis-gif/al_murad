@@ -123,7 +123,9 @@ class Command(BaseCommand):
             self.stderr.write(self.style.ERROR(f"Client '{CLIENT_NAME}' not found - create it first."))
             return
 
-        diesel_product, _ = FuelProduct.objects.get_or_create(name="DIESEL")
+        # Merged into this canonical product by cleanup_fuel_products - use
+        # it directly so a re-run of this command can't recreate "DIESEL".
+        diesel_product, _ = FuelProduct.objects.get_or_create(name="HI-CETANE DIESEL EURO5")
 
         khi_name, khi_lat, khi_lng, _ = CITY_DATA["KHI"]
         khi_city, _ = City.objects.get_or_create(
