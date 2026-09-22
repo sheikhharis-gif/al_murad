@@ -328,10 +328,13 @@
 
     // Same idea as enhanceDatepickers but for <input class="datetimepicker">
     // date+time fields (Trip Reached/Departed/Arrived/Delivered). Forces
-    // 24-hour "23:00" display (time_24hr) instead of the native
-    // type="datetime-local" widget, whose AM/PM-vs-24hr display follows the
-    // browser/OS locale and can't be forced from plain HTML - and gives a
-    // clear clickable edit affordance (the clock icon) on every device.
+    // 24-hour "23:00" display (time_24hr) - the native type="datetime-local"
+    // widget's AM/PM-vs-24hr display is fixed by the browser's own UI
+    // language and can't be forced from the page. clickOpens:false keeps the
+    // calendar/time popup from opening just from focusing or typing in the
+    // field - people type the value in directly like they could with the
+    // native widget; the clock icon still opens the picker for anyone who
+    // wants to click through it instead.
     window.enhanceDatetimepickers = function () {
         if (typeof flatpickr === 'undefined') return;
         document.querySelectorAll('input.datetimepicker').forEach(function (el) {
@@ -350,6 +353,7 @@
                 enableTime: true,
                 time_24hr: true,
                 allowInput: true,
+                clickOpens: false,
                 locale: { firstDayOfWeek: 1 },
                 onReady: function (selectedDates, dateStr, instance) {
                     var icon = document.createElement('i');

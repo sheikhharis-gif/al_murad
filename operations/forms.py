@@ -97,11 +97,15 @@ class TripForm(forms.ModelForm):
             "bilty_number": forms.TextInput(attrs={"class": "form-control form-control-sm", "placeholder": "Bilty #"}),
             "weight": forms.NumberInput(attrs={"class": "form-control form-control-sm", "step": "0.01", "placeholder": "Weight (Tons)"}),
             "route": forms.Select(attrs={"class": "form-select form-select-sm"}),
-            # Plain text + flatpickr (enhanceDatetimepickers in app.js) instead of
-            # the native type="datetime-local" widget - that widget's displayed
-            # time format follows the browser/OS locale (often 12-hour with
-            # AM/PM) with no way to force 24-hour "23:00" display from HTML
-            # alone, and its edit affordance isn't obvious on mobile browsers.
+            # type="datetime-local"'s displayed AM/PM-vs-24hr format is fixed
+            # by the browser's own UI language and can't be overridden from
+            # the page at all (confirmed - lang="en-GB" on the element does
+            # nothing in Chromium). Forcing 24-hour therefore needs flatpickr
+            # (enhanceDatetimepickers in app.js, time_24hr:true) same as
+            # before, but this time with clickOpens:false so focusing/typing
+            # into the field no longer pops the calendar open over it -
+            # typing straight into the box now works exactly like the native
+            # widget did, it just displays/parses 24-hour text.
             "reached_at": forms.DateTimeInput(attrs={"class": "form-control form-control-sm datetimepicker"}, format="%Y-%m-%d %H:%M"),
             "departed_at": forms.DateTimeInput(attrs={"class": "form-control form-control-sm datetimepicker"}, format="%Y-%m-%d %H:%M"),
             "arrived_at": forms.DateTimeInput(attrs={"class": "form-control form-control-sm datetimepicker"}, format="%Y-%m-%d %H:%M"),
