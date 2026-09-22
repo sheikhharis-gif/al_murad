@@ -326,6 +326,61 @@
         });
     };
 
+    // Same idea as enhanceDatepickers but for <input class="datetimepicker">
+    // date+time fields (Trip Reached/Departed/Arrived/Delivered). Forces
+    // 24-hour "23:00" display (time_24hr) instead of the native
+    // type="datetime-local" widget, whose AM/PM-vs-24hr display follows the
+    // browser/OS locale and can't be forced from plain HTML - and gives a
+    // clear clickable edit affordance (the clock icon) on every device.
+    window.enhanceDatetimepickers = function () {
+        if (typeof flatpickr === 'undefined') return;
+        document.querySelectorAll('input.datetimepicker').forEach(function (el) {
+            if (el.dataset.fpEnhanced) return;
+            el.dataset.fpEnhanced = '1';
+
+            var wrapper = document.createElement('div');
+            wrapper.className = 'datepicker-wrapper';
+            el.parentNode.insertBefore(wrapper, el);
+            wrapper.appendChild(el);
+
+            var opts = {
+                dateFormat: 'Y-m-d H:i',
+                altInput: true,
+                altFormat: 'd-M-y H:i',
+                enableTime: true,
+                time_24hr: true,
+                allowInput: true,
+                locale: { firstDayOfWeek: 1 },
+                onReady: function (selectedDates, dateStr, instance) {
+                    var icon = document.createElement('i');
+                    icon.className = 'bi bi-clock datepicker-icon';
+                    icon.addEventListener('click', function () {
+                        instance.open();
+                    });
+                    wrapper.appendChild(icon);
+
+                    instance.altInput.addEventListener('focus', function () {
+                        instance.altInput.select();
+                    });
+                },
+                onClose: function (selectedDates, dateStr, instance) {
+                    var focusable = Array.prototype.slice.call(
+                        document.querySelectorAll('input, select, textarea, button, a[href]')
+                    ).filter(function (node) {
+                        return node.offsetParent !== null && !node.disabled && node.tabIndex !== -1;
+                    });
+                    var anchor = instance.altInput || instance.input;
+                    var idx = focusable.indexOf(anchor);
+                    if (idx > -1 && idx + 1 < focusable.length) {
+                        focusable[idx + 1].focus();
+                    }
+                },
+            };
+
+            flatpickr(el, opts);
+        });
+    };
+
     // Any <input data-uppercase> / <textarea data-uppercase> uppercases what
     // the user types live, instead of only on save - cursor position is
     // preserved so typing in the middle of a value doesn't jump to the end.
@@ -344,5 +399,6 @@
     document.addEventListener('DOMContentLoaded', window.enhanceSearchableSelects);
     document.addEventListener('DOMContentLoaded', window.enhanceDropdownSearchSelects);
     document.addEventListener('DOMContentLoaded', window.enhanceDatepickers);
+    document.addEventListener('DOMContentLoaded', window.enhanceDatetimepickers);
     document.addEventListener('DOMContentLoaded', window.enhanceUppercaseInputs);
 })();

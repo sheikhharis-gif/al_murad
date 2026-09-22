@@ -61,10 +61,15 @@ class TripForm(forms.ModelForm):
             "bilty_number": forms.TextInput(attrs={"class": "form-control form-control-sm", "placeholder": "Bilty #"}),
             "weight": forms.NumberInput(attrs={"class": "form-control form-control-sm", "step": "0.01", "placeholder": "Weight (Tons)"}),
             "route": forms.Select(attrs={"class": "form-select form-select-sm"}),
-            "reached_at": forms.DateTimeInput(attrs={"class": "form-control form-control-sm", "type": "datetime-local"}),
-            "departed_at": forms.DateTimeInput(attrs={"class": "form-control form-control-sm", "type": "datetime-local"}),
-            "arrived_at": forms.DateTimeInput(attrs={"class": "form-control form-control-sm", "type": "datetime-local"}),
-            "delivered_at": forms.DateTimeInput(attrs={"class": "form-control form-control-sm", "type": "datetime-local"}),
+            # Plain text + flatpickr (enhanceDatetimepickers in app.js) instead of
+            # the native type="datetime-local" widget - that widget's displayed
+            # time format follows the browser/OS locale (often 12-hour with
+            # AM/PM) with no way to force 24-hour "23:00" display from HTML
+            # alone, and its edit affordance isn't obvious on mobile browsers.
+            "reached_at": forms.DateTimeInput(attrs={"class": "form-control form-control-sm datetimepicker"}, format="%Y-%m-%d %H:%M"),
+            "departed_at": forms.DateTimeInput(attrs={"class": "form-control form-control-sm datetimepicker"}, format="%Y-%m-%d %H:%M"),
+            "arrived_at": forms.DateTimeInput(attrs={"class": "form-control form-control-sm datetimepicker"}, format="%Y-%m-%d %H:%M"),
+            "delivered_at": forms.DateTimeInput(attrs={"class": "form-control form-control-sm datetimepicker"}, format="%Y-%m-%d %H:%M"),
             "additional_charges": forms.NumberInput(attrs={"class": "form-control form-control-sm", "step": "0.01"}),
             "remarks": forms.TextInput(attrs={"class": "form-control form-control-sm", "placeholder": "Remarks"}),
         }
