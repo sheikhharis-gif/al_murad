@@ -19,7 +19,17 @@
                     <form method="post" novalidate>
                         {% csrf_token %}
 
-                        <div class="mb-4">
+                        <div class="mb-4 form-check form-switch ps-0">
+                            <div class="d-flex align-items-center gap-2">
+                                {{ form.is_rental }}
+                                <label class="form-check-label fw-bold text-secondary small text-uppercase tracking-wider mb-0" for="id_is_rental">
+                                    <i class="bi bi-key me-1"></i> Rental Vehicle
+                                </label>
+                            </div>
+                            <div class="form-text small">Rental gari fleet mein pehle se registered nahi - iska number seedha yahan likh dein.</div>
+                        </div>
+
+                        <div class="mb-4" id="own-vehicle-block">
                             <label class="form-label fw-bold text-secondary small text-uppercase tracking-wider">
                                 <i class="bi bi-truck me-1"></i> Select Vehicle
                             </label>
@@ -30,6 +40,19 @@
                                 <div class="text-danger small mt-1">{{ form.vehicle.errors }}</div>
                             {% endif %}
                             <div class="form-text small">Chassis number aur plate dekh kar gari select karein.</div>
+                        </div>
+
+                        <div class="mb-4 d-none" id="rental-vehicle-block">
+                            <label class="form-label fw-bold text-secondary small text-uppercase tracking-wider">
+                                <i class="bi bi-key me-1"></i> Rental Vehicle Number
+                            </label>
+                            <div class="input-group">
+                                {{ form.rental_vehicle_number }}
+                            </div>
+                            {% if form.rental_vehicle_number.errors %}
+                                <div class="text-danger small mt-1">{{ form.rental_vehicle_number.errors }}</div>
+                            {% endif %}
+                            <div class="form-text small">Gari ka number type karein - KMs yahan zaroori nahi hain.</div>
                         </div>
 
                         <div class="row g-3 mb-4">
@@ -108,5 +131,28 @@
         background: linear-gradient(135deg, #3182ce 0%, #2b6cb0 100%);
         transform: translateY(-1px);
     }
+    .form-switch .form-check-input { width: 2.5em; height: 1.4em; cursor: pointer; }
 </style>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        var rentalToggle = document.getElementById('id_is_rental');
+        var ownBlock = document.getElementById('own-vehicle-block');
+        var rentalBlock = document.getElementById('rental-vehicle-block');
+        if (!rentalToggle) return;
+
+        function syncRentalFields() {
+            if (rentalToggle.checked) {
+                ownBlock.classList.add('d-none');
+                rentalBlock.classList.remove('d-none');
+            } else {
+                ownBlock.classList.remove('d-none');
+                rentalBlock.classList.add('d-none');
+            }
+        }
+
+        rentalToggle.addEventListener('change', syncRentalFields);
+        syncRentalFields();
+    });
+</script>
 {% endblock %}

@@ -26,7 +26,25 @@ class VehicleJobChoiceField(forms.ModelChoiceField):
 
 
 class JobForm(forms.ModelForm):
-    vehicle = VehicleJobChoiceField(queryset=Vehicle.objects.none())
+    vehicle = VehicleJobChoiceField(queryset=Vehicle.objects.none(), required=False)
+
+    # Not Job model fields - "Rental" just picks/creates a Vehicle record
+    # (vehicle_mode="RENTAL") on the fly from a typed-in number instead of
+    # requiring the vehicle be pre-registered in Vehicles master data first.
+    # Everything downstream (Job.vehicle, Trip meter chaining, freight
+    # matching, the invoice PDF's existing Own/Rental branch) then works
+    # exactly as it already does for fleet vehicles - no schema change needed.
+    is_rental = forms.BooleanField(
+        required=False, label="Rental Vehicle",
+        widget=forms.CheckboxInput(attrs={"class": "form-check-input", "role": "switch", "id": "id_is_rental"}),
+    )
+    rental_vehicle_number = forms.CharField(
+        required=False, label="Rental Vehicle Number",
+        widget=forms.TextInput(attrs={
+            "class": "form-control", "placeholder": "e.g. ABC-123", "data-uppercase": "1",
+            "id": "id_rental_vehicle_number",
+        }),
+    )
 
     class Meta:
         model = Job
@@ -42,6 +60,24 @@ class JobForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         self.fields["vehicle"].queryset = Vehicle.objects.filter(is_active=True).order_by("vehicle_number")
         self.fields["vehicle"].empty_label = "--- Select Vehicle ---"
+        if self.instance.pk and self.instance.vehicle_id and self.instance.vehicle.vehicle_mode == "RENTAL":
+            self.fields["is_rental"].initial = True
+            self.fields["rental_vehicle_number"].initial = self.instance.vehicle.vehicle_number
+
+    def clean(self):
+        cleaned = super().clean()
+        if cleaned.get("is_rental"):
+            number = (cleaned.get("rental_vehicle_number") or "").strip().upper()
+            if not number:
+                self.add_error("rental_vehicle_number", "Rental vehicle number is required.")
+            else:
+                vehicle, _ = Vehicle.objects.get_or_create(
+                    vehicle_number=number, defaults={"vehicle_mode": "RENTAL"}
+                )
+                cleaned["vehicle"] = vehicle
+        elif not cleaned.get("vehicle"):
+            self.add_error("vehicle", "Please select a vehicle.")
+        return cleaned
 
 
 # -----------------------

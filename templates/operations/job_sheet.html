@@ -31,10 +31,15 @@
                         <label class="form-label small fw-bold text-muted">Job #</label>
                         <div class="fw-bold fs-6">{{ job.job_code }}</div>
                     </div>
-                    <div class="col-md-2">
+                    <div class="col-md-2" id="own-vehicle-block">
                         <label class="form-label small fw-bold text-muted">Vehicle</label>
                         {{ job_form.vehicle }}
                     </div>
+                    <div class="col-md-2 d-none" id="rental-vehicle-block">
+                        <label class="form-label small fw-bold text-muted">Rental Vehicle #</label>
+                        {{ job_form.rental_vehicle_number }}
+                    </div>
+                    <div class="d-none">{{ job_form.is_rental }}</div>
                     <div class="col-md-2">
                         <label class="form-label small fw-bold text-muted">Date</label>
                         {{ job_form.job_date }}
@@ -350,6 +355,16 @@
 
 <script>
     document.addEventListener('DOMContentLoaded', function () {
+        // Job was created as Rental - show the rental number field instead of
+        // the fleet vehicle dropdown (the hidden is_rental checkbox just
+        // carries the job's existing mode through on re-save, it's not
+        // meant to be toggled here).
+        var rentalFlag = document.getElementById('id_is_rental');
+        if (rentalFlag && rentalFlag.checked) {
+            document.getElementById('own-vehicle-block').classList.add('d-none');
+            document.getElementById('rental-vehicle-block').classList.remove('d-none');
+        }
+
         function wireAddRow(buttonId, containerId, rowClass, totalFormsId) {
             var btn = document.getElementById(buttonId);
             if (!btn) return;
