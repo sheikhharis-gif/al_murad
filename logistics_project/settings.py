@@ -82,6 +82,12 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
         'NAME': BASE_DIR / 'db.sqlite3',
+        # SQLite only allows one writer at a time. The live site's own
+        # requests can briefly hold that lock, and Django's default 5s wait
+        # is too short once anything else (a bulk import command, etc.) is
+        # also writing - it fails with "database is locked" instead of just
+        # waiting its turn. Give writers more time to queue up instead.
+        'OPTIONS': {'timeout': 30},
     }
 }
 

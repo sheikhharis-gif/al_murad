@@ -2,6 +2,7 @@ import datetime
 from decimal import Decimal
 
 from django.core.management.base import BaseCommand
+from django.db import transaction
 
 from masters.models import City, Route, Client, FuelProduct, VehicleType, ClientRate
 
@@ -133,43 +134,49 @@ class Command(BaseCommand):
         )
 
         created, updated, skipped = 0, 0, 0
-        for route_code, vtype_raw, weight, cur_rate in ROWS:
-            _origin_code, dest_code = route_code.split("-", 1)
-            dest_info = CITY_DATA.get(dest_code)
-            if not dest_info:
-                self.stderr.write(self.style.WARNING(f"Unknown destination city code '{dest_code}', skipped."))
-                skipped += 1
-                continue
+        # One transaction for the whole batch instead of one commit per row -
+        # SQLite only allows a single writer, so many separate commits each
+        # re-acquiring that lock is what was colliding with the live site's
+        # own writes ("database is locked"). A single transaction grabs the
+        # lock once and is also far faster.
+        with transaction.atomic():
+            for route_code, vtype_raw, weight, cur_rate in ROWS:
+                _origin_code, dest_code = route_code.split("-", 1)
+                dest_info = CITY_DATA.get(dest_code)
+                if not dest_info:
+                    self.stderr.write(self.style.WARNING(f"Unknown destination city code '{dest_code}', skipped."))
+                    skipped += 1
+                    continue
 
-            dest_name, dest_lat, dest_lng, dest_km = dest_info
-            dest_city, _ = City.objects.get_or_create(
-                code=dest_code, defaults={"name": dest_name, "latitude": dest_lat, "longitude": dest_lng}
-            )
-            route, _ = Route.objects.get_or_create(
-                origin=khi_city, destination=dest_city, defaults={"distance_km": dest_km}
-            )
+                dest_name, dest_lat, dest_lng, dest_km = dest_info
+                dest_city, _ = City.objects.get_or_create(
+                    code=dest_code, defaults={"name": dest_name, "latitude": dest_lat, "longitude": dest_lng}
+                )
+                route, _ = Route.objects.get_or_create(
+                    origin=khi_city, destination=dest_city, defaults={"distance_km": dest_km}
+                )
 
-            vtype_key = "".join(vtype_raw.upper().split())
-            vehicle_type, _ = VehicleType.objects.get_or_create(name=VEHICLE_SIZE_MAP[vtype_key])
+                vtype_key = "".join(vtype_raw.upper().split())
+                vehicle_type, _ = VehicleType.objects.get_or_create(name=VEHICLE_SIZE_MAP[vtype_key])
 
-            obj, was_created = ClientRate.objects.update_or_create(
-                client=client,
-                route=route,
-                fuel_product=diesel_product,
-                vehicle_type=vehicle_type,
-                weight_tons=_dec(weight),
-                effective_date=EFFECTIVE_DATE,
-                defaults={
-                    "current_fuel_price": CURRENT_FUEL_PRICE,
-                    "current_rate": _dec(cur_rate),
-                    "effective_percent": EFFECTIVE_PERCENT,
-                    "updated_fuel_price": UPDATED_FUEL_PRICE,
-                },
-            )
-            if was_created:
-                created += 1
-            else:
-                updated += 1
+                obj, was_created = ClientRate.objects.update_or_create(
+                    client=client,
+                    route=route,
+                    fuel_product=diesel_product,
+                    vehicle_type=vehicle_type,
+                    weight_tons=_dec(weight),
+                    effective_date=EFFECTIVE_DATE,
+                    defaults={
+                        "current_fuel_price": CURRENT_FUEL_PRICE,
+                        "current_rate": _dec(cur_rate),
+                        "effective_percent": EFFECTIVE_PERCENT,
+                        "updated_fuel_price": UPDATED_FUEL_PRICE,
+                    },
+                )
+                if was_created:
+                    created += 1
+                else:
+                    updated += 1
 
         self.stdout.write(self.style.SUCCESS(
             f"Done. Created {created}, updated {updated}, skipped {skipped} row(s)."

@@ -2,6 +2,7 @@ import datetime
 from decimal import Decimal
 
 from django.core.management.base import BaseCommand
+from django.db import transaction
 
 from masters.models import Route, VehicleType, FuelProduct, Client, ClientRate
 from .import_five_star_rates import CLIENT_NAME, ROWS, VEHICLE_SIZE_MAP
@@ -54,39 +55,45 @@ class Command(BaseCommand):
             return
 
         created, updated, skipped_combos = 0, 0, 0
-        for route_code, vtype_raw, weight, _base_rate in ROWS:
-            route = Route.objects.filter(route_code=route_code).first()
-            if not route:
-                self.stderr.write(self.style.WARNING(f"Route '{route_code}' not found, skipped."))
-                skipped_combos += 1
-                continue
+        # One transaction for all ~1000 writes instead of one per row - SQLite
+        # only allows a single writer, so hundreds of separate commits each
+        # re-acquiring that lock is what was colliding with the live site's
+        # own writes ("database is locked"). A single transaction grabs the
+        # lock once and is also far faster.
+        with transaction.atomic():
+            for route_code, vtype_raw, weight, _base_rate in ROWS:
+                route = Route.objects.filter(route_code=route_code).first()
+                if not route:
+                    self.stderr.write(self.style.WARNING(f"Route '{route_code}' not found, skipped."))
+                    skipped_combos += 1
+                    continue
 
-            vtype_key = "".join(vtype_raw.upper().split())
-            vehicle_type = VehicleType.objects.filter(name=VEHICLE_SIZE_MAP[vtype_key]).first()
-            if not vehicle_type:
-                self.stderr.write(self.style.WARNING(f"VehicleType '{VEHICLE_SIZE_MAP[vtype_key]}' not found, skipped."))
-                skipped_combos += 1
-                continue
+                vtype_key = "".join(vtype_raw.upper().split())
+                vehicle_type = VehicleType.objects.filter(name=VEHICLE_SIZE_MAP[vtype_key]).first()
+                if not vehicle_type:
+                    self.stderr.write(self.style.WARNING(f"VehicleType '{VEHICLE_SIZE_MAP[vtype_key]}' not found, skipped."))
+                    skipped_combos += 1
+                    continue
 
-            weight_dec = Decimal(str(weight)).quantize(Decimal("0.01"))
+                weight_dec = Decimal(str(weight)).quantize(Decimal("0.01"))
 
-            for eff_date, price in AUG_UPDATES:
-                obj, was_created = ClientRate.objects.update_or_create(
-                    client=client,
-                    route=route,
-                    fuel_product=diesel_product,
-                    vehicle_type=vehicle_type,
-                    weight_tons=weight_dec,
-                    effective_date=eff_date,
-                    defaults={
-                        "effective_percent": EFFECTIVE_PERCENT,
-                        "updated_fuel_price": Decimal(price),
-                    },
-                )
-                if was_created:
-                    created += 1
-                else:
-                    updated += 1
+                for eff_date, price in AUG_UPDATES:
+                    obj, was_created = ClientRate.objects.update_or_create(
+                        client=client,
+                        route=route,
+                        fuel_product=diesel_product,
+                        vehicle_type=vehicle_type,
+                        weight_tons=weight_dec,
+                        effective_date=eff_date,
+                        defaults={
+                            "effective_percent": EFFECTIVE_PERCENT,
+                            "updated_fuel_price": Decimal(price),
+                        },
+                    )
+                    if was_created:
+                        created += 1
+                    else:
+                        updated += 1
 
         self.stdout.write(self.style.SUCCESS(
             f"Done. Created {created}, updated {updated} row(s), skipped {skipped_combos} route/vehicle combo(s)."
