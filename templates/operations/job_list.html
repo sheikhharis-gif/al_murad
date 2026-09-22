@@ -57,6 +57,12 @@
             <h5 class="fw-bold mb-0">Operational Register</h5>
             <div class="d-flex flex-wrap gap-2 align-items-center">
                 <form method="get" class="d-flex gap-2 align-items-center" id="sortForm">
+                    <label class="small text-muted fw-semibold mb-0">Fleet</label>
+                    <select name="fleet_mode" class="form-select form-select-sm" onchange="document.getElementById('sortForm').submit()">
+                        <option value="all" {% if fleet_mode == "all" %}selected{% endif %}>All (Own + Rental)</option>
+                        <option value="OWN" {% if fleet_mode == "OWN" %}selected{% endif %}>Own Only</option>
+                        <option value="RENTAL" {% if fleet_mode == "RENTAL" %}selected{% endif %}>Rental Only</option>
+                    </select>
                     <label class="small text-muted fw-semibold mb-0">Sort by</label>
                     <select name="sort_by" class="form-select form-select-sm" onchange="document.getElementById('sortForm').submit()">
                         {% for field, label in sort_fields.items %}
@@ -103,7 +109,14 @@
                                     <i class="bi bi-truck"></i>
                                 </div>
                                 <div>
-                                    <div class="fw-bold text-dark">{{ job.vehicle.vehicle_number }}</div>
+                                    <div class="fw-bold text-dark">
+                                        {{ job.vehicle.vehicle_number }}
+                                        {% if job.vehicle.vehicle_mode == 'RENTAL' %}
+                                            <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle ms-1" style="font-size: 0.65rem;">RENTAL</span>
+                                        {% else %}
+                                            <span class="badge bg-success-subtle text-success-emphasis border border-success-subtle ms-1" style="font-size: 0.65rem;">OWN</span>
+                                        {% endif %}
+                                    </div>
                                     <div class="small text-muted">{{ job.vehicle.vehicle_type }}</div>
                                 </div>
                             </div>

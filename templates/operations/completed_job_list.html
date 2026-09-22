@@ -74,7 +74,14 @@
                                     <i class="bi bi-truck"></i>
                                 </div>
                                 <div>
-                                    <div class="fw-bold text-dark">{{ job.vehicle.vehicle_number }}</div>
+                                    <div class="fw-bold text-dark">
+                                        {{ job.vehicle.vehicle_number }}
+                                        {% if job.vehicle.vehicle_mode == 'RENTAL' %}
+                                            <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle ms-1" style="font-size: 0.65rem;">RENTAL</span>
+                                        {% else %}
+                                            <span class="badge bg-success-subtle text-success-emphasis border border-success-subtle ms-1" style="font-size: 0.65rem;">OWN</span>
+                                        {% endif %}
+                                    </div>
                                     <div class="small text-muted">{{ job.vehicle.vehicle_type }}</div>
                                 </div>
                             </div>

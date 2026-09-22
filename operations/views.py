@@ -164,18 +164,24 @@ JOB_SORT_FIELDS = {
 def job_list(request):
     sort_by = request.GET.get("sort_by", "job_date")
     order = request.GET.get("order", "desc")
+    fleet_mode = request.GET.get("fleet_mode", "all")
     if sort_by not in JOB_SORT_FIELDS:
         sort_by = "job_date"
     if order not in ("asc", "desc"):
         order = "desc"
+    if fleet_mode not in ("OWN", "RENTAL"):
+        fleet_mode = "all"
     order_field = sort_by if order == "asc" else f"-{sort_by}"
 
     jobs = Job.objects.exclude(status="completed").order_by(order_field)
+    if fleet_mode != "all":
+        jobs = jobs.filter(vehicle__vehicle_mode=fleet_mode)
     return render(request, "operations/job_list.html", {
         "jobs": jobs,
         "sort_fields": JOB_SORT_FIELDS,
         "sort_by": sort_by,
         "order": order,
+        "fleet_mode": fleet_mode,
     })
 
 def completed_job_list(request):
