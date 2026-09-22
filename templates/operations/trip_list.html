@@ -7,16 +7,16 @@
     <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
         <div>
             <h3 class="fw-bold text-dark mb-1">
-                <i class="bi bi-bar-chart-line-fill text-primary me-2"></i>Trip & Performance Report Ledger
+                <i class="bi bi-bar-chart-line-fill text-primary me-2"></i>Operational MIS Data
             </h3>
-            <p class="text-muted small mb-0">Track real-time trip revenues, fuel/operational expenses, and bottom-line profitability.</p>
+            <p class="text-muted small mb-0">Trip & Performance Report Ledger - real-time trip revenues, fuel/operational expenses, and bottom-line profitability.</p>
         </div>
         <div class="d-flex flex-wrap gap-2">
             <a href="{% url 'trips_pdf' %}?report={{ report }}&client={{ selected_client|default:'' }}&vehicle={{ selected_vehicle|default:'' }}&route={{ selected_route|default:'' }}&start_date={{ start_date|default:'' }}&end_date={{ end_date|default:'' }}" class="btn btn-outline-danger btn-sm rounded-3 px-3 shadow-sm d-inline-flex align-items-center">
                 <i class="bi bi-file-earmark-pdf me-1"></i> Export PDF
             </a>
-            <a href="{% url 'trips_excel' %}?report={{ report }}&client={{ selected_client|default:'' }}&vehicle={{ selected_vehicle|default:'' }}&route={{ selected_route|default:'' }}&start_date={{ start_date|default:'' }}&end_date={{ end_date|default:'' }}" class="btn btn-outline-success btn-sm rounded-3 px-3 shadow-sm d-inline-flex align-items-center">
-                <i class="bi bi-file-earmark-excel me-1"></i> Export Excel
+            <a href="{% url 'trips_excel' %}?report={{ report }}&client={{ selected_client|default:'' }}&vehicle={{ selected_vehicle|default:'' }}&route={{ selected_route|default:'' }}&start_date={{ start_date|default:'' }}&end_date={{ end_date|default:'' }}" class="btn btn-success btn-sm rounded-3 px-3 shadow-sm d-inline-flex align-items-center fw-bold">
+                <i class="bi bi-file-earmark-excel me-1"></i> Download Excel
             </a>
             <a href="{% url 'trip_add' %}" class="btn btn-primary px-4 shadow-sm fw-bold rounded-3 btn-sm d-inline-flex align-items-center">
                 <i class="bi bi-plus-lg me-2"></i>Record New Trip

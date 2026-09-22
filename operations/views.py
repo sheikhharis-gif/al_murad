@@ -288,7 +288,10 @@ def job_delete(request, job_id):
 # ================= TRIPS =================
 
 def _get_report_context(request):
-    report = request.GET.get("report", "own")
+    # Defaults to "all" (not "own") - since rental-vehicle jobs became a real
+    # thing, defaulting to OWN-only silently hid rental trips from a report
+    # whose whole point is to show all operational data at a glance.
+    report = request.GET.get("report", "all")
     selected_client = request.GET.get("client")
     selected_job = request.GET.get("job")
     selected_vehicle = request.GET.get("vehicle")
