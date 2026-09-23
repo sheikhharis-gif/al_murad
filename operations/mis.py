@@ -55,6 +55,10 @@ def _d(value):
     return Decimal(str(value or 0))
 
 
+def _whole(value):
+    return int(round(value)) if value is not None else None
+
+
 def _local(value):
     return timezone.localtime(value).replace(tzinfo=None, microsecond=0) if value else None
 
@@ -115,8 +119,9 @@ def build_mis(request):
                 t.trip_date if t else job.job_date,
                 t.client.name if t else "", t.bilty_number if t else "",
                 t.weight if t else None, t.route.route_code if t else "",
-                t.departure_meter if t else None, t.arrival_meter if t else None,
-                (t.arrival_meter - t.departure_meter)
+                # Meters / KMs are whole numbers - shown without decimals
+                _whole(t.departure_meter) if t else None, _whole(t.arrival_meter) if t else None,
+                _whole(t.arrival_meter - t.departure_meter)
                 if t and t.arrival_meter is not None and t.departure_meter is not None else None,
                 _local(t.reached_at) if t else None, _local(t.departed_at) if t else None,
                 _local(t.arrived_at) if t else None, _local(t.delivered_at) if t else None,
@@ -135,7 +140,7 @@ def build_mis(request):
     totals[0] = "Total"
     for col in range(MONEY_START, MONEY_END + 1):
         totals[col] = sum((_d(r[col]) for r in rows), Decimal(0))
-    totals[MIS_HEADERS.index("Running KMs")] = sum((_d(r[11]) for r in rows), Decimal(0))
+    totals[MIS_HEADERS.index("Running KMs")] = sum((r[11] or 0 for r in rows), 0)
 
     # ---- Headline figures
     freight = sum((_d(t.freight) for t in trips), Decimal(0))
@@ -165,7 +170,7 @@ def build_mis(request):
         ("Total Trips", len(trips), "int"),
         ("Vehicles Used", len({j.vehicle_id for j in jobs}), "int"),
         ("Clients Served", len({t.client_id for t in trips}), "int"),
-        ("Running KMs", running_kms, "num"),
+        ("Running KMs", running_kms, "int"),
         ("Freight Revenue", freight, "money"),
         ("Additional Charges", additional, "money"),
         ("Trip Advance Given", sum((_d(j.trip_advance) for j in jobs), Decimal(0)), "money"),
