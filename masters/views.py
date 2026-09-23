@@ -1,4 +1,5 @@
 import json
+from . import rate_fuel
 from urllib.request import Request, urlopen
 from calendar import monthrange
 from urllib.parse import urlencode
@@ -969,6 +970,7 @@ def client_rates(request, client_id):
             for vt in VehicleType.objects.filter(client_rates__client=client).distinct().order_by("name")
         ],
         "all_vehicle_types": VehicleType.objects.order_by("name"),
+        **rate_fuel.fuel_price_choices(client),
     })
 
 

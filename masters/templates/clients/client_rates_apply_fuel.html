@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% load rate_filters %}
+
+{% block content %}
+<div class="container-fluid py-4">
+
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+        <div>
+            <h3 class="fw-bold text-dark mb-1"><i class="bi bi-fuel-pump text-primary me-2"></i>Apply Fuel Price - Preview</h3>
+            <p class="text-muted small mb-0">{{ client.name }} - check the new trip costs below, then Confirm. Nothing changes until you do.</p>
+        </div>
+        <a href="{{ back_url }}" class="btn btn-light border px-3"><i class="bi bi-arrow-left me-1"></i>Back to Client Rates</a>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-md-6">
+            <div class="card border-0 shadow-sm rounded-4 h-100">
+                <div class="card-body">
+                    <div class="small text-muted fw-bold text-uppercase mb-2">Rates are on this fuel price now</div>
+                    {% for p, d, n in basis %}
+                    <div class="d-flex justify-content-between border-bottom py-1">
+                        <span class="fs-5 fw-bold">{{ p|acct }}</span>
+                        <span class="text-muted">effective {{ d|date:"j-M-y" }} &middot; {{ n }} rate{{ n|pluralize }}</span>
+                    </div>
+                    {% empty %}
+                    <div class="text-muted">No {{ price.product.name }} rates for this client.</div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card border-0 shadow-sm rounded-4 h-100 border-start border-4 border-primary">
+                <div class="card-body">
+                    <div class="small text-muted fw-bold text-uppercase mb-2">New fuel price</div>
+                    <div class="d-flex justify-content-between py-1">
+                        <span class="fs-5 fw-bold text-primary">{{ price.fuel_price|acct }}</span>
+                        <span class="text-muted">{{ price.product.name }} &middot; effective {{ price.effective_date|date:"j-M-y" }}</span>
+                    </div>
+                    <div class="small text-muted mt-2">Each rate keeps its own Effective %; the new entries get Effective Date {{ price.effective_date|date:"j-M-y" }}.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm rounded-4">
+        <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+                <h6 class="fw-bold mb-0">{{ to_update }} of {{ rows|length }} rate{{ rows|length|pluralize }} will be updated</h6>
+                {% if to_update %}
+                <form method="post">
+                    {% csrf_token %}
+                    <input type="hidden" name="price" value="{{ price.id }}">
+                    <input type="hidden" name="include_blank" value="{% if include_blank %}1{% endif %}">
+                    <button type="submit" class="btn btn-primary fw-bold px-4" onclick="return confirm('Create {{ to_update }} new rate entr{{ to_update|pluralize:"y,ies" }} at {{ price.fuel_price }} effective {{ price.effective_date|date:"j-M-y" }}?')">
+                        <i class="bi bi-check2-circle me-1"></i>Confirm &amp; Apply
+                    </button>
+                </form>
+                {% endif %}
+            </div>
+            <div class="table-responsive" style="max-height: 560px;">
+                <table class="table table-sm table-hover align-middle mb-0 small">
+                    <thead class="table-light sticky-top">
+                        <tr>
+                            <th>Route</th><th>Vehicle Type</th><th class="text-end">Tons</th>
+                            <th class="text-end">Current Fuel</th><th class="text-end">New Fuel</th><th class="text-end">Change %</th>
+                            <th class="text-end">Effective %</th><th class="text-end">Current Trip Cost</th>
+                            <th class="text-end">New Trip Cost</th><th class="text-end">Difference</th><th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in rows %}
+                        <tr class="{% if row.skip %}text-muted{% endif %}">
+                            <td class="fw-bold">{{ row.base.route.route_code|upper }}</td>
+                            <td>{{ row.base.vehicle_type.name|default:"--" }}</td>
+                            <td class="text-end">{{ row.base.weight_tons|default:"--" }}</td>
+                            <td class="text-end">{{ row.base.updated_fuel_price|acct }} <span class="text-muted">({{ row.base.effective_date|date:"j-M" }})</span></td>
+                            {% if row.skip %}
+                            <td colspan="6" class="text-end fst-italic">{{ row.skip }} - left as is</td>
+                            <td></td>
+                            {% else %}
+                            <td class="text-end">{{ row.new.updated_fuel_price|acct }}</td>
+                            <td class="text-end {% if row.new.fuel_price_change_percent < 0 %}text-danger{% else %}text-success{% endif %}">{{ row.new.fuel_price_change_percent|pct }}</td>
+                            <td class="text-end">{{ row.base.effective_percent|pct_trim }}</td>
+                            <td class="text-end">{{ row.base.updated_trip_cost|acct }}</td>
+                            <td class="text-end fw-bold text-primary">{{ row.new.updated_trip_cost|acct }}</td>
+                            <td class="text-end {% if row.diff < 0 %}text-danger{% else %}text-success{% endif %}">{{ row.diff|acct }}</td>
+                            <td></td>
+                            {% endif %}
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="11" class="text-center py-4 text-muted">No rates on {{ price.product.name }} for {{ client.name }}.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

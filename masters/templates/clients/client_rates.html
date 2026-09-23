@@ -54,7 +54,10 @@
     <div class="card border-0 shadow-sm rounded-4">
         <div class="card-header bg-white border-0 pt-3 px-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
             <h5 class="fw-bold mb-0 text-primary">Rate Details</h5>
-            <button type="button" class="btn btn-sm btn-outline-primary fw-bold px-3 ms-auto" data-bs-toggle="modal" data-bs-target="#rateCopyModal">
+            <button type="button" class="btn btn-sm btn-primary fw-bold px-3 ms-auto" data-bs-toggle="modal" data-bs-target="#applyFuelModal">
+                <i class="bi bi-fuel-pump me-1"></i>Apply Fuel Price
+            </button>
+            <button type="button" class="btn btn-sm btn-outline-primary fw-bold px-3" data-bs-toggle="modal" data-bs-target="#rateCopyModal">
                 <i class="bi bi-copy me-1"></i>Copy Rates
             </button>
             <div class="mode-tabs">
@@ -384,6 +387,52 @@
 </div>
 
 <!-- Edit Rate Modal -->
+<!-- Apply Fuel Price: revise all rates onto an uploaded fuel price (preview first) -->
+<div class="modal fade" id="applyFuelModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-4">
+            <form method="get" action="{% url 'client_rate_apply_fuel' client.id %}" id="applyFuelForm">
+                <div class="modal-header border-0 pb-0">
+                    <h5 class="modal-title fw-bold"><i class="bi bi-fuel-pump text-primary me-2"></i>Apply Fuel Price</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="small text-muted mb-3">
+                        Revises every route / vehicle type / tonnage rate of {{ client.name }} from its latest entry onto the fuel price you pick,
+                        using the same formula and Effective %. You'll see a <b>preview</b> of old vs new trip costs before anything is saved.
+                    </p>
+                    <label class="form-label small fw-bold">Fuel Product</label>
+                    <select class="form-select mb-3" id="applyFuelProduct">
+                        {% for p in fuel_products %}<option value="{{ p.id }}" {% if 'CETANE' in p.name %}selected{% endif %}>{{ p.name }}</option>{% endfor %}
+                    </select>
+                    <label class="form-label small fw-bold">New fuel price <span class="text-muted fw-normal">(from Fuel Rates)</span></label>
+                    <select name="price" class="form-select mb-3" id="applyFuelPrice" required>
+                        {% for fp in fuel_prices %}
+                        <option value="{{ fp.id }}" data-product="{{ fp.product_id }}">{{ fp.effective_date|date:"j-M-y" }} &mdash; {{ fp.fuel_price }}</option>
+                        {% endfor %}
+                    </select>
+                    {% if blank_product_rates %}
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="include_blank" value="1" id="applyFuelBlank" checked>
+                        <label class="form-check-label small" for="applyFuelBlank">
+                            Include {{ blank_product_rates }} older rate entr{{ blank_product_rates|pluralize:"y,ies" }} saved without a Fuel Product
+                            (they'll continue on the product chosen above)
+                        </label>
+                    </div>
+                    {% endif %}
+                    {% if not fuel_prices %}
+                    <div class="small text-danger">No fuel prices uploaded yet - add them under Suppliers &gt; Fuel Rates first.</div>
+                    {% endif %}
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-light border" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary fw-bold px-4"><i class="bi bi-eye me-1"></i>Preview</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <!-- Copy Rates: market-standard size -> modified sizes (e.g. 16FT DRY -> 17FT DRY) -->
 <div class="modal fade" id="rateCopyModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
@@ -759,6 +808,22 @@ document.addEventListener('DOMContentLoaded', function () {
 <style>
     .copy-to-list { max-height: 260px; overflow-y: auto; }
 </style>
+<script>
+    // Apply Fuel Price window: only list the chosen product's prices (newest first, pre-selected).
+    document.addEventListener('DOMContentLoaded', function () {
+        var product = document.getElementById('applyFuelProduct');
+        var price = document.getElementById('applyFuelPrice');
+        if (!product || !price) return;
+        var all = Array.prototype.slice.call(price.options);
+        function refresh() {
+            price.innerHTML = '';
+            all.filter(function (o) { return o.dataset.product === product.value; }).forEach(function (o) { price.appendChild(o); });
+            price.selectedIndex = price.options.length ? 0 : -1;
+        }
+        product.addEventListener('change', refresh);
+        refresh();
+    });
+</script>
 <script>
     // Rate table search: every word typed must match. A plain word matches the
     // START of a word in the route / cities / fuel product / vehicle type /

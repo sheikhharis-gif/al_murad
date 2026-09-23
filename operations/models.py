@@ -208,11 +208,11 @@ class Trip(models.Model):
         return _format_duration(self.arrived_at, self.delivered_at)
 
     def compute_freight(self):
-        """Freight = latest matching Client Rate's Updated Trip Cost + Additional
-        Charges. Must match vehicle type AND weight exactly - a rate for a
-        different tonnage on the same route/vehicle type must never be
-        substituted in, even if it's the only one on file."""
-        rate = matching_trip_cost(self.client_id, self.route_id, self.vehicle_type_id, self.weight)
+        """Freight = Updated Trip Cost of the Client Rate in force on the trip's
+        date + Additional Charges. Must match vehicle type AND weight exactly -
+        a rate for a different tonnage on the same route/vehicle type must
+        never be substituted in, even if it's the only one on file."""
+        rate = matching_trip_cost(self.client_id, self.route_id, self.vehicle_type_id, self.weight, self.trip_date)
         return (rate or 0) + (self.additional_charges or 0)
 
     @property
@@ -237,15 +237,25 @@ class Trip(models.Model):
         return f"Job {self.job.job_number} | Trip {self.trip_no}"
 
 
-def matching_trip_cost(client_id, route_id, vehicle_type_id, weight):
-    """Updated Trip Cost of the latest Client Rate for this client + route +
-    vehicle type + tonnage, or None."""
+def matching_trip_cost(client_id, route_id, vehicle_type_id, weight, on_date=None):
+    """Updated Trip Cost of the Client Rate for this client + route + vehicle
+    type + tonnage that was in force on `on_date` (the latest one effective on
+    or before it), so revising a rate never re-prices older trips. A trip
+    dated before the first rate on file uses that first rate. None if there's
+    no rate at all."""
     if not (client_id and route_id and vehicle_type_id):
         return None
     from masters.models import ClientRate
-    rate = ClientRate.objects.filter(
+    rates = ClientRate.objects.filter(
         client_id=client_id, route_id=route_id, vehicle_type_id=vehicle_type_id, weight_tons=weight,
-    ).order_by("-effective_date", "-id").only("updated_trip_cost").first()
+    ).only("updated_trip_cost")
+    rate = None
+    if on_date:
+        rate = rates.filter(effective_date__lte=on_date).order_by("-effective_date", "-id").first()
+        if not rate:
+            rate = rates.order_by("effective_date", "id").first()
+    else:
+        rate = rates.order_by("-effective_date", "-id").first()
     return rate.updated_trip_cost if rate else None
 
 
@@ -255,11 +265,13 @@ def refresh_trip_freight(client_id, route_id, vehicle_type_id, weight):
     when the trip itself is saved, so trips entered before their rate existed
     stayed at 0. Only the freight column is touched (not meters/odometer).
     Returns how many trips changed."""
-    rate = matching_trip_cost(client_id, route_id, vehicle_type_id, weight) or 0
+    rate_on = {}  # trip date -> rate in force that day
     changed = 0
-    for trip in Trip.objects.filter(client_id=client_id, route_id=route_id,
-                                    vehicle_type_id=vehicle_type_id, weight=weight).only("id", "freight", "additional_charges"):
-        freight = rate + (trip.additional_charges or 0)
+    for trip in Trip.objects.filter(client_id=client_id, route_id=route_id, vehicle_type_id=vehicle_type_id,
+                                    weight=weight).only("id", "freight", "additional_charges", "trip_date"):
+        if trip.trip_date not in rate_on:
+            rate_on[trip.trip_date] = matching_trip_cost(client_id, route_id, vehicle_type_id, weight, trip.trip_date) or 0
+        freight = rate_on[trip.trip_date] + (trip.additional_charges or 0)
         if trip.freight != freight:
             Trip.objects.filter(pk=trip.pk).update(freight=freight)
             changed += 1

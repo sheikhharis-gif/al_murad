@@ -1,5 +1,5 @@
 from django.urls import path
-from . import rate_copy, rate_exports, views
+from . import rate_copy, rate_exports, rate_fuel, views
 
 urlpatterns = [
 
@@ -52,6 +52,7 @@ urlpatterns = [
     path("clients/add/", views.client_add, name="client_add"),
     path("clients/rates/", views.client_rates_select, name="client_rates_select"),
     path("clients/<int:client_id>/rates/", views.client_rates, name="client_rates"),
+    path("clients/<int:client_id>/rates/apply-fuel/", rate_fuel.client_rate_apply_fuel, name="client_rate_apply_fuel"),
     path("clients/<int:client_id>/rates/copy/", rate_copy.client_rate_copy, name="client_rate_copy"),
     path("clients/<int:client_id>/rates/excel/", rate_exports.client_rates_excel, name="client_rates_excel"),
     path("clients/<int:client_id>/rates/pdf/", rate_exports.client_rates_pdf, name="client_rates_pdf"),
