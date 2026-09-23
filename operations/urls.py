@@ -5,6 +5,8 @@ urlpatterns = [
     path("", views.dashboard, name="dashboard"),
     path("dashboard/", views.dashboard, name="dashboard"),
 
+    path("open/", views.quick_open, name="quick_open"),
+
     # --- TRIPS ---
     path("trips/", views.trip_list, name="trip_list"),
     path("trips/export/", views.trips_excel, name="trips_excel"),

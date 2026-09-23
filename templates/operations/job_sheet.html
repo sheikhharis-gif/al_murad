@@ -126,7 +126,7 @@
                 {% endif %}
                 <div id="trip-formset">
                     {% for tf in trip_formset %}
-                    <div class="trip-block border rounded-4 p-3 mb-3 bg-light">
+                    <div class="trip-block border rounded-4 p-3 mb-3 bg-light"{% if tf.instance.pk %} id="trip-{{ tf.instance.pk }}"{% endif %}>
                         {% for hidden in tf.hidden_fields %}{{ hidden }}{% endfor %}
                         {% if tf.instance.pk %}
                         <div class="d-flex justify-content-between align-items-center mb-2">
@@ -358,6 +358,7 @@
                 var rows = container.querySelectorAll('.' + rowClass);
                 var templateRow = rows[rows.length - 1];
                 var newRow = templateRow.cloneNode(true);
+                newRow.removeAttribute('id');
 
                 // A cloned flatpickr field is a dead copy (its visible box has no
                 // name and it's flagged as already enhanced) - unwrap it back to

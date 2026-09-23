@@ -9,6 +9,7 @@ from django.db.models import Count, Q, Sum
 from django.db.models.functions import TruncMonth
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.template.loader import get_template
 from xhtml2pdf import pisa
 
@@ -665,6 +666,29 @@ def trips_pdf(request):
     response = HttpResponse(pdf_value, content_type='application/pdf')
     response['Content-Disposition'] = 'attachment; filename="trip_sheet_own.pdf"'
     return response
+
+
+def quick_open(request):
+    """Navbar "Open Trip # / Job #" box - jumps straight to that trip (on its
+    Job Sheet) or job's edit page."""
+    kind = request.GET.get("type", "trip")
+    raw = (request.GET.get("no") or "").strip().lstrip("#")
+    back = request.META.get("HTTP_REFERER") or "dashboard"
+    if not raw.isdigit():
+        messages.error(request, "Enter a Trip # or Job # (numbers only).")
+        return redirect(back)
+    number = int(raw)
+    if kind == "job":
+        if Job.objects.filter(job_number=number).exists():
+            return redirect("job_edit", job_id=number)
+        messages.error(request, f"Job #{raw} not found.")
+        return redirect(back)
+    # Trip # mirrors the trip's own id (000022 -> 22)
+    trip = Trip.objects.filter(pk=number).only("id", "job_id").first()
+    if trip:
+        return redirect(reverse("job_edit", kwargs={"job_id": trip.job_id}) + f"#trip-{trip.id}")
+    messages.error(request, f"Trip #{raw} not found.")
+    return redirect(back)
 
 
 def trip_add(request):

@@ -1090,3 +1090,13 @@ span.flatpickr-weekday:nth-child(7n) { color: var(--danger); }
     color: #fff;
     box-shadow: 0 4px 12px var(--accent-glow);
 }
+
+/* Navbar "Open Trip # / Job #" box */
+.main-nav .quick-open { width: 210px; margin: 0 6px; }
+.main-nav .quick-open .form-select { flex: 0 0 82px; font-size: 0.8rem; font-weight: 600; }
+.main-nav .quick-open .form-control { font-size: 0.8rem; }
+@media (max-width: 1199.98px) { .main-nav .quick-open { width: 100%; margin: 6px 0; } }
+
+/* Trip opened from the navbar box: scroll offset + brief highlight */
+.trip-block { scroll-margin-top: 110px; }
+.trip-block:target { border-color: #0d6efd !important; box-shadow: 0 0 0 3px rgba(13, 110, 253, .25); }
