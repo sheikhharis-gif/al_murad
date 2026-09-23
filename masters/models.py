@@ -508,13 +508,17 @@ class ClientRate(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.pk:
-            previous = ClientRate.objects.filter(
+            same_rate = ClientRate.objects.filter(
                 client=self.client,
                 route=self.route,
-                fuel_product=self.fuel_product,
                 vehicle_type=self.vehicle_type,
                 weight_tons=self.weight_tons,
-            ).order_by("-effective_date", "-id").first()
+            ).order_by("-effective_date", "-id")
+            previous = same_rate.filter(fuel_product=self.fuel_product).first()
+            # Older entries were saved without a Fuel Product - a new entry
+            # that has one still continues from them.
+            if not previous and self.fuel_product_id:
+                previous = same_rate.filter(fuel_product__isnull=True).first()
             if previous:
                 self.current_fuel_price = previous.updated_fuel_price
                 self.current_rate = previous.updated_trip_cost

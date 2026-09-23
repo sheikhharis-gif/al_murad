@@ -612,10 +612,10 @@ document.addEventListener('DOMContentLoaded', function () {
     var effPct = document.getElementById('id_effective_percent');
     var updatedFuel = document.getElementById('id_updated_fuel_price');
 
-    function rateCategoryKey() {
+    function rateCategoryKey(fuelProduct) {
         var weight = weightTons && weightTons.value.trim() ? String(parseFloat(weightTons.value)) : '';
         return (routeSelect ? routeSelect.value : '') + '|' +
-            (fuelProductSelect ? fuelProductSelect.value : '') + '|' +
+            (fuelProduct !== undefined ? fuelProduct : (fuelProductSelect ? fuelProductSelect.value : '')) + '|' +
             (vehicleTypeSelect ? vehicleTypeSelect.value : '') + '|' + weight;
     }
 
@@ -623,7 +623,9 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!routeSelect || !curFuel || !curRate) return;
         // Never overwrite something the user already typed by hand.
         if (curFuel.dataset.touched || curRate.dataset.touched) return;
-        var info = lastByRoute[rateCategoryKey()];
+        // Same fuel product first; else an older entry saved with no fuel
+        // product (same as the server does when the entry is saved).
+        var info = lastByRoute[rateCategoryKey()] || lastByRoute[rateCategoryKey('')];
         if (info) {
             curFuel.value = info.fuel_price;
             curRate.value = info.trip_cost;
