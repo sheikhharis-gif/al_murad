@@ -1,5 +1,5 @@
 import json
-from . import rate_fuel
+from . import rate_correct, rate_fuel
 from urllib.request import Request, urlopen
 from calendar import monthrange
 from urllib.parse import urlencode
@@ -765,15 +765,31 @@ def fuel_rates(request):
         pso_form = PsoFuelPriceForm(request.POST)
         if pso_form.is_valid():
             eff_date = pso_form.cleaned_data["effective_date"]
+            corrections = []
             for product, price in (
                 (premier_product, pso_form.cleaned_data.get("premier_price")),
                 (hi_cetane_product, pso_form.cleaned_data.get("hi_cetane_price")),
             ):
                 if price is not None:
+                    # A price client rates are already built on is locked -
+                    # changing it goes through Correct & Recalculate so every
+                    # later rate and trip is fixed too, not left wrong.
+                    existing = VendorFuelPrice.objects.filter(
+                        vendor=pso_vendor, product=product, effective_date=eff_date).first()
+                    if existing and existing.fuel_price != price and rate_correct.rates_using(
+                            product.id, eff_date, existing.fuel_price).exists():
+                        corrections.append((product, price))
+                        continue
                     VendorFuelPrice.objects.update_or_create(
                         vendor=pso_vendor, product=product, effective_date=eff_date,
                         defaults={"fuel_price": price},
                     )
+            if corrections:
+                product, price = corrections[0]
+                messages.warning(request, f"{product.name} on {eff_date:%d-%b-%y} is used in client rates - "
+                                 "review the recalculation below and Confirm to correct it."
+                                 + (" Correct the other product afterwards." if len(corrections) > 1 else ""))
+                return redirect(f"{reverse('fuel_price_correct')}?{urlencode({'product': product.id, 'date': eff_date.isoformat(), 'price': price})}")
             messages.success(request, "PSO fuel price saved.")
             return redirect("fuel_rates")
     else:
@@ -787,11 +803,15 @@ def fuel_rates(request):
     for r in VendorFuelPrice.objects.filter(vendor=pso_vendor, product__in=pso_products).order_by("-effective_date", "-id"):
         row = by_date.setdefault(r.effective_date, {})
         row.setdefault(r.product_id, r.fuel_price)
+    usage = rate_correct.usage_counts()
     pso_rows = [
         {
             "effective_date": eff_date,
             "premier": row.get(premier_product.id),
             "hi_cetane": row.get(hi_cetane_product.id),
+            # client rate entries built on each price (locks it - see rate_correct)
+            "premier_used": rate_correct.used_count(usage, eff_date, premier_product.id, row.get(premier_product.id)),
+            "hi_cetane_used": rate_correct.used_count(usage, eff_date, hi_cetane_product.id, row.get(hi_cetane_product.id)),
         }
         for eff_date, row in sorted(by_date.items(), reverse=True)
     ]
@@ -808,7 +828,14 @@ def pso_fuel_price_delete(request, effective_date):
     if request.method == "POST":
         pso_vendor = Vendor.objects.filter(name__iexact="PSO").first()
         if pso_vendor:
-            VendorFuelPrice.objects.filter(vendor=pso_vendor, effective_date=effective_date).delete()
+            prices = VendorFuelPrice.objects.filter(vendor=pso_vendor, effective_date=effective_date)
+            used = sum(rate_correct.rates_using(p.product_id, p.effective_date, p.fuel_price).count() for p in prices)
+            if used:
+                messages.error(request, f"Can't delete the {effective_date} fuel prices - {used} client rate entr"
+                               f"{'y is' if used == 1 else 'ies are'} built on them. If the price is wrong, edit it "
+                               "(Correct & Recalculate); if the update itself was a mistake, Undo it on Client Rates first.")
+                return redirect("fuel_rates")
+            prices.delete()
             messages.success(request, "PSO fuel price entry deleted.")
     return redirect("fuel_rates")
 

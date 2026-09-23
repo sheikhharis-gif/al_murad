@@ -56,8 +56,10 @@
                             {% for row in pso_rows %}
                             <tr>
                                 <td class="fw-semibold">{{ row.effective_date|date:"j-M-y" }}</td>
-                                <td class="text-center">{{ row.premier|default_if_none:"--"|floatformat:2 }}</td>
-                                <td class="text-center">{{ row.hi_cetane|default_if_none:"--"|floatformat:2 }}</td>
+                                <td class="text-center">{{ row.premier|default_if_none:"--"|floatformat:2 }}{% if row.premier_used %}
+                                    <i class="bi bi-lock-fill text-muted small ms-1" title="Used by {{ row.premier_used }} client rate entr{{ row.premier_used|pluralize:'y,ies' }} - editing it opens Correct &amp; Recalculate"></i>{% endif %}</td>
+                                <td class="text-center">{{ row.hi_cetane|default_if_none:"--"|floatformat:2 }}{% if row.hi_cetane_used %}
+                                    <i class="bi bi-lock-fill text-muted small ms-1" title="Used by {{ row.hi_cetane_used }} client rate entr{{ row.hi_cetane_used|pluralize:'y,ies' }} - editing it opens Correct &amp; Recalculate"></i>{% endif %}</td>
                                 <td class="text-center">
                                     <div class="btn-group btn-group-sm shadow-sm rounded-2 overflow-hidden bg-white border">
                                         <button type="button" class="btn btn-sm btn-white text-warning border-end pso-edit-btn"
