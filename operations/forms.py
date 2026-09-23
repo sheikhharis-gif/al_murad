@@ -2,6 +2,7 @@ import datetime as dt
 from zoneinfo import ZoneInfo
 
 from django import forms
+from django.db.models import Q
 from django.forms import inlineformset_factory
 from django.utils import timezone
 from .models import Job, Trip, JobExpense, JobFuelEntry
@@ -125,7 +126,10 @@ class TripForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields["client"].queryset = Client.objects.filter(is_active=True).order_by("name")
+        # Active clients, plus this trip's own client even if it's since been
+        # deactivated - otherwise the trip could never be saved again.
+        self.fields["client"].queryset = Client.objects.filter(
+            Q(is_active=True) | Q(pk=self.instance.client_id)).order_by("name")
         self.fields["client"].empty_label = "--- Select Client ---"
         self.fields["route"].queryset = Route.objects.all().order_by("route_code")
         self.fields["route"].empty_label = "--- Select Route ---"

@@ -134,6 +134,13 @@
                             <span class="fw-bold text-success">Freight: {{ tf.instance.freight|floatformat:2 }}</span>
                         </div>
                         {% endif %}
+                        {% if tf.errors %}
+                        <div class="alert alert-danger border-0 rounded-3 py-2 px-3 small mb-2 trip-errors">
+                            <i class="bi bi-exclamation-triangle-fill me-1"></i><strong>Not saved:</strong>
+                            {% for field in tf %}{% if field.errors %}<span class="me-2"><b>{{ field.label }}</b> - {{ field.errors|join:", " }}</span>{% endif %}{% endfor %}
+                            {% for e in tf.non_field_errors %}<span class="me-2">{{ e }}</span>{% endfor %}
+                        </div>
+                        {% endif %}
                         {# Layout mirrors the client's trip sheet: inputs on the left, meters/transit on the right #}
                         <div class="row g-2">
                             <div class="col-md-2">
@@ -217,6 +224,12 @@
                                 </div>
                             </div>
                             {% endif %}
+                            <div class="col text-end">
+                                {# Saves all trips (same as the bottom button) and returns to this one #}
+                                <button type="submit" name="save_trips" value="{{ tf.instance.pk|default:'' }}" class="btn btn-primary btn-sm fw-bold px-3 trip-save-btn">
+                                    <i class="bi bi-save me-1"></i>Save
+                                </button>
+                            </div>
                         </div>
                     </div>
                     {% endfor %}
@@ -359,6 +372,8 @@
                 var templateRow = rows[rows.length - 1];
                 var newRow = templateRow.cloneNode(true);
                 newRow.removeAttribute('id');
+                newRow.querySelectorAll('.trip-errors').forEach(function (el) { el.remove(); });
+                newRow.querySelectorAll('.trip-save-btn').forEach(function (btn) { btn.value = ''; });
 
                 // A cloned flatpickr field is a dead copy (its visible box has no
                 // name and it's flagged as already enhanced) - unwrap it back to
@@ -421,7 +436,14 @@
         // there before the date pickers finish rendering, which shifts the page
         // and leaves the trip half under the sticky navbar. Re-align it once
         // everything has loaded, just below the navbar.
-        if (/^#trip-\d+$/.test(window.location.hash)) {
+        // A failed save re-shows the page - bring the first trip with errors into view.
+        var firstError = document.querySelector('.trip-errors');
+        if (firstError) {
+            window.addEventListener('load', function () {
+                var nav = document.querySelector('.app-navbar');
+                window.scrollTo({ top: firstError.getBoundingClientRect().top + window.pageYOffset - (nav ? nav.offsetHeight : 0) - 16 });
+            });
+        } else if (/^#trip-\d+$/.test(window.location.hash)) {
             window.addEventListener('load', function () {
                 setTimeout(function () {
                     var target = document.querySelector(window.location.hash);

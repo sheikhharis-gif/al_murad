@@ -246,9 +246,21 @@ def job_edit(request, job_id):
             if trip_formset.is_valid():
                 trip_formset.save()
                 messages.success(request, "Trips updated.")
-            else:
-                messages.error(request, "Could not save trips - check the highlighted field(s).")
-            return redirect("job_edit", job_id=job.job_number)
+                # Saved from a trip's own Save button -> come back to that trip
+                anchor = request.POST.get("save_trips", "")
+                url = reverse("job_edit", kwargs={"job_id": job.job_number})
+                return redirect(url + (f"#trip-{anchor}" if anchor.isdigit() else ""))
+            # Re-show the page with the submitted values and the errors on each
+            # trip (redirecting here used to throw the errors away, so a failed
+            # save looked like nothing happened).
+            messages.error(request, "Trips NOT saved - fix the field(s) marked in red below.")
+            return render(request, "operations/job_sheet.html", {
+                "job": job,
+                "job_form": JobForm(instance=job),
+                "trip_formset": trip_formset,
+                "expense_form": JobExpenseForm(instance=expense),
+                "fuel_formset": JobFuelEntryFormSet(instance=job, prefix="fuel"),
+            })
 
         if "save_expense" in request.POST:
             expense_form = JobExpenseForm(request.POST, instance=expense)
