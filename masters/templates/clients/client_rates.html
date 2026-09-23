@@ -10,12 +10,19 @@
             <p class="text-muted small mb-0">Fuel-price-indexed route rates - each entry revises the last one for that route.</p>
         </div>
         <div class="d-flex gap-2 flex-wrap">
-            <a href="{% url 'client_rates_excel' client.id %}" class="btn btn-success px-3 fw-bold">
-                <i class="bi bi-file-earmark-excel me-1"></i>Download Excel
-            </a>
-            <a href="{% url 'client_rates_pdf' client.id %}" class="btn btn-danger px-3 fw-bold">
-                <i class="bi bi-file-earmark-pdf me-1"></i>Download PDF
-            </a>
+            {# Download rates by Effective Date range - leave a date blank for no limit on that side #}
+            <form method="get" class="d-flex align-items-center gap-2 flex-wrap rate-download-form">
+                <label class="small fw-semibold text-muted mb-0">From</label>
+                <input type="date" name="from" class="form-control form-control-sm" style="width: 150px;" title="Effective date from">
+                <label class="small fw-semibold text-muted mb-0">To</label>
+                <input type="date" name="to" class="form-control form-control-sm" style="width: 150px;" title="Effective date to">
+                <button type="submit" formaction="{% url 'client_rates_excel' client.id %}" class="btn btn-success px-3 fw-bold">
+                    <i class="bi bi-file-earmark-excel me-1"></i>Download Excel
+                </button>
+                <button type="submit" formaction="{% url 'client_rates_pdf' client.id %}" class="btn btn-danger px-3 fw-bold">
+                    <i class="bi bi-file-earmark-pdf me-1"></i>Download PDF
+                </button>
+            </form>
             <a href="{% url 'client_rates_select' %}" class="btn btn-light border px-3">
                 <i class="bi bi-arrow-left me-1"></i>Change Client
             </a>

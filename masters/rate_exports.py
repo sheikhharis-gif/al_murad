@@ -1,6 +1,7 @@
 """Client Rates page - Excel and PDF downloads of a client's rate sheet
 (fuel-indexed route rates + dedicated vehicle rates), same columns as on screen."""
 import io
+from datetime import date
 from decimal import Decimal
 
 from django.contrib.auth.decorators import login_required
@@ -32,8 +33,34 @@ DEDICATED_HEADERS = [
 PERCENT_COLS = {"Effective %", "Fuel Price Change %"}
 
 
-def _rate_rows(client):
-    rates = ClientRate.objects.filter(client=client).select_related("route", "fuel_product", "vehicle_type")
+def _date_range(request):
+    """From / To effective-date filter from the download form (either may be blank)."""
+    def parse(name):
+        try:
+            return date.fromisoformat(request.GET.get(name) or "")
+        except ValueError:
+            return None
+    return parse("from"), parse("to")
+
+
+def _in_range(queryset, start, end):
+    if start:
+        queryset = queryset.filter(effective_date__gte=start)
+    if end:
+        queryset = queryset.filter(effective_date__lte=end)
+    return queryset
+
+
+def _period_label(start, end):
+    if not start and not end:
+        return "All dates"
+    return f"Effective {start:%d-%b-%Y} to {end:%d-%b-%Y}" if start and end else (
+        f"Effective from {start:%d-%b-%Y}" if start else f"Effective up to {end:%d-%b-%Y}")
+
+
+def _rate_rows(client, start=None, end=None):
+    rates = _in_range(ClientRate.objects.filter(client=client), start, end).select_related(
+        "route", "fuel_product", "vehicle_type")
     return [[
         r.route.route_code.upper(), (r.fuel_product.name.upper() if r.fuel_product_id else ""),
         r.current_fuel_price, r.current_rate, r.effective_percent, r.rate_subject_to_revision,
@@ -42,8 +69,9 @@ def _rate_rows(client):
     ] for r in rates]
 
 
-def _dedicated_rows(client):
-    rates = DedicatedRate.objects.filter(client=client).select_related("vehicle", "route", "vehicle_type")
+def _dedicated_rows(client, start=None, end=None):
+    rates = _in_range(DedicatedRate.objects.filter(client=client), start, end).select_related(
+        "vehicle", "route", "vehicle_type")
     return [[
         r.vehicle.vehicle_number, r.fixed_cost, r.month.strftime("%b-%y") if r.month else "",
         r.fuel_avg, r.fuel_price, r.variable_cost, (r.route.route_code.upper() if r.route_id else ""),
@@ -59,6 +87,7 @@ def _filename(client, ext):
 @login_required
 def client_rates_excel(request, client_id):
     client = get_object_or_404(Client, id=client_id)
+    start, end = _date_range(request)
     wb = Workbook()
     bold = Font(bold=True, name="Segoe UI", size=9)
     normal = Font(name="Segoe UI", size=9)
@@ -67,7 +96,7 @@ def client_rates_excel(request, client_id):
     border = Border(left=thin, right=thin, top=thin, bottom=thin)
 
     def sheet(ws, title, headers, rows):
-        ws.cell(row=1, column=1, value=f"{client.name} - {title}").font = Font(bold=True, size=12)
+        ws.cell(row=1, column=1, value=f"{client.name} - {title} ({_period_label(start, end)})").font = Font(bold=True, size=12)
         for c, h in enumerate(headers, start=1):
             cell = ws.cell(row=3, column=c, value=h)
             cell.font = Font(bold=True, name="Segoe UI", size=9, color="FFFFFF")
@@ -96,8 +125,8 @@ def client_rates_excel(request, client_id):
 
     ws = wb.active
     ws.title = "Rate Details"
-    sheet(ws, "Rate Details", RATE_HEADERS, _rate_rows(client))
-    dedicated = _dedicated_rows(client)
+    sheet(ws, "Rate Details", RATE_HEADERS, _rate_rows(client, start, end))
+    dedicated = _dedicated_rows(client, start, end)
     if dedicated:
         sheet(wb.create_sheet("Dedicated Rates"), "Dedicated Rates", DEDICATED_HEADERS, dedicated)
 
@@ -120,6 +149,7 @@ def _fmt(value, header=""):
 @login_required
 def client_rates_pdf(request, client_id):
     client = get_object_or_404(Client, id=client_id)
+    start, end = _date_range(request)
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=landscape(A4), leftMargin=8 * mm, rightMargin=8 * mm,
                             topMargin=10 * mm, bottomMargin=10 * mm, title=f"{client.name} - Client Rates")
@@ -128,7 +158,7 @@ def client_rates_pdf(request, client_id):
     head_style = cell_style.clone("head", fontName="Helvetica-Bold", textColor=colors.white)
     elements = [
         Paragraph(f"{client.name} - Client Rates", styles["Title"]),
-        Paragraph(f"Generated {timezone.localdate():%d-%b-%Y}", styles["Normal"]),
+        Paragraph(f"{_period_label(start, end)} | Generated {timezone.localdate():%d-%b-%Y}", styles["Normal"]),
         Spacer(1, 4 * mm),
     ]
 
@@ -149,8 +179,8 @@ def client_rates_pdf(request, client_id):
         elements.append(t)
         elements.append(Spacer(1, 6 * mm))
 
-    table("Rate Details", RATE_HEADERS, _rate_rows(client))
-    dedicated = _dedicated_rows(client)
+    table("Rate Details", RATE_HEADERS, _rate_rows(client, start, end))
+    dedicated = _dedicated_rows(client, start, end)
     if dedicated:
         table("Dedicated Rates", DEDICATED_HEADERS, dedicated)
 
