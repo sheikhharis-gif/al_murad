@@ -20,7 +20,7 @@ from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 
-from .models import Client, ClientRate, FuelProduct, VendorFuelPrice
+from .models import Client, ClientRate, FuelProduct, FuelRateBatch, VendorFuelPrice
 
 def _latest_rates(client, product, include_blank):
     """Latest rate per route + vehicle type + tonnage priced on `product`
@@ -86,6 +86,13 @@ def client_rate_apply_fuel(request, client_id):
                 effective_date=price.effective_date, **row["new"],
             ))
         with transaction.atomic():
+            if to_create:
+                batch = FuelRateBatch.objects.create(
+                    client=client, product=price.product, fuel_price=price.fuel_price,
+                    effective_date=price.effective_date, rate_count=len(to_create),
+                    created_by=request.user if request.user.is_authenticated else None)
+                for rate in to_create:
+                    rate.fuel_batch = batch
             # Values are worked out above from each rate's own latest entry;
             # bulk_create keeps ClientRate.save() from re-picking the base.
             ClientRate.objects.bulk_create(to_create)
@@ -115,6 +122,39 @@ def client_rate_apply_fuel(request, client_id):
     })
 
 
+def _blocking(rate):
+    """True if a newer entry has been made on top of this one (same route /
+    type / tonnage) - undoing it would pull the ground out from under that."""
+    return ClientRate.objects.filter(
+        client_id=rate.client_id, route_id=rate.route_id, vehicle_type_id=rate.vehicle_type_id,
+        weight_tons=rate.weight_tons,
+    ).filter(Q(effective_date__gt=rate.effective_date) | Q(effective_date=rate.effective_date, id__gt=rate.id)).exists()
+
+
+def client_rate_fuel_undo(request, client_id, batch_id):
+    """Undo one Apply Fuel Price run: delete the entries it created, which
+    puts every rate (and the trips priced off them) back where it was."""
+    client = get_object_or_404(Client, id=client_id)
+    batch = get_object_or_404(FuelRateBatch, id=batch_id, client=client)
+    back = redirect("client_rates", client_id=client.id)
+    if request.method != "POST":
+        return back
+    rates = list(batch.rates.all())
+    blocked = [r for r in rates if _blocking(r)]
+    if blocked:
+        messages.error(request, f"Can't undo the {batch.fuel_price} ({batch.effective_date:%d-%b-%y}) update: "
+                       f"{len(blocked)} of its rate(s) already have newer entries on top. Undo the newer update first.")
+        return back
+    with transaction.atomic():
+        # Deleting each rate re-prices its trips (ClientRate post_delete signal)
+        for rate in rates:
+            rate.delete()
+        batch.delete()
+    messages.success(request, f"Undone: fuel price {batch.fuel_price} effective {batch.effective_date:%d-%b-%y} - "
+                     f"{len(rates)} rate entr{'y' if len(rates) == 1 else 'ies'} removed, rates and trip charges are back to before.")
+    return back
+
+
 def pso_fuel_prices():
     """The official PSO prices entered on Suppliers > Fuel Rates - the index
     client rates are revised on. Prices a supplier/pump has on its own vendor
@@ -130,5 +170,6 @@ def fuel_price_choices(client):
     return {
         "fuel_products": products,
         "fuel_prices": prices,
+        "fuel_batches": FuelRateBatch.objects.filter(client=client).select_related("product", "created_by")[:5],
         "blank_product_rates": ClientRate.objects.filter(client=client, fuel_product__isnull=True).count(),
     }

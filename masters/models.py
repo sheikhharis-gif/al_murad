@@ -483,6 +483,24 @@ class Client(models.Model):
 # typed in manually; every later revision auto-chains off the previous
 # revision's Updated Fuel Price/Updated Trip Cost (client-side JS fills
 # these in and locks them, mirroring "CLIENT RATE FILE.xlsx").
+class FuelRateBatch(models.Model):
+    """One "Apply Fuel Price" run - groups the rate entries it created so the
+    whole run can be undone (e.g. if the fuel price was entered wrong)."""
+    client = models.ForeignKey(Client, on_delete=models.CASCADE, related_name="fuel_batches")
+    product = models.ForeignKey(FuelProduct, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+    fuel_price = models.DecimalField(max_digits=20, decimal_places=2)
+    effective_date = models.DateField()
+    rate_count = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    created_by = models.ForeignKey("auth.User", on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+
+    class Meta:
+        ordering = ["-created_at", "-id"]
+
+    def __str__(self):
+        return f"{self.client} - {self.fuel_price} ({self.effective_date})"
+
+
 class ClientRate(models.Model):
     client = models.ForeignKey(Client, on_delete=models.CASCADE, related_name="rates")
     route = models.ForeignKey("Route", on_delete=models.CASCADE, related_name="client_rates")
@@ -502,6 +520,9 @@ class ClientRate(models.Model):
         VehicleType, on_delete=models.SET_NULL, null=True, blank=True, related_name="client_rates"
     )
     effective_date = models.DateField()
+    # Set on entries created by Apply Fuel Price (for Undo)
+    fuel_batch = models.ForeignKey(FuelRateBatch, on_delete=models.SET_NULL, null=True, blank=True,
+                                   editable=False, related_name="rates")
 
     class Meta:
         ordering = ["route__route_code", "-effective_date", "-id"]

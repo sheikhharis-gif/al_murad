@@ -67,6 +67,27 @@
         </div>
         <div class="card-body p-3">
         <div id="tripPane">
+            {% if fuel_batches %}
+            <div class="fuel-updates border rounded-3 px-3 py-2 mx-3 mb-3 small">
+                <div class="fw-bold text-muted text-uppercase mb-1" style="font-size:.7rem;">Recent fuel price updates</div>
+                {% for b in fuel_batches %}
+                <div class="d-flex align-items-center justify-content-between gap-2 py-1 {% if not forloop.last %}border-bottom{% endif %}">
+                    <span>
+                        <b>{{ b.fuel_price }}</b> {{ b.product.name|default:"" }} effective <b>{{ b.effective_date|date:"j-M-y" }}</b>
+                        &middot; {{ b.rate_count }} rate{{ b.rate_count|pluralize }}
+                        <span class="text-muted">&middot; applied {{ b.created_at|date:"j-M-y H:i" }}{% if b.created_by %} by {{ b.created_by.username }}{% endif %}</span>
+                    </span>
+                    <form method="post" action="{% url 'client_rate_fuel_undo' client.id b.id %}" class="m-0">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-sm btn-outline-danger py-0 px-2"
+                            onclick="return confirm('Undo this fuel price update? Its {{ b.rate_count }} rate entr{{ b.rate_count|pluralize:"y,ies" }} will be removed and rates + trip charges go back to before.')">
+                            <i class="bi bi-arrow-counterclockwise me-1"></i>Undo
+                        </button>
+                    </form>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
             {% if form.errors %}
             <div class="alert alert-danger border-0 rounded-3 py-2 small">
                 {{ form.non_field_errors.0|default:"Please fix the highlighted field(s) below." }}
@@ -407,6 +428,7 @@
                     </select>
                     <label class="form-label small fw-bold">New fuel price <span class="text-muted fw-normal">(from Fuel Rates)</span></label>
                     <select name="price" class="form-select mb-3" id="applyFuelPrice" required>
+                        <option value="">--- Select fuel price ---</option>
                         {% for fp in fuel_prices %}
                         <option value="{{ fp.id }}" data-product="{{ fp.product_id }}">{{ fp.effective_date|date:"j-M-y" }} &mdash; {{ fp.fuel_price }}</option>
                         {% endfor %}
@@ -817,8 +839,9 @@ document.addEventListener('DOMContentLoaded', function () {
         var all = Array.prototype.slice.call(price.options);
         function refresh() {
             price.innerHTML = '';
-            all.filter(function (o) { return o.dataset.product === product.value; }).forEach(function (o) { price.appendChild(o); });
-            price.selectedIndex = price.options.length ? 0 : -1;
+            // Placeholder first and selected - never pick a price by default
+            all.filter(function (o) { return !o.value || o.dataset.product === product.value; }).forEach(function (o) { price.appendChild(o); });
+            price.selectedIndex = 0;
         }
         product.addEventListener('change', refresh);
         refresh();
