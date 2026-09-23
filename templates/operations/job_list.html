@@ -164,6 +164,9 @@
                                     <i class="bi bi-check2-circle me-1"></i> Complete Trip
                                 </a>
 
+                                <a href="{% url 'job_edit' job.job_number %}" class="btn btn-light btn-sm rounded-circle shadow-sm border" title="Edit Voyage">
+                                    <i class="bi bi-pencil-square text-warning"></i>
+                                </a>
                                 <div class="dropdown">
                                     <button class="btn btn-light btn-sm rounded-circle shadow-sm border" type="button" data-bs-toggle="dropdown">
                                         <i class="bi bi-three-dots-vertical"></i>
@@ -172,12 +175,6 @@
                                         <li>
                                             <a class="dropdown-item py-2" href="{% url 'job_invoice_pdf' job.job_number %}">
                                                 <i class="bi bi-printer me-2 text-secondary"></i> Print Trip Sheet (PDF)
-                                            </a>
-                                        </li>
-                                        <li><hr class="dropdown-divider"></li>
-                                        <li>
-                                            <a class="dropdown-item py-2" href="{% url 'job_edit' job.job_number %}">
-                                                <i class="bi bi-pencil-square me-2 text-warning"></i> Edit Voyage
                                             </a>
                                         </li>
                                         <li><hr class="dropdown-divider"></li>

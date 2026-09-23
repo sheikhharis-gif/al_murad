@@ -115,17 +115,14 @@
                                 <a href="{% url 'job_invoice_pdf' job.job_number %}" class="btn btn-sm btn-outline-success rounded-pill px-3 shadow-sm" title="Download Trip Sheet">
                                     <i class="bi bi-file-earmark-pdf-fill me-1"></i> Trip Sheet
                                 </a>
+                                <a href="{% url 'job_edit' job.job_number %}" class="btn btn-light btn-sm rounded-circle shadow-sm border" title="Edit Voyage">
+                                    <i class="bi bi-pencil-square text-warning"></i>
+                                </a>
                                 <div class="dropdown">
                                     <button class="btn btn-light btn-sm rounded-circle shadow-sm border" type="button" data-bs-toggle="dropdown">
                                         <i class="bi bi-three-dots-vertical"></i>
                                     </button>
                                     <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0 rounded-3">
-                                        <li>
-                                            <a class="dropdown-item py-2" href="{% url 'job_edit' job.job_number %}">
-                                                <i class="bi bi-pencil-square me-2 text-warning"></i> Edit Voyage
-                                            </a>
-                                        </li>
-                                        <li><hr class="dropdown-divider"></li>
                                         <li>
                                             <a class="dropdown-item py-2 text-danger" href="{% url 'job_delete' job.job_number %}" onclick="return confirm('Deleting this job will delete all associated trips. Continue?')">
                                                 <i class="bi bi-trash me-2"></i> Delete Voyage
