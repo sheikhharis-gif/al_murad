@@ -54,6 +54,9 @@
     <div class="card border-0 shadow-sm rounded-4">
         <div class="card-header bg-white border-0 pt-3 px-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
             <h5 class="fw-bold mb-0 text-primary">Rate Details</h5>
+            <button type="button" class="btn btn-sm btn-outline-primary fw-bold px-3 ms-auto" data-bs-toggle="modal" data-bs-target="#rateCopyModal">
+                <i class="bi bi-copy me-1"></i>Copy Rates
+            </button>
             <div class="mode-tabs">
                 <button type="button" class="mode-tab active" data-pane="tripPane" id="tripTabBtn">Trip</button>
                 <button type="button" class="mode-tab" data-pane="dedicatedPane" id="dedicatedTabBtn">Dedicated</button>
@@ -365,6 +368,51 @@
 </div>
 
 <!-- Edit Rate Modal -->
+<!-- Copy Rates: market-standard size -> modified sizes (e.g. 16FT DRY -> 17FT DRY) -->
+<div class="modal fade" id="rateCopyModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-4">
+            <form method="post" action="{% url 'client_rate_copy' client.id %}" id="rateCopyForm">
+                {% csrf_token %}
+                <div class="modal-header border-0 pb-0">
+                    <h5 class="modal-title fw-bold"><i class="bi bi-copy text-primary me-2"></i>Copy Rates</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="small text-muted mb-3">
+                        Copies the <b>latest</b> rate of every route &amp; tonnage from one vehicle type to others, exactly as it is.
+                        Types that already have the same or a newer rate are left alone.
+                        <b>After revising the source rates, copy again</b> to bring the new rates across.
+                    </p>
+                    <label class="form-label small fw-bold">Copy FROM</label>
+                    <select name="from_type" class="form-select mb-3" id="copyFromType" required>
+                        <option value="">--- Select vehicle type ---</option>
+                        {% for vt, count in copy_source_types %}
+                        <option value="{{ vt.id }}">{{ vt.name }} ({{ count }} rate{{ count|pluralize }})</option>
+                        {% endfor %}
+                    </select>
+                    <label class="form-label small fw-bold">Copy TO <span class="text-muted fw-normal">(tick one or more)</span></label>
+                    <div class="border rounded-3 p-2 copy-to-list">
+                        {% for vt in all_vehicle_types %}
+                        <div class="form-check copy-to-item" data-name="{{ vt.name|upper }}">
+                            <input class="form-check-input" type="checkbox" name="to_types" value="{{ vt.id }}" id="copyTo{{ vt.id }}">
+                            <label class="form-check-label small" for="copyTo{{ vt.id }}">{{ vt.name }}</label>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    <div class="small text-danger mt-2 d-none" id="copyKindWarning">
+                        <i class="bi bi-exclamation-triangle-fill me-1"></i>DRY and REEFER rates are different - check the types you ticked.
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-light border" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary fw-bold px-4"><i class="bi bi-copy me-1"></i>Copy</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <div class="modal fade" id="rateEditModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content rounded-4">
@@ -689,5 +737,40 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 });
+</script>
+<style>
+    .copy-to-list { max-height: 260px; overflow-y: auto; }
+</style>
+<script>
+    // Copy Rates window: hide the FROM type in the TO list, and warn when a
+    // DRY rate is being copied onto a REEFER type (or the other way round).
+    document.addEventListener('DOMContentLoaded', function () {
+        var form = document.getElementById('rateCopyForm');
+        if (!form) return;
+        var fromSel = document.getElementById('copyFromType');
+        var warning = document.getElementById('copyKindWarning');
+        function kind(name) { return /REEFER/.test(name) ? 'REEFER' : (/DRY/.test(name) ? 'DRY' : ''); }
+        function refresh() {
+            var fromOpt = fromSel.options[fromSel.selectedIndex];
+            var fromName = fromSel.value ? fromOpt.textContent.toUpperCase() : '';
+            var mismatch = false;
+            form.querySelectorAll('.copy-to-item').forEach(function (item) {
+                var box = item.querySelector('input');
+                var isSource = box.value === fromSel.value;
+                item.classList.toggle('d-none', isSource);
+                if (isSource) box.checked = false;
+                if (box.checked && fromName && kind(fromName) && kind(item.dataset.name) && kind(fromName) !== kind(item.dataset.name)) mismatch = true;
+            });
+            warning.classList.toggle('d-none', !mismatch);
+        }
+        fromSel.addEventListener('change', refresh);
+        form.addEventListener('change', refresh);
+        form.addEventListener('submit', function (e) {
+            if (!form.querySelector('input[name="to_types"]:checked')) {
+                e.preventDefault();
+                alert('Tick at least one vehicle type to copy TO.');
+            }
+        });
+    });
 </script>
 {% endblock %}

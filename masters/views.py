@@ -961,6 +961,13 @@ def client_rates(request, client_id):
         "dedicated_rates": dedicated_rates,
         "dedicated_form": dedicated_form,
         "routes_distance_json": json.dumps(routes_distance),
+        # Copy Rates window: types this client has rates for (with how many
+        # route/tonnage rates each), and every type as a possible target.
+        "copy_source_types": [
+            (vt, len({(r.route_id, r.fuel_product_id, r.weight_tons) for r in rates if r.vehicle_type_id == vt.id}))
+            for vt in VehicleType.objects.filter(client_rates__client=client).distinct().order_by("name")
+        ],
+        "all_vehicle_types": VehicleType.objects.order_by("name"),
     })
 
 
