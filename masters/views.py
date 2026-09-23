@@ -924,7 +924,8 @@ def client_rates(request, client_id):
     else:
         form = ClientRateForm(client=client)
 
-    rates = ClientRate.objects.filter(client=client)
+    rates = ClientRate.objects.filter(client=client).select_related(
+        "route__origin", "route__destination", "fuel_product", "vehicle_type")
 
     # Latest revision per route + vehicle type + weight, and the latest
     # known price per fuel product (now fed by PSO Fuel Prices too) - the
@@ -948,7 +949,7 @@ def client_rates(request, client_id):
         if fuel_rate.product_id not in latest_fuel_prices:
             latest_fuel_prices[fuel_rate.product_id] = str(fuel_rate.fuel_price)
 
-    dedicated_rates = DedicatedRate.objects.filter(client=client).select_related("vehicle", "route")
+    dedicated_rates = DedicatedRate.objects.filter(client=client).select_related("vehicle", "route", "vehicle_type")
     dedicated_form = DedicatedRateForm(auto_id="id_ded_%s")
     routes_distance = {r.id: str(r.distance_km) for r in Route.objects.all()}
 

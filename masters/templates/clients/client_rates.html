@@ -124,6 +124,14 @@
                 </div>
             </form>
 
+            <div class="rate-search d-flex align-items-center gap-2 mb-2">
+                <div class="input-group input-group-sm" style="max-width: 420px;">
+                    <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
+                    <input type="text" class="form-control rate-search-input" data-target="rateTableBody" placeholder="Search route, vehicle type, tons... e.g. khi-lrk 16ft 4" autocomplete="off">
+                    <button type="button" class="btn btn-light border rate-search-clear" title="Clear">&times;</button>
+                </div>
+                <span class="small text-muted rate-search-count"></span>
+            </div>
             <div style="max-height: 400px; overflow-y: auto;">
                 <table class="table table-hover align-middle custom-table rate-table mb-0">
                     <colgroup>
@@ -162,7 +170,7 @@
                     </thead>
                     <tbody id="rateTableBody">
                         {% for r in rates %}
-                        <tr>
+                        <tr class="rate-row" data-search="{{ r.route.route_code }} {{ r.route.origin.name }} {{ r.route.destination.name }} {{ r.fuel_product.name|default:'' }} {{ r.vehicle_type.name|default:'' }} {{ r.weight_tons|floatformat:'-2' }}">
                             <td class="fw-bold text-dark">{{ r.route.route_code|upper }}</td>
                             <td class="text-center">{{ r.fuel_product.name|upper|default:"--" }}</td>
                             <td class="text-center">{{ r.current_fuel_price|acct }}</td>
@@ -277,6 +285,14 @@
                 </div>
             </form>
 
+            <div class="rate-search d-flex align-items-center gap-2 mb-2">
+                <div class="input-group input-group-sm" style="max-width: 420px;">
+                    <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
+                    <input type="text" class="form-control rate-search-input" data-target="dedicatedTableBody" placeholder="Search vehicle, route, vehicle type..." autocomplete="off">
+                    <button type="button" class="btn btn-light border rate-search-clear" title="Clear">&times;</button>
+                </div>
+                <span class="small text-muted rate-search-count"></span>
+            </div>
             <div style="max-height: 400px; overflow-y: auto;">
                 <table class="table table-hover align-middle custom-table rate-table mb-0">
                     <colgroup>
@@ -313,7 +329,7 @@
                     </thead>
                     <tbody id="dedicatedTableBody">
                         {% for r in dedicated_rates %}
-                        <tr>
+                        <tr class="rate-row" data-search="{{ r.vehicle.vehicle_number }} {{ r.route.route_code|default:'' }} {{ r.vehicle_type.name|default:'' }} {{ r.weight_tons|floatformat:'-2' }}">
                             <td class="fw-bold text-dark">{{ r.vehicle.vehicle_number }}</td>
                             <td class="text-center">{{ r.fixed_cost|acct }}</td>
                             <td class="text-center">{{ r.month|date:"M-y" }}</td>
@@ -743,6 +759,50 @@ document.addEventListener('DOMContentLoaded', function () {
 <style>
     .copy-to-list { max-height: 260px; overflow-y: auto; }
 </style>
+<script>
+    // Rate table search: every word typed must match. A plain word matches the
+    // START of a word in the route / cities / fuel product / vehicle type /
+    // tonnage ("lrk" -> KHI-LRK, "16" -> 16FT, "4" -> 4 tons but not 24FT);
+    // a word with "-" or "/" (e.g. "khi-lrk") matches that exact text.
+    document.addEventListener('DOMContentLoaded', function () {
+        document.querySelectorAll('.rate-search-input').forEach(function (input) {
+            var tbody = document.getElementById(input.dataset.target);
+            if (!tbody) return;
+            var box = input.closest('.rate-search');
+            var count = box.querySelector('.rate-search-count');
+            var rows = Array.prototype.slice.call(tbody.querySelectorAll('tr.rate-row'));
+            if (!rows.length) { box.classList.add('d-none'); return; }
+            rows.forEach(function (row) {
+                var key = (row.dataset.search || '').toLowerCase().replace(/\s+/g, ' ').trim();
+                row._key = key;
+                row._words = key.split(/[\s\-\/(),]+/).filter(Boolean);
+            });
+            var empty = document.createElement('tr');
+            empty.innerHTML = '<td colspan="14" class="text-center py-4 text-muted">No rate matches your search.</td>';
+            empty.style.display = 'none';
+            tbody.appendChild(empty);
+
+            function matches(row, token) {
+                if (/[\-\/]/.test(token)) return row._key.indexOf(token) > -1;
+                return row._words.some(function (w) { return w.indexOf(token) === 0; });
+            }
+            function apply() {
+                var tokens = input.value.toLowerCase().trim().split(/\s+/).filter(Boolean);
+                var shown = 0;
+                rows.forEach(function (row) {
+                    var ok = tokens.every(function (t) { return matches(row, t); });
+                    row.style.display = ok ? '' : 'none';
+                    if (ok) shown++;
+                });
+                empty.style.display = shown ? 'none' : '';
+                count.textContent = tokens.length ? shown + ' of ' + rows.length + ' rates' : '';
+            }
+            input.addEventListener('input', apply);
+            input.addEventListener('keydown', function (e) { if (e.key === 'Escape') { input.value = ''; apply(); } if (e.key === 'Enter') e.preventDefault(); });
+            box.querySelector('.rate-search-clear').addEventListener('click', function () { input.value = ''; apply(); input.focus(); });
+        });
+    });
+</script>
 <script>
     // Copy Rates window: hide the FROM type in the TO list, and warn when a
     // DRY rate is being copied onto a REEFER type (or the other way round).
