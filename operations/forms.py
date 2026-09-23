@@ -1,5 +1,6 @@
 from django import forms
 from django.forms import inlineformset_factory
+from django.utils import timezone
 from .models import Job, Trip, JobExpense, JobFuelEntry
 from masters.models import Vehicle, Client, Route, Vendor, FuelProduct
 
@@ -120,6 +121,11 @@ class TripForm(forms.ModelForm):
         self.fields["client"].empty_label = "--- Select Client ---"
         self.fields["route"].queryset = Route.objects.all().order_by("route_code")
         self.fields["route"].empty_label = "--- Select Route ---"
+        # New trips open with today's date pre-filled (it's still only saved
+        # if the rest of the row is filled in - an untouched extra row stays
+        # "unchanged" since the date matches its initial value).
+        if not self.instance.pk and not self.initial.get("trip_date"):
+            self.initial["trip_date"] = timezone.localdate()
 
 
 TripFormSet = inlineformset_factory(

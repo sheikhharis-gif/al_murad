@@ -9,12 +9,13 @@ from django.db.models import Count, Q, Sum
 from django.db.models.functions import TruncMonth
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
 from django.template.loader import get_template
 from xhtml2pdf import pisa
 
 from openpyxl import Workbook
 from openpyxl.drawing.image import Image as XLImage
-from openpyxl.styles import Alignment, Font
+from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
@@ -387,138 +388,132 @@ def trip_list(request):
     return render(request, "operations/trip_list.html", context)
 
 
+MIS_HEADERS = [
+    "JOB #", "Trip #", "Vehicle #", "Vehicle Type", "Date", "Client", "Bilty #",
+    "Weight (Tons)", "Route", "Departure Meter", "Arrival Meter", "Running KM",
+    "Reached Date & Time", "Departure Date & Time", "Arrival Date & Time",
+    "Delivery Date & Time", "Actual Transit", "Trip Charges", "Additional Charges",
+    "Toll Plaza", "Food", "Incentive", "Mobile Expense", "Challan", "Tyre Expense",
+    "Service", "Loading", "Offloading", "Weighbridge", "Maintenance",
+    "Labor Charges", "Fuel", "Other", "Total", "Remarks",
+]
+
+MIS_EXPENSE_FIELDS = [
+    "toll_plaza", "food", "incentive", "mobile_expense", "challan", "tyre_expense",
+    "service", "loading", "offloading", "weighbridge", "maintenance",
+    "labor_charges", "fuel", "other", "total",
+]
+
+
 @login_required
 def trips_excel(request):
+    """Operational MIS Data - one row per trip, in the client's MIS sheet layout
+    (header on row 2, data from row 3). A Job's expense breakdown is shared by
+    all its trips, so it's written on that Job's first trip row only - repeating
+    it on every trip would double-count it in the totals."""
     report_context = _get_report_context(request)
-    trips = list(report_context["trips"].order_by("trip_date"))
+    trips = list(
+        report_context["trips"]
+        .select_related("job__expense_breakdown", "vehicle__vehicle_type")
+        .order_by("job__job_number", "id")
+    )
 
     wb = Workbook()
     ws = wb.active
-    ws.title = "Trip Sheet Own"
+    ws.title = "Sheet1"
 
-    def set_cell(row, col, value, bold=False, align='left'):
-        cell = ws.cell(row=row, column=col, value=value)
-        if bold:
-            cell.font = Font(bold=True)
-        if align:
-            cell.alignment = Alignment(horizontal=align)
-        return cell
+    header_font = Font(bold=True, name="Segoe UI", size=9)
+    header_fill = PatternFill("solid", fgColor="D9D9D9")
+    thin = Side(style="thin", color="A6A6A6")
+    border = Border(left=thin, right=thin, top=thin, bottom=thin)
 
-    ws.merge_cells('C2:H2')
-    set_cell(2, 3, 'Trip Sheet Own', bold=True, align='center')
+    for col, title in enumerate(MIS_HEADERS, start=1):
+        cell = ws.cell(row=2, column=col, value=title)
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.border = border
+        cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
 
-    set_cell(6, 3, 'Job #', bold=True)
-    set_cell(6, 5, 'Vehicle Number', bold=True)
-    set_cell(6, 7, 'Driver 1 Name', bold=True)
-    set_cell(7, 7, 'Driver 2 Name', bold=True)
-    set_cell(9, 3, 'Meter Out', bold=True)
-    set_cell(9, 5, 'Meter In', bold=True)
-    set_cell(9, 7, 'KMs', bold=True)
-    set_cell(10, 7, 'Fuel in Liters', bold=True)
-    set_cell(11, 7, 'Fuel Average', bold=True)
-    set_cell(27, 3, 'Expense', bold=True)
-    set_cell(28, 3, 'Toll Tax', bold=True)
-    set_cell(29, 3, 'Incentive', bold=True)
-    set_cell(30, 3, 'Food', bold=True)
-    set_cell(31, 3, 'Police', bold=True)
-    set_cell(32, 3, 'Card', bold=True)
-    set_cell(33, 3, 'Maintenance', bold=True)
-    set_cell(34, 3, 'Other', bold=True)
-    set_cell(35, 3, 'Rental', bold=True)
-    set_cell(36, 3, 'Detention', bold=True)
-    set_cell(37, 3, 'Total', bold=True)
-    set_cell(39, 3, 'Fuel', bold=True)
-    set_cell(40, 3, 'Date', bold=True)
-    set_cell(40, 4, 'Pump Name', bold=True)
-    set_cell(40, 5, 'Slip #', bold=True)
-    set_cell(40, 6, 'Fuel In Liters', bold=True)
-    set_cell(40, 7, 'Fuel Rate', bold=True)
-    set_cell(40, 8, 'Amount', bold=True)
+    def local(value):
+        return timezone.localtime(value).replace(tzinfo=None) if value else None
 
-    if trips:
-        first_trip = trips[0]
-        set_cell(6, 4, first_trip.job.job_number)
-        set_cell(6, 6, first_trip.vehicle.vehicle_number)
-        set_cell(6, 8, first_trip.vehicle.driver.name if first_trip.vehicle.driver else '')
-        set_cell(7, 8, '')
+    def num(value):
+        return float(value) if value is not None else None
 
-    for idx in range(3):
-        label_col = 3 + idx * 2
-        value_col = label_col + 1
-        if idx < len(trips):
-            trip = trips[idx]
-            set_cell(13, label_col, 'Trip #', bold=True)
-            set_cell(13, value_col, trip.trip_no)
-            set_cell(14, label_col, 'Bilty #', bold=True)
-            set_cell(14, value_col, trip.bilty_number)
-            set_cell(15, label_col, 'Client', bold=True)
-            set_cell(15, value_col, trip.client.name)
-            set_cell(16, label_col, 'Route', bold=True)
-            set_cell(16, value_col, str(trip.route))
-            set_cell(18, label_col, 'Freight', bold=True)
-            set_cell(18, value_col, float(trip.freight))
-            set_cell(19, label_col, 'Additional Charges', bold=True)
-            set_cell(19, value_col, float(trip.additional_charges))
-            set_cell(20, label_col, 'Additional Stop', bold=True)
-            set_cell(20, value_col, 0)
-            set_cell(21, label_col, 'Total Freight', bold=True)
-            set_cell(21, value_col, float(trip.freight))
-            set_cell(23, label_col, 'Departure Date', bold=True)
-            set_cell(23, value_col, trip.trip_date)
-            set_cell(24, label_col, 'Arrival Date', bold=True)
-            set_cell(24, value_col, trip.trip_date)
-            set_cell(25, label_col, 'Delivery', bold=True)
-            set_cell(25, value_col, trip.trip_date)
-        else:
-            set_cell(13, label_col, 'Trip #', bold=True)
-            set_cell(14, label_col, 'Bilty #', bold=True)
-            set_cell(15, label_col, 'Client', bold=True)
-            set_cell(16, label_col, 'Route', bold=True)
-            set_cell(18, label_col, 'Freight', bold=True)
-            set_cell(19, label_col, 'Detention', bold=True)
-            set_cell(20, label_col, 'Additional Stop', bold=True)
-            set_cell(21, label_col, 'Total Freight', bold=True)
-            set_cell(23, label_col, 'Departure Date', bold=True)
-            set_cell(24, label_col, 'Arrival Date', bold=True)
-            set_cell(25, label_col, 'Delivery', bold=True)
+    grand = [0.0] * len(MIS_EXPENSE_FIELDS)
+    seen_jobs = set()
+    row = 3
+    for trip in trips:
+        vehicle = trip.vehicle
+        running_km = None
+        if trip.departure_meter is not None and trip.arrival_meter is not None:
+            running_km = float(trip.arrival_meter - trip.departure_meter)
+        additional = trip.additional_charges or 0
 
-    for column in range(3, 9):
-        ws.column_dimensions[get_column_letter(column)].width = 18
+        values = [
+            trip.job.job_code, trip.trip_no, vehicle.vehicle_number,
+            str(vehicle.vehicle_type) if vehicle.vehicle_type_id else "",
+            trip.trip_date, trip.client.name, trip.bilty_number, num(trip.weight),
+            trip.route.route_code if trip.route_id else "",
+            num(trip.departure_meter), num(trip.arrival_meter), running_km,
+            local(trip.reached_at), local(trip.departed_at),
+            local(trip.arrived_at), local(trip.delivered_at),
+            trip.actual_transit_display,
+            float(trip.freight - additional), float(additional),
+        ]
 
-    for row in range(1, 51):
-        ws.row_dimensions[row].height = 18
-    ws.row_dimensions[1].height = 45
+        expense = None
+        if trip.job_id not in seen_jobs:
+            seen_jobs.add(trip.job_id)
+            expense = getattr(trip.job, "expense_breakdown", None)
+        for i, field in enumerate(MIS_EXPENSE_FIELDS):
+            amount = float(getattr(expense, field) or 0) if expense else None
+            if amount:
+                grand[i] += amount
+            values.append(amount)
+        values.append(trip.remarks)
 
-    logo_path = Path(__file__).resolve().parent.parent / "static" / "images" / "amglogo.png"
-    if logo_path.exists():
-        try:
-            logo_image = XLImage(str(logo_path))
-            logo_image.width = 170
-            logo_image.height = 55
-            ws.add_image(logo_image, 'A1')
-            set_cell(2, 1, 'Al Murad Logistics', bold=True)
-        except Exception:
-            pass
+        for col, value in enumerate(values, start=1):
+            cell = ws.cell(row=row, column=col, value=value)
+            cell.border = border
+            cell.font = Font(name="Segoe UI", size=9)
+            if isinstance(value, dt.datetime):
+                cell.number_format = "dd-mmm-yy hh:mm"
+            elif isinstance(value, dt.date):
+                cell.number_format = "dd-mmm-yy"
+            elif isinstance(value, float):
+                cell.number_format = "#,##0.00"
+        row += 1
 
-    ws.sheet_view.showGridLines = False
+    # Grand total row
+    total_font = Font(bold=True, name="Segoe UI", size=9)
+    ws.cell(row=row, column=1, value="Total").font = total_font
+    first_expense_col = MIS_HEADERS.index("Toll Plaza") + 1
+    for col in (18, 19):  # Trip Charges, Additional Charges
+        total = sum(float(ws.cell(row=r, column=col).value or 0) for r in range(3, row))
+        ws.cell(row=row, column=col, value=total)
+    for i, amount in enumerate(grand):
+        ws.cell(row=row, column=first_expense_col + i, value=amount)
+    for col in range(1, len(MIS_HEADERS) + 1):
+        cell = ws.cell(row=row, column=col)
+        cell.font = total_font
+        cell.fill = header_fill
+        cell.border = border
+        if isinstance(cell.value, float):
+            cell.number_format = "#,##0.00"
 
-    set_cell(44, 5, 'Total', bold=True)
-    set_cell(44, 6, 0)
-    set_cell(44, 7, 'Total', bold=True)
-    set_cell(44, 8, 0)
-    set_cell(46, 7, 'Trip Expense', bold=True)
-    set_cell(46, 8, 0)
-    set_cell(47, 7, 'Fuel expense', bold=True)
-    set_cell(47, 8, 0)
-    set_cell(48, 7, 'Major Maintenance', bold=True)
-    set_cell(48, 8, 0)
-    set_cell(49, 7, 'Total Expenses', bold=True)
-    set_cell(49, 8, 0)
+    widths = {"Client": 28, "Route": 14, "Remarks": 30, "Vehicle #": 14, "Vehicle Type": 16}
+    for col, title in enumerate(MIS_HEADERS, start=1):
+        default = 18 if "Date & Time" in title else 13
+        ws.column_dimensions[get_column_letter(col)].width = widths.get(title, default)
+    ws.row_dimensions[2].height = 30
+    ws.freeze_panes = "A3"
+    ws.auto_filter.ref = f"A2:{get_column_letter(len(MIS_HEADERS))}{max(row - 1, 2)}"
 
     response = HttpResponse(
         content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     )
-    response['Content-Disposition'] = 'attachment; filename="trip_sheet.xlsx"'
+    response['Content-Disposition'] = 'attachment; filename="Operational MIS Data.xlsx"'
     wb.save(response)
     return response
 

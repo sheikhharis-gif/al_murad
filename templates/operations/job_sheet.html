@@ -134,6 +134,7 @@
                             <span class="fw-bold text-success">Freight: {{ tf.instance.freight|floatformat:2 }}</span>
                         </div>
                         {% endif %}
+                        {# Layout mirrors the client's trip sheet: inputs on the left, meters/transit on the right #}
                         <div class="row g-2">
                             <div class="col-md-2">
                                 <label class="form-label x-small fw-bold mb-1">Date</label>
@@ -143,7 +144,7 @@
                                 <label class="form-label x-small fw-bold mb-1">Client</label>
                                 {{ tf.client }}
                             </div>
-                            <div class="col-md-2">
+                            <div class="col-md-1">
                                 <label class="form-label x-small fw-bold mb-1">Bilty #</label>
                                 {{ tf.bilty_number }}
                             </div>
@@ -151,45 +152,17 @@
                                 <label class="form-label x-small fw-bold mb-1">Weight (Tons)</label>
                                 {{ tf.weight }}
                             </div>
-                            <div class="col-md-3">
+                            <div class="col-md-2">
                                 <label class="form-label x-small fw-bold mb-1">Route</label>
                                 {{ tf.route }}
                             </div>
-                        </div>
-                        {% if tf.instance.pk %}
-                        <div class="row g-2 mt-1 text-center small">
-                            <div class="col">
-                                <div class="x-small text-muted">Origin</div>
-                                <div class="fw-bold">{{ tf.instance.route.origin.name }}</div>
-                            </div>
-                            <div class="col">
-                                <div class="x-small text-muted">Destination</div>
-                                <div class="fw-bold">{{ tf.instance.route.destination.name }}</div>
-                            </div>
-                            <div class="col">
-                                <div class="x-small text-muted">Distance KMs</div>
-                                <div class="fw-bold">{{ tf.instance.route.distance_km }}</div>
-                            </div>
-                            <div class="col">
-                                <div class="x-small text-muted">Standard Transit</div>
-                                <div class="fw-bold">{{ tf.instance.standard_transit_display|default:"--" }}</div>
-                            </div>
-                            <div class="col">
-                                <div class="x-small text-muted">Actual Transit</div>
-                                <div class="fw-bold">{{ tf.instance.actual_transit_display|default:"--" }}</div>
-                            </div>
-                            <div class="col">
-                                <div class="x-small text-muted">Departure Meter</div>
-                                <div class="fw-bold">{{ tf.instance.departure_meter|default_if_none:"--" }}</div>
-                            </div>
-                            <div class="col">
-                                <div class="x-small text-muted">Arrival Meter</div>
-                                <div class="fw-bold">{{ tf.instance.arrival_meter|default_if_none:"--" }}</div>
+                            <div class="col-md-2">
+                                <label class="form-label x-small fw-bold mb-1">Vehicle Type</label>
+                                <div class="form-control form-control-sm trip-readonly">{{ job.vehicle.vehicle_type|default:"--" }}</div>
                             </div>
                         </div>
-                        {% endif %}
                         <div class="row g-2 mt-1">
-                            <div class="col-md-3">
+                            <div class="col-md-2">
                                 <label class="form-label x-small fw-bold mb-1">Reached Date &amp; Time</label>
                                 {{ tf.reached_at }}
                             </div>
@@ -197,13 +170,14 @@
                                 <label class="form-label x-small fw-bold mb-1">Departure Date &amp; Time</label>
                                 {{ tf.departed_at }}
                             </div>
-                            {% if tf.instance.pk %}
+                            <div class="col-md-1"></div>
                             <div class="col-md-2">
-                                <div class="x-small text-muted">Loading Duration</div>
-                                <div class="fw-bold">{{ tf.instance.loading_duration_display|default:"--" }}</div>
+                                <label class="form-label x-small fw-bold mb-1">Departure Meter</label>
+                                <div class="form-control form-control-sm trip-readonly trip-computed">{% if tf.instance.pk %}{{ tf.instance.departure_meter|default_if_none:"--" }}{% else %}--{% endif %}</div>
                             </div>
-                            {% endif %}
-                            <div class="col-md-3">
+                        </div>
+                        <div class="row g-2 mt-1">
+                            <div class="col-md-2">
                                 <label class="form-label x-small fw-bold mb-1">Arrival Date &amp; Time</label>
                                 {{ tf.arrived_at }}
                             </div>
@@ -211,22 +185,30 @@
                                 <label class="form-label x-small fw-bold mb-1">Delivery Date &amp; Time</label>
                                 {{ tf.delivered_at }}
                             </div>
-                            {% if tf.instance.pk %}
+                            <div class="col-md-1"></div>
                             <div class="col-md-2">
-                                <div class="x-small text-muted">Unloading Duration</div>
-                                <div class="fw-bold">{{ tf.instance.unloading_duration_display|default:"--" }}</div>
+                                <label class="form-label x-small fw-bold mb-1">Arrival Meter</label>
+                                <div class="form-control form-control-sm trip-readonly trip-computed">{% if tf.instance.pk %}{{ tf.instance.arrival_meter|default_if_none:"--" }}{% else %}--{% endif %}</div>
                             </div>
-                            {% endif %}
+                            <div class="col-md-2">
+                                <label class="form-label x-small fw-bold mb-1">Running KMs</label>
+                                <div class="form-control form-control-sm trip-readonly trip-computed">{% if tf.instance.pk and tf.instance.route_id %}{{ tf.instance.route.distance_km }}{% else %}--{% endif %}</div>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label x-small fw-bold mb-1">Actual Transit</label>
+                                <div class="form-control form-control-sm trip-readonly trip-computed">{% if tf.instance.pk %}{{ tf.instance.actual_transit_display|default:"--" }}{% else %}--{% endif %}</div>
+                            </div>
                         </div>
                         <div class="row g-2 mt-1 align-items-end">
                             <div class="col-md-2">
                                 <label class="form-label x-small fw-bold mb-1">Additional Charges</label>
                                 {{ tf.additional_charges }}
                             </div>
-                            <div class="col-md-6">
+                            <div class="col-md-3">
                                 <label class="form-label x-small fw-bold mb-1">Remarks</label>
                                 {{ tf.remarks }}
                             </div>
+                            <div class="col-md-1"></div>
                             {% if tf.instance.pk %}
                             <div class="col-md-2">
                                 <div class="form-check">
@@ -351,6 +333,7 @@
 <style>
     .x-small { font-size: 0.7rem; text-transform: uppercase; font-weight: bold; color: #64748b; }
     .trip-block .form-control, .trip-block .form-select { font-size: 0.85rem; }
+    .trip-block .trip-readonly { background: #eef2f6; font-weight: 600; min-height: 31px; }
 </style>
 
 <script>
@@ -383,12 +366,17 @@
                     if (id) field.setAttribute('id', id.replace(/-\d+-/, '-' + formNum + '-'));
                     if (field.type === 'checkbox') {
                         field.checked = false;
+                    } else if (field.type === 'date') {
+                        // New trip rows start on today's date, same as the server-rendered one.
+                        var now = new Date();
+                        field.value = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
                     } else if (field.type === 'hidden') {
                         field.value = '';
                     } else {
                         field.value = field.tagName === 'SELECT' ? field.options[0].value : '';
                     }
                 });
+                newRow.querySelectorAll('.trip-computed').forEach(function (el) { el.textContent = '--'; });
                 var deleteCol = newRow.querySelector('.form-check');
                 if (deleteCol) deleteCol.remove();
 
