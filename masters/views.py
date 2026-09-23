@@ -943,8 +943,10 @@ def client_rates(request, client_id):
                 "effective_percent": str(r.effective_percent),
             }
 
+    # PSO prices (Suppliers > Fuel Rates) only - a supplier's own purchase
+    # prices aren't the index client rates run on.
     latest_fuel_prices = {}
-    for fuel_rate in VendorFuelPrice.objects.select_related("product").order_by(
+    for fuel_rate in rate_fuel.pso_fuel_prices().select_related("product").order_by(
         "product_id", "-effective_date", "-id"
     ):
         if fuel_rate.product_id not in latest_fuel_prices:

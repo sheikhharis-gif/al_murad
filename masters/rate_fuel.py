@@ -65,7 +65,7 @@ def _plan(client, price, include_blank):
 
 def client_rate_apply_fuel(request, client_id):
     client = get_object_or_404(Client, id=client_id)
-    price = VendorFuelPrice.objects.select_related("product").filter(pk=request.POST.get("price") or request.GET.get("price") or None).first()
+    price = pso_fuel_prices().select_related("product").filter(pk=request.POST.get("price") or request.GET.get("price") or None).first()
     include_blank = (request.POST.get("include_blank") or request.GET.get("include_blank")) == "1"
     back = redirect("client_rates", client_id=client.id)
     if not price:
@@ -115,12 +115,18 @@ def client_rate_apply_fuel(request, client_id):
     })
 
 
+def pso_fuel_prices():
+    """The official PSO prices entered on Suppliers > Fuel Rates - the index
+    client rates are revised on. Prices a supplier/pump has on its own vendor
+    form are purchase prices, not the index, and are left out."""
+    return VendorFuelPrice.objects.filter(vendor__name__iexact="PSO")
+
+
 def fuel_price_choices(client):
-    """For the Apply Fuel Price window: every uploaded fuel price (newest first)
-    of the products this client's rates use, plus how many rates have no fuel
-    product set."""
-    products = FuelProduct.objects.filter(vendor_prices__isnull=False).distinct().order_by("name")
-    prices = VendorFuelPrice.objects.filter(product__in=products).select_related("product").order_by("-effective_date", "-id")
+    """For the Apply Fuel Price window: every PSO fuel price (newest first) by
+    product, plus how many of the client's rates have no fuel product set."""
+    prices = pso_fuel_prices().select_related("product").order_by("-effective_date", "-id")
+    products = FuelProduct.objects.filter(pk__in=prices.values("product_id")).order_by("name")
     return {
         "fuel_products": products,
         "fuel_prices": prices,
