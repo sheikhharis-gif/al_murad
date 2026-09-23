@@ -5,7 +5,7 @@ from django import forms
 from django.forms import inlineformset_factory
 from django.utils import timezone
 from .models import Job, Trip, JobExpense, JobFuelEntry
-from masters.models import Vehicle, Client, Route, Vendor, FuelProduct
+from masters.models import Vehicle, VehicleType, Client, Route, Vendor, FuelProduct
 
 # -----------------------
 # JOB FORM (header only - date, vehicle, trip advance, remarks)
@@ -91,7 +91,7 @@ class TripForm(forms.ModelForm):
     class Meta:
         model = Trip
         fields = [
-            "trip_date", "client", "bilty_number", "weight", "route",
+            "trip_date", "client", "bilty_number", "weight", "route", "vehicle_type",
             "reached_at", "departed_at", "arrived_at", "delivered_at",
             "additional_charges", "remarks",
         ]
@@ -101,6 +101,7 @@ class TripForm(forms.ModelForm):
             "bilty_number": forms.TextInput(attrs={"class": "form-control form-control-sm", "placeholder": "Bilty #"}),
             "weight": forms.NumberInput(attrs={"class": "form-control form-control-sm", "step": "0.01", "placeholder": "Weight (Tons)"}),
             "route": forms.Select(attrs={"class": "form-select form-select-sm"}),
+            "vehicle_type": forms.Select(attrs={"class": "form-select form-select-sm"}),
             # type="datetime-local"'s displayed AM/PM-vs-24hr format is fixed
             # by the browser's own UI language and can't be overridden from
             # the page at all (confirmed - lang="en-GB" on the element does
@@ -124,6 +125,8 @@ class TripForm(forms.ModelForm):
         self.fields["client"].empty_label = "--- Select Client ---"
         self.fields["route"].queryset = Route.objects.all().order_by("route_code")
         self.fields["route"].empty_label = "--- Select Route ---"
+        self.fields["vehicle_type"].queryset = VehicleType.objects.order_by("name")
+        self.fields["vehicle_type"].empty_label = "--- Vehicle Type ---"
         # New trips open with today's date pre-filled (it's still only saved
         # if the rest of the row is filled in - an untouched extra row stays
         # "unchanged" since the date matches its initial value).
@@ -138,13 +141,13 @@ class TripForm(forms.ModelForm):
         if not self.instance.pk:
             now = timezone.localtime(timezone.now(), ZoneInfo("Asia/Karachi")).replace(
                 tzinfo=dt.timezone.utc, second=0, microsecond=0)
-            for name in self.AUTO_FILLED - {"trip_date"}:
+            for name in ("reached_at", "departed_at", "arrived_at", "delivered_at"):
                 self.initial.setdefault(name, now)
 
     # Pre-filled on new rows, so on their own they don't count as "the user
     # filled this row in" - otherwise an untouched blank row would fail
     # validation (its time default moves on by the time the page is saved).
-    AUTO_FILLED = {"trip_date", "reached_at", "departed_at", "arrived_at", "delivered_at"}
+    AUTO_FILLED = {"trip_date", "reached_at", "departed_at", "arrived_at", "delivered_at", "vehicle_type"}
 
     def has_changed(self):
         if self.instance.pk:
@@ -152,8 +155,20 @@ class TripForm(forms.ModelForm):
         return any(name not in self.AUTO_FILLED for name in self.changed_data)
 
 
+class BaseTripFormSet(forms.BaseInlineFormSet):
+    def _construct_form(self, i, **kwargs):
+        form = super()._construct_form(i, **kwargs)
+        # Trip rows without a vehicle type yet (new rows) pre-select the job
+        # vehicle's type; the user can change it per trip. Done here because
+        # the job isn't attached to the form's instance until after __init__.
+        vehicle = getattr(self.instance, "vehicle", None)
+        if not form.instance.vehicle_type_id and vehicle and vehicle.vehicle_type_id:
+            form.initial.setdefault("vehicle_type", vehicle.vehicle_type_id)
+        return form
+
+
 TripFormSet = inlineformset_factory(
-    Job, Trip, form=TripForm, extra=1, can_delete=True,
+    Job, Trip, form=TripForm, formset=BaseTripFormSet, extra=1, can_delete=True,
 )
 
 

@@ -169,7 +169,7 @@
                             <div class="d-flex flex-column">
                                 <span class="badge bg-dark text-white rounded-3 px-2 py-1 font-monospace w-fit-content">{{ t.vehicle.vehicle_number }}</span>
                                 <small class="text-muted mt-1" style="font-size: 0.75rem;">
-                                    Type: {{ t.vehicle.vehicle_type }} | Driver: {% if t.vehicle.driver %}{{ t.vehicle.driver.name }}{% else %}N/A{% endif %}
+                                    Type: {{ t.vehicle_type|default:t.vehicle.vehicle_type }} | Driver: {% if t.vehicle.driver %}{{ t.vehicle.driver.name }}{% else %}N/A{% endif %}
                                 </small>
                             </div>
                         </td>

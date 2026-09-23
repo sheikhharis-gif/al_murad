@@ -83,7 +83,7 @@ def build_mis(request):
     job_ids = [j.job_number for j in jobs]
 
     trips = Trip.objects.filter(job_id__in=job_ids).select_related(
-        "client", "route", "vehicle__vehicle_type"
+        "client", "route", "vehicle__vehicle_type", "vehicle_type"
     ).order_by("job_id", "id")
     if client_id:
         trips = trips.filter(client_id=client_id)
@@ -111,7 +111,7 @@ def build_mis(request):
             vehicle = t.vehicle if t else job.vehicle
             row = [
                 job.job_code, t.trip_no if t else "", vehicle.vehicle_number,
-                str(vehicle.vehicle_type) if vehicle.vehicle_type_id else "",
+                str((t.vehicle_type if t else None) or vehicle.vehicle_type or ""),
                 t.trip_date if t else job.job_date,
                 t.client.name if t else "", t.bilty_number if t else "",
                 t.weight if t else None, t.route.route_code if t else "",

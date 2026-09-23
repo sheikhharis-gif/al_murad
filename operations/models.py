@@ -1,6 +1,6 @@
 from django.db import models
 from django.utils import timezone
-from masters.models import Vehicle
+from masters.models import Vehicle, VehicleType
 
 
 def _format_duration(start, end):
@@ -141,6 +141,9 @@ class Trip(models.Model):
     trip_date = models.DateField()
     route = models.ForeignKey("masters.Route", on_delete=models.PROTECT, related_name="job_trips")
 
+    # Per-trip vehicle type - defaults to the job vehicle's type but can be
+    # changed on the trip (drives the freight rate lookup below).
+    vehicle_type = models.ForeignKey(VehicleType, on_delete=models.PROTECT, null=True, blank=True, related_name="trips")
     bilty_number = models.CharField(max_length=50, blank=True)
     weight = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
 
@@ -160,6 +163,8 @@ class Trip(models.Model):
 
     def save(self, *args, **kwargs):
         self.vehicle = self.job.vehicle
+        if not self.vehicle_type_id:
+            self.vehicle_type_id = self.vehicle.vehicle_type_id
 
         # Departure meter chains from the previous trip's arrival meter in
         # this same job, else the vehicle's current KM (first leg).
@@ -179,10 +184,10 @@ class Trip(models.Model):
         # substituted in, even if it's the only one on file.
         from masters.models import ClientRate
         matched = None
-        if self.vehicle.vehicle_type_id:
+        if self.vehicle_type_id:
             matched = ClientRate.objects.filter(
                 client=self.client, route=self.route,
-                vehicle_type=self.vehicle.vehicle_type, weight_tons=self.weight,
+                vehicle_type_id=self.vehicle_type_id, weight_tons=self.weight,
             ).order_by("-effective_date", "-id").first()
         base_freight = matched.updated_trip_cost if matched else 0
         self.freight = base_freight + (self.additional_charges or 0)
