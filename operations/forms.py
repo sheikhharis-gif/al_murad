@@ -1,3 +1,5 @@
+from zoneinfo import ZoneInfo
+
 from django import forms
 from django.forms import inlineformset_factory
 from django.utils import timezone
@@ -125,7 +127,9 @@ class TripForm(forms.ModelForm):
         # if the rest of the row is filled in - an untouched extra row stays
         # "unchanged" since the date matches its initial value).
         if not self.instance.pk and not self.initial.get("trip_date"):
-            self.initial["trip_date"] = timezone.localdate()
+            # Server TIME_ZONE is UTC, so use Pakistan time for "today" -
+            # otherwise trips added between 12am and 5am PKT default to yesterday.
+            self.initial["trip_date"] = timezone.localdate(timezone=ZoneInfo("Asia/Karachi"))
 
 
 TripFormSet = inlineformset_factory(
