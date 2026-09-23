@@ -159,21 +159,21 @@
     <!-- FULL MIS DATA -->
     <div class="card border-0 shadow-sm rounded-4">
         <div class="card-body">
-            <h6 class="fw-bold mb-3"><i class="bi bi-table text-primary me-2"></i>MIS Data <span class="text-muted small fw-normal">- one row per trip ({{ rows|length }} rows)</span></h6>
+            <h6 class="fw-bold mb-3"><i class="bi bi-table text-primary me-2"></i>MIS Data <span class="text-muted small fw-normal">- one row per trip ({{ display_rows|length }} rows)</span></h6>
             <div class="table-responsive mis-sheet">
                 <table class="table table-sm table-bordered mb-0">
                     <thead class="table-light">
                         <tr>{% for h in headers %}<th>{{ h }}</th>{% endfor %}</tr>
                     </thead>
                     <tbody>
-                        {% for row in rows %}
-                        <tr>{% for v in row %}<td>{% if v is None %}{% elif forloop.counter == 5 %}{{ v|date:"d-M-y" }}{% elif forloop.counter >= 13 and forloop.counter <= 16 %}{{ v|date:"d-M-y H:i" }}{% else %}{{ v }}{% endif %}</td>{% endfor %}</tr>
+                        {% for row in display_rows %}
+                        <tr>{% for v in row %}<td>{{ v }}</td>{% endfor %}</tr>
                         {% empty %}
                         <tr><td colspan="{{ headers|length }}" class="text-muted small">No data for these filters.</td></tr>
                         {% endfor %}
                     </tbody>
                     <tfoot>
-                        <tr class="table-secondary fw-bold">{% for v in totals %}<td>{% if v is not None %}{{ v }}{% endif %}</td>{% endfor %}</tr>
+                        <tr class="table-secondary fw-bold">{% for v in display_totals %}<td>{{ v }}</td>{% endfor %}</tr>
                     </tfoot>
                 </table>
             </div>

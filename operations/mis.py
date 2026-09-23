@@ -29,7 +29,7 @@ from .models import Job, JobExpense, JobFuelEntry, Trip
 
 MIS_HEADERS = [
     "JOB #", "Trip #", "Vehicle #", "Vehicle Type", "Date", "Client", "Bilty #",
-    "Weight (Tons)", "Route", "Departure Meter", "Arrival Meter", "Running KMs",
+    "Weight (Tons)", "Route", "Status", "Departure Meter", "Arrival Meter", "Running KMs",
     "Reached Date & Time", "Departure Date & Time", "Arrival Date & Time",
     "Delivery Date & Time", "Actual Transit", "Trip Charges", "Additional Charges",
     "Toll Plaza", "Food", "Incentive", "Mobile Expense", "Challan", "Tyre Expense",
@@ -119,6 +119,7 @@ def build_mis(request):
                 t.trip_date if t else job.job_date,
                 t.client.name if t else "", t.bilty_number if t else "",
                 t.weight if t else None, t.route.route_code if t else "",
+                t.status_display if t else "",
                 # Meters / KMs are whole numbers - shown without decimals
                 _whole(t.departure_meter) if t else None, _whole(t.arrival_meter) if t else None,
                 _whole(t.arrival_meter - t.departure_meter)
@@ -140,7 +141,8 @@ def build_mis(request):
     totals[0] = "Total"
     for col in range(MONEY_START, MONEY_END + 1):
         totals[col] = sum((_d(r[col]) for r in rows), Decimal(0))
-    totals[MIS_HEADERS.index("Running KMs")] = sum((r[11] or 0 for r in rows), 0)
+    km_col = MIS_HEADERS.index("Running KMs")
+    totals[km_col] = sum((r[km_col] or 0 for r in rows), 0)
 
     # ---- Headline figures
     freight = sum((_d(t.freight) for t in trips), Decimal(0))
@@ -148,7 +150,7 @@ def build_mis(request):
     trip_expense = sum((_d(e.total) for e in expenses.values()), Decimal(0))
     fuel_liters = sum((_d(f["liters"]) for f in fuel_by_job.values()), Decimal(0))
     fuel_amount = sum((_d(f["amount"]) for f in fuel_by_job.values()), Decimal(0))
-    running_kms = totals[11]
+    running_kms = totals[km_col]
     net_profit = freight - trip_expense - fuel_amount
 
     maintenance = MaintenanceJob.objects.all()
@@ -240,6 +242,9 @@ def build_mis(request):
         "by_client": by_client, "by_vehicle": by_vehicle, "by_route": by_route,
         "expense_heads": expense_heads, "trip_expense": trip_expense,
         "headers": MIS_HEADERS, "rows": rows, "totals": totals,
+        # Same rows as display text for the web page (dates, 2-decimal money...)
+        "display_rows": [[_fmt(v) for v in row] for row in rows],
+        "display_totals": [_fmt(v) for v in totals],
     }
 
 

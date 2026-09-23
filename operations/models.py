@@ -220,6 +220,17 @@ class Trip(models.Model):
         return _format_duration(self.arrived_at, self.delivered_at)
 
     @property
+    def status_display(self):
+        """Where the trip is now, from its date-times (a time still in the
+        future doesn't count yet): At Loading -> Departed -> Arrived -> Delivered."""
+        now = timezone.now()
+        for when, label in ((self.delivered_at, "Delivered"), (self.arrived_at, "Arrived"),
+                            (self.departed_at, "Departured"), (self.reached_at, "At Loading")):
+            if when and when <= now:
+                return label
+        return ""
+
+    @property
     def actual_transit_display(self):
         if not self.reached_at:
             return "Nil"
