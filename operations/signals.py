@@ -1,6 +1,33 @@
-from django.db.models.signals import post_save
+from django.db.models.signals import post_delete, post_save, pre_save
 from django.dispatch import receiver
-from .models import Trip
+from masters.models import ClientRate
+from .models import Trip, refresh_trip_freight
+
+
+def _rate_key(rate):
+    return (rate.client_id, rate.route_id, rate.vehicle_type_id, rate.weight_tons)
+
+
+@receiver(pre_save, sender=ClientRate)
+def _stash_old_rate_key(sender, instance, **kwargs):
+    """Editing a rate can move it to another route/type/tonnage - remember the
+    old one so trips priced off it are refreshed too."""
+    old = ClientRate.objects.filter(pk=instance.pk).first() if instance.pk else None
+    instance._old_rate_key = _rate_key(old) if old else None
+
+
+@receiver(post_save, sender=ClientRate)
+def _reprice_trips_on_rate_save(sender, instance, **kwargs):
+    old_key = getattr(instance, "_old_rate_key", None)
+    if old_key and old_key != _rate_key(instance):
+        refresh_trip_freight(*old_key)
+    refresh_trip_freight(*_rate_key(instance))
+
+
+@receiver(post_delete, sender=ClientRate)
+def _reprice_trips_on_rate_delete(sender, instance, **kwargs):
+    refresh_trip_freight(*_rate_key(instance))
+
 
 @receiver(post_save, sender=Trip)
 def update_vehicle_location(sender, instance, created, **kwargs):

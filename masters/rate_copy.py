@@ -50,6 +50,10 @@ def copy_rates(client, source_type, target_types):
     # bulk_create skips ClientRate.save(), which would otherwise re-base the
     # copy on the target type's previous revision instead of the source's rate.
     ClientRate.objects.bulk_create(to_create)
+    # bulk_create sends no signals - re-price the trips these copies apply to
+    from operations.models import refresh_trip_freight
+    for key in {(c.client_id, c.route_id, c.vehicle_type_id, c.weight_tons) for c in to_create}:
+        refresh_trip_freight(*key)
     return len(to_create), skipped
 
 

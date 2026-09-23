@@ -178,19 +178,7 @@ class Trip(models.Model):
         if self.departure_meter is not None and self.route_id:
             self.arrival_meter = self.departure_meter + self.route.distance_km
 
-        # Freight = latest matching Client Rate's Updated Trip Cost + Additional
-        # Charges. Must match vehicle type AND weight exactly - a rate for a
-        # different tonnage on the same route/vehicle type must never be
-        # substituted in, even if it's the only one on file.
-        from masters.models import ClientRate
-        matched = None
-        if self.vehicle_type_id:
-            matched = ClientRate.objects.filter(
-                client=self.client, route=self.route,
-                vehicle_type_id=self.vehicle_type_id, weight_tons=self.weight,
-            ).order_by("-effective_date", "-id").first()
-        base_freight = matched.updated_trip_cost if matched else 0
-        self.freight = base_freight + (self.additional_charges or 0)
+        self.freight = self.compute_freight()
 
         super().save(*args, **kwargs)
 
@@ -219,6 +207,14 @@ class Trip(models.Model):
     def unloading_duration_display(self):
         return _format_duration(self.arrived_at, self.delivered_at)
 
+    def compute_freight(self):
+        """Freight = latest matching Client Rate's Updated Trip Cost + Additional
+        Charges. Must match vehicle type AND weight exactly - a rate for a
+        different tonnage on the same route/vehicle type must never be
+        substituted in, even if it's the only one on file."""
+        rate = matching_trip_cost(self.client_id, self.route_id, self.vehicle_type_id, self.weight)
+        return (rate or 0) + (self.additional_charges or 0)
+
     @property
     def status_display(self):
         """Where the trip is now, from its date-times (a time still in the
@@ -239,6 +235,35 @@ class Trip(models.Model):
 
     def __str__(self):
         return f"Job {self.job.job_number} | Trip {self.trip_no}"
+
+
+def matching_trip_cost(client_id, route_id, vehicle_type_id, weight):
+    """Updated Trip Cost of the latest Client Rate for this client + route +
+    vehicle type + tonnage, or None."""
+    if not (client_id and route_id and vehicle_type_id):
+        return None
+    from masters.models import ClientRate
+    rate = ClientRate.objects.filter(
+        client_id=client_id, route_id=route_id, vehicle_type_id=vehicle_type_id, weight_tons=weight,
+    ).order_by("-effective_date", "-id").only("updated_trip_cost").first()
+    return rate.updated_trip_cost if rate else None
+
+
+def refresh_trip_freight(client_id, route_id, vehicle_type_id, weight):
+    """Re-price every trip a Client Rate applies to, after that rate is added,
+    edited, deleted or copied - a trip's freight is otherwise only worked out
+    when the trip itself is saved, so trips entered before their rate existed
+    stayed at 0. Only the freight column is touched (not meters/odometer).
+    Returns how many trips changed."""
+    rate = matching_trip_cost(client_id, route_id, vehicle_type_id, weight) or 0
+    changed = 0
+    for trip in Trip.objects.filter(client_id=client_id, route_id=route_id,
+                                    vehicle_type_id=vehicle_type_id, weight=weight).only("id", "freight", "additional_charges"):
+        freight = rate + (trip.additional_charges or 0)
+        if trip.freight != freight:
+            Trip.objects.filter(pk=trip.pk).update(freight=freight)
+            changed += 1
+    return changed
 
 
 # -----------------------

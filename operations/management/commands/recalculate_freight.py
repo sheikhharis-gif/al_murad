@@ -5,19 +5,20 @@ from operations.models import Trip
 
 class Command(BaseCommand):
     help = (
-        "One-time fix: recalculates Freight = Rate + Detention on every existing "
-        "trip, since older trips were saved under the previous formula. Safe to re-run."
+        "Re-prices every trip from the current Client Rates (latest rate for the "
+        "trip's client + route + vehicle type + tonnage, plus additional charges). "
+        "Only the freight column is changed. Safe to re-run."
     )
 
     def handle(self, *args, **options):
         updated = 0
-        for trip in Trip.objects.all():
-            new_freight = trip.rate + trip.detention
-            if trip.freight != new_freight:
-                trip.freight = new_freight
-                trip.save(update_fields=["freight"])
+        trips = Trip.objects.all()
+        for trip in trips:
+            freight = trip.compute_freight()
+            if trip.freight != freight:
+                Trip.objects.filter(pk=trip.pk).update(freight=freight)
                 updated += 1
 
         self.stdout.write(self.style.SUCCESS(
-            f"Recalculated freight for {updated} trip(s) out of {Trip.objects.count()} total."
+            f"Recalculated freight for {updated} trip(s) out of {trips.count()} total."
         ))
