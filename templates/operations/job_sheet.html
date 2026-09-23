@@ -405,6 +405,22 @@
         }
 
         wireAddRow('add-trip-row', 'trip-formset', 'trip-block', 'id_trips-TOTAL_FORMS');
+
+        // Opened from the navbar Trip # search (#trip-<id>): the browser jumps
+        // there before the date pickers finish rendering, which shifts the page
+        // and leaves the trip half under the sticky navbar. Re-align it once
+        // everything has loaded, just below the navbar.
+        if (/^#trip-\d+$/.test(window.location.hash)) {
+            window.addEventListener('load', function () {
+                setTimeout(function () {
+                    var target = document.querySelector(window.location.hash);
+                    if (!target) return;
+                    var nav = document.querySelector('.app-navbar');
+                    var offset = (nav ? nav.offsetHeight : 0) + 16;
+                    window.scrollTo({ top: target.getBoundingClientRect().top + window.pageYOffset - offset });
+                }, 60);
+            });
+        }
         wireAddRow('add-fuel-row', 'fuel-formset', 'fuel-row', 'id_fuel-TOTAL_FORMS');
     });
 </script>

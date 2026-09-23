@@ -1110,5 +1110,5 @@ span.flatpickr-weekday:nth-child(7n) { color: var(--danger); }
 }
 
 /* Trip opened from the navbar box: scroll offset + brief highlight */
-.trip-block { scroll-margin-top: 110px; }
+.trip-block { scroll-margin-top: 96px; }
 .trip-block:target { border-color: #0d6efd !important; box-shadow: 0 0 0 3px rgba(13, 110, 253, .25); }
