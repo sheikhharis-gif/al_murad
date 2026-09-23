@@ -570,6 +570,19 @@ body {
     color: #fff;
 }
 
+/* data-theme="light" variant - sits among normal white inputs (Trip Vehicle Type) */
+.dropdown-search-light .dropdown-search-input,
+.dropdown-search-light .dropdown-search-input:focus {
+    background-color: #fff;
+    color: #0f172a;
+    border-color: #dee2e6;
+}
+.dropdown-search-light .dropdown-search-input::placeholder { color: #94a3b8; }
+.dropdown-search-light .dropdown-search-list { background: #fff; border: 1px solid #dee2e6; box-shadow: 0 8px 24px rgba(15, 23, 42, .15); }
+.dropdown-search-light .dropdown-search-item { color: #0f172a; }
+.dropdown-search-light .dropdown-search-item:hover,
+.dropdown-search-light .dropdown-search-item.active { background-color: #eef4ff; color: #0f172a; }
+
 .dropdown-search-empty {
     padding: 8px 12px;
     font-size: 0.8rem;

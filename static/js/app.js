@@ -103,12 +103,23 @@
 
         var options = Array.prototype.slice.call(select.options).filter(function (o) { return o.value; });
 
+        // Options (all optional, via data- attributes on the <select>):
+        //   data-match="contains" - match the typed text anywhere, not just
+        //       at the start (e.g. "dry" finds "20FT DRY");
+        //   data-theme="light"    - light box/list to sit among normal inputs;
+        //   data-empty-text       - text shown when nothing matches.
+        var containsMatch = select.dataset.match === 'contains';
+        function matchesQuery(opt, q) {
+            var text = opt.textContent.trim().toUpperCase();
+            return containsMatch ? text.indexOf(q) > -1 : text.indexOf(q) === 0;
+        }
+
         var wrapper = document.createElement('div');
-        wrapper.className = 'dropdown-search-wrapper';
+        wrapper.className = 'dropdown-search-wrapper' + (select.dataset.theme === 'light' ? ' dropdown-search-light' : '');
 
         var textInput = document.createElement('input');
         textInput.type = 'text';
-        textInput.className = 'form-control dropdown-search-input';
+        textInput.className = 'form-control dropdown-search-input' + (select.classList.contains('form-select-sm') ? ' form-control-sm' : '');
         textInput.setAttribute('placeholder', select.dataset.placeholder || 'Type to search...');
         textInput.setAttribute('autocomplete', 'off');
 
@@ -133,13 +144,13 @@
 
         function renderList() {
             var q = textInput.value.trim().toUpperCase();
-            var matches = q ? options.filter(function (o) { return o.textContent.trim().toUpperCase().indexOf(q) === 0; }) : options;
+            var matches = q ? options.filter(function (o) { return matchesQuery(o, q); }) : options;
             list.innerHTML = '';
             activeIndex = -1;
             if (!matches.length) {
                 var empty = document.createElement('div');
                 empty.className = 'dropdown-search-empty';
-                empty.textContent = 'No matching route';
+                empty.textContent = select.dataset.emptyText || 'No matching route';
                 list.appendChild(empty);
             } else {
                 matches.forEach(function (opt) {
@@ -193,7 +204,8 @@
                 return;
             }
             var q = typed.toUpperCase();
-            var match = options.filter(function (o) { return o.textContent.trim().toUpperCase().indexOf(q) === 0; })[0];
+            var match = options.filter(function (o) { return o.textContent.trim().toUpperCase().indexOf(q) === 0; })[0] ||
+                options.filter(function (o) { return matchesQuery(o, q); })[0];
             if (match) {
                 select.value = match.value;
                 textInput.value = match.textContent.trim();

@@ -101,7 +101,11 @@ class TripForm(forms.ModelForm):
             "bilty_number": forms.TextInput(attrs={"class": "form-control form-control-sm", "placeholder": "Bilty #"}),
             "weight": forms.NumberInput(attrs={"class": "form-control form-control-sm", "step": "0.01", "placeholder": "Weight (Tons)"}),
             "route": forms.Select(attrs={"class": "form-select form-select-sm"}),
-            "vehicle_type": forms.Select(attrs={"class": "form-select form-select-sm"}),
+            "vehicle_type": forms.Select(attrs={
+                "class": "form-select form-select-sm dropdown-search-select",
+                "data-match": "contains", "data-theme": "light",
+                "data-placeholder": "Type vehicle type...", "data-empty-text": "No matching vehicle type",
+            }),
             # type="datetime-local"'s displayed AM/PM-vs-24hr format is fixed
             # by the browser's own UI language and can't be overridden from
             # the page at all (confirmed - lang="en-GB" on the element does
@@ -164,6 +168,9 @@ class BaseTripFormSet(forms.BaseInlineFormSet):
         vehicle = getattr(self.instance, "vehicle", None)
         if not form.instance.vehicle_type_id and vehicle and vehicle.vehicle_type_id:
             form.initial.setdefault("vehicle_type", vehicle.vehicle_type_id)
+        # Rows added in the browser ("Add Trip") start on the vehicle's type too
+        if vehicle and vehicle.vehicle_type_id:
+            form.fields["vehicle_type"].widget.attrs["data-default"] = vehicle.vehicle_type_id
         return form
 
 

@@ -373,6 +373,16 @@
                     input.classList.remove('flatpickr-input');
                     delete input.dataset.fpEnhanced;
                 });
+                // Same for searchable dropdowns (Vehicle Type): put the real
+                // <select> back so it's rebuilt fresh for this row.
+                newRow.querySelectorAll('.dropdown-search-wrapper').forEach(function (wrap) {
+                    var sel = wrap.querySelector('select');
+                    if (!sel) return;
+                    wrap.parentNode.insertBefore(sel, wrap);
+                    wrap.remove();
+                    sel.style.display = '';
+                    delete sel.dataset.enhanced;
+                });
                 newRow.querySelectorAll('input, select, textarea').forEach(function (field) {
                     var name = field.getAttribute('name');
                     var id = field.getAttribute('id');
@@ -390,7 +400,7 @@
                     } else if (field.type === 'hidden') {
                         field.value = '';
                     } else {
-                        field.value = field.tagName === 'SELECT' ? field.options[0].value : '';
+                        field.value = field.tagName === 'SELECT' ? (field.dataset.default || field.options[0].value) : '';
                     }
                 });
                 newRow.querySelectorAll('.trip-computed').forEach(function (el) { el.textContent = '--'; });
@@ -401,6 +411,7 @@
                 totalForms.value = formNum + 1;
                 if (window.enhanceDatepickers) window.enhanceDatepickers();
                 if (window.enhanceDatetimepickers) window.enhanceDatetimepickers();
+                if (window.enhanceDropdownSearchSelects) window.enhanceDropdownSearchSelects();
             });
         }
 
