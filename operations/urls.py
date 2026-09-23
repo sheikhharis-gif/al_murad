@@ -1,5 +1,5 @@
 from django.urls import path
-from . import views
+from . import mis, views
 
 urlpatterns = [
     path("", views.dashboard, name="dashboard"),
@@ -12,6 +12,11 @@ urlpatterns = [
     path("trips/add/", views.trip_add, name="trip_add"),
     path("trips/edit/<int:trip_id>/", views.trip_edit, name="trip_edit"),
     path("trips/delete/<int:trip_id>/", views.trip_delete, name="trip_delete"),
+
+    # --- REPORTS ---
+    path("reports/mis/", mis.mis_report, name="mis_report"),
+    path("reports/mis/excel/", mis.mis_excel, name="mis_excel"),
+    path("reports/mis/pdf/", mis.mis_pdf, name="mis_pdf"),
 
     # --- JOBS ---
     path("jobs/", views.job_list, name="job_list"),

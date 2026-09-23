@@ -1,0 +1,193 @@
+{% extends "base.html" %}
+{% load humanize %}
+
+{% block content %}
+<div class="container-fluid py-4 bg-light min-vh-100">
+
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+        <div>
+            <h3 class="fw-bold text-dark mb-1">
+                <i class="bi bi-bar-chart-line-fill text-primary me-2"></i>Operational MIS Data
+            </h3>
+            <p class="text-muted small mb-0">Complete business picture - jobs, trips, fleet, revenue, expenses, fuel and profit. {{ period_label }}</p>
+        </div>
+        <div class="d-flex flex-wrap gap-2">
+            <a href="{% url 'mis_pdf' %}?{{ query }}" class="btn btn-danger btn-sm rounded-3 px-3 shadow-sm fw-bold d-inline-flex align-items-center">
+                <i class="bi bi-file-earmark-pdf me-1"></i> Download PDF
+            </a>
+            <a href="{% url 'mis_excel' %}?{{ query }}" class="btn btn-success btn-sm rounded-3 px-3 shadow-sm fw-bold d-inline-flex align-items-center">
+                <i class="bi bi-file-earmark-excel me-1"></i> Download Excel
+            </a>
+        </div>
+    </div>
+
+    <!-- FILTERS -->
+    <div class="card border-0 shadow-sm rounded-4 mb-4">
+        <div class="card-body p-4">
+            <form method="get" class="row g-3 align-items-end">
+                <div class="col-md-2 col-sm-6">
+                    <label class="form-label small fw-semibold text-muted">Start Date</label>
+                    <input type="date" name="start_date" value="{{ filters.start_date }}" class="form-control form-control-sm rounded-3">
+                </div>
+                <div class="col-md-2 col-sm-6">
+                    <label class="form-label small fw-semibold text-muted">End Date</label>
+                    <input type="date" name="end_date" value="{{ filters.end_date }}" class="form-control form-control-sm rounded-3">
+                </div>
+                <div class="col-md-3 col-sm-6">
+                    <label class="form-label small fw-semibold text-muted">Client</label>
+                    <select name="client" class="form-select form-select-sm rounded-3">
+                        <option value="">-- All Clients --</option>
+                        {% for c in clients %}<option value="{{ c.id }}" {% if filters.client == c.id|stringformat:"s" %}selected{% endif %}>{{ c.name }}</option>{% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2 col-sm-6">
+                    <label class="form-label small fw-semibold text-muted">Vehicle</label>
+                    <select name="vehicle" class="form-select form-select-sm rounded-3">
+                        <option value="">-- All Vehicles --</option>
+                        {% for v in vehicles %}<option value="{{ v.id }}" {% if filters.vehicle == v.id|stringformat:"s" %}selected{% endif %}>{{ v.vehicle_number }}</option>{% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2 col-sm-6">
+                    <label class="form-label small fw-semibold text-muted">Job Status</label>
+                    <select name="status" class="form-select form-select-sm rounded-3">
+                        <option value="">-- All --</option>
+                        {% for value, label in status_choices %}<option value="{{ value }}" {% if filters.status == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-1 col-sm-6 d-flex gap-2">
+                    <button type="submit" class="btn btn-primary btn-sm fw-bold w-100">Apply</button>
+                </div>
+                <div class="col-12 text-end mt-0">
+                    <a href="{% url 'mis_report' %}" class="small text-muted">Clear filters</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- KEY FIGURES -->
+    <div class="row g-3 mb-4">
+        {% for label, value, kind in summary %}
+        <div class="col-xl-3 col-md-4 col-sm-6">
+            <div class="card border-0 shadow-sm rounded-4 h-100 mis-card mis-{{ kind }}">
+                <div class="card-body py-3">
+                    <div class="small text-muted fw-semibold text-uppercase">{{ label }}</div>
+                    <div class="fs-4 fw-bold {% if kind == 'money' and value < 0 %}text-danger{% endif %}">
+                        {% if kind == 'int' %}{{ value }}{% elif kind == 'pct' %}{{ value }}%{% elif kind == 'money' %}Rs {{ value|floatformat:0|intcomma }}{% else %}{{ value|floatformat:2|intcomma }}{% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <div class="row g-4 mb-4">
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm rounded-4 h-100">
+                <div class="card-body">
+                    <h6 class="fw-bold mb-3"><i class="bi bi-truck text-primary me-2"></i>Fleet &amp; Operations</h6>
+                    <table class="table table-sm mb-0">
+                        {% for label, count in fleet %}
+                        <tr><td class="text-muted">{{ label }}</td><td class="text-end fw-bold">{{ count }}</td></tr>
+                        {% endfor %}
+                    </table>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm rounded-4 h-100">
+                <div class="card-body">
+                    <h6 class="fw-bold mb-3"><i class="bi bi-wallet2 text-danger me-2"></i>Expense Heads</h6>
+                    <table class="table table-sm mb-0">
+                        {% for label, amount, pct in expense_heads %}
+                        <tr><td class="text-muted">{{ label }}</td><td class="text-end fw-bold">{{ amount|floatformat:0|intcomma }}</td><td class="text-end small text-muted">{{ pct }}%</td></tr>
+                        {% endfor %}
+                        <tr class="table-light"><td class="fw-bold">Total</td><td class="text-end fw-bold">{{ trip_expense|floatformat:0|intcomma }}</td><td></td></tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm rounded-4 h-100">
+                <div class="card-body">
+                    <h6 class="fw-bold mb-3"><i class="bi bi-signpost-2 text-success me-2"></i>Route-wise</h6>
+                    <div class="table-responsive" style="max-height: 420px;">
+                        <table class="table table-sm mb-0">
+                            <thead><tr><th>Route</th><th class="text-end">KMs</th><th class="text-end">Trips</th><th class="text-end">Freight</th></tr></thead>
+                            {% for route, v in by_route %}
+                            <tr><td>{{ route }}</td><td class="text-end">{{ v.kms|floatformat:0 }}</td><td class="text-end">{{ v.trips }}</td><td class="text-end fw-bold">{{ v.freight|floatformat:0|intcomma }}</td></tr>
+                            {% empty %}<tr><td colspan="4" class="text-muted small">No trips</td></tr>{% endfor %}
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4 mb-4">
+        <div class="col-lg-5">
+            <div class="card border-0 shadow-sm rounded-4 h-100">
+                <div class="card-body">
+                    <h6 class="fw-bold mb-3"><i class="bi bi-people-fill text-primary me-2"></i>Client-wise</h6>
+                    <div class="table-responsive">
+                        <table class="table table-sm mb-0">
+                            <thead><tr><th>Client</th><th class="text-end">Trips</th><th class="text-end">Weight</th><th class="text-end">KMs</th><th class="text-end">Freight</th></tr></thead>
+                            {% for name, v in by_client %}
+                            <tr><td>{{ name }}</td><td class="text-end">{{ v.trips }}</td><td class="text-end">{{ v.weight|floatformat:2 }}</td><td class="text-end">{{ v.kms|floatformat:0 }}</td><td class="text-end fw-bold">{{ v.freight|floatformat:0|intcomma }}</td></tr>
+                            {% empty %}<tr><td colspan="5" class="text-muted small">No trips</td></tr>{% endfor %}
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-7">
+            <div class="card border-0 shadow-sm rounded-4 h-100">
+                <div class="card-body">
+                    <h6 class="fw-bold mb-3"><i class="bi bi-truck-front-fill text-primary me-2"></i>Vehicle-wise</h6>
+                    <div class="table-responsive">
+                        <table class="table table-sm mb-0">
+                            <thead><tr><th>Vehicle</th><th>Type</th><th class="text-end">Jobs</th><th class="text-end">Trips</th><th class="text-end">KMs</th><th class="text-end">Freight</th><th class="text-end">Trip Exp</th><th class="text-end">Fuel (L)</th><th class="text-end">Fuel Cost</th><th class="text-end">Profit</th></tr></thead>
+                            {% for number, v in by_vehicle %}
+                            <tr><td class="fw-bold">{{ number }}</td><td class="small">{{ v.type }}</td><td class="text-end">{{ v.jobs }}</td><td class="text-end">{{ v.trips }}</td><td class="text-end">{{ v.kms|floatformat:0 }}</td><td class="text-end">{{ v.freight|floatformat:0|intcomma }}</td><td class="text-end">{{ v.expense|floatformat:0|intcomma }}</td><td class="text-end">{{ v.liters|floatformat:2 }}</td><td class="text-end">{{ v.fuel|floatformat:0|intcomma }}</td><td class="text-end fw-bold {% if v.profit < 0 %}text-danger{% else %}text-success{% endif %}">{{ v.profit|floatformat:0|intcomma }}</td></tr>
+                            {% empty %}<tr><td colspan="10" class="text-muted small">No jobs</td></tr>{% endfor %}
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- FULL MIS DATA -->
+    <div class="card border-0 shadow-sm rounded-4">
+        <div class="card-body">
+            <h6 class="fw-bold mb-3"><i class="bi bi-table text-primary me-2"></i>MIS Data <span class="text-muted small fw-normal">- one row per trip ({{ rows|length }} rows)</span></h6>
+            <div class="table-responsive mis-sheet">
+                <table class="table table-sm table-bordered mb-0">
+                    <thead class="table-light">
+                        <tr>{% for h in headers %}<th>{{ h }}</th>{% endfor %}</tr>
+                    </thead>
+                    <tbody>
+                        {% for row in rows %}
+                        <tr>{% for v in row %}<td>{% if v is None %}{% elif forloop.counter == 5 %}{{ v|date:"d-M-y" }}{% elif forloop.counter >= 13 and forloop.counter <= 16 %}{{ v|date:"d-M-y H:i" }}{% else %}{{ v }}{% endif %}</td>{% endfor %}</tr>
+                        {% empty %}
+                        <tr><td colspan="{{ headers|length }}" class="text-muted small">No data for these filters.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                    <tfoot>
+                        <tr class="table-secondary fw-bold">{% for v in totals %}<td>{% if v is not None %}{{ v }}{% endif %}</td>{% endfor %}</tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .mis-card { border-left: 4px solid #0d6efd !important; }
+    .mis-card.mis-money { border-left-color: #198754 !important; }
+    .mis-card.mis-num { border-left-color: #ffc107 !important; }
+    .mis-card.mis-pct { border-left-color: #0dcaf0 !important; }
+    .mis-sheet { max-height: 600px; }
+    .mis-sheet table { font-size: 0.72rem; white-space: nowrap; }
+    .mis-sheet thead th { position: sticky; top: 0; z-index: 1; }
+</style>
+{% endblock %}
