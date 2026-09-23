@@ -6,6 +6,7 @@ urlpatterns = [
     path("dashboard/", views.dashboard, name="dashboard"),
 
     path("open/", views.quick_open, name="quick_open"),
+    path("open/suggest/", views.quick_open_suggest, name="quick_open_suggest"),
 
     # --- TRIPS ---
     path("trips/", views.trip_list, name="trip_list"),

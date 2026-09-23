@@ -448,7 +448,70 @@
         });
     };
 
+    // Navbar "Open Trip # / Job #" box: as you type, lists matching trips/jobs
+    // (partial number, vehicle number or bilty); arrow keys + Enter or a click
+    // opens one. Enter with nothing highlighted opens the exact number typed.
+    window.enhanceQuickOpen = function () {
+        var form = document.querySelector('form.quick-open');
+        if (!form || form.dataset.qoEnhanced) return;
+        form.dataset.qoEnhanced = '1';
+        var input = form.querySelector('input[name="no"]');
+        var type = form.querySelector('select[name="type"]');
+        var list = form.querySelector('.quick-open-list');
+        var timer = null, seq = 0, active = -1;
+
+        function hide() { list.classList.add('d-none'); active = -1; }
+        function items() { return list.querySelectorAll('a'); }
+        function highlight(i) {
+            var links = items();
+            links.forEach(function (a) { a.classList.remove('active'); });
+            if (i >= 0 && i < links.length) { links[i].classList.add('active'); links[i].scrollIntoView({ block: 'nearest' }); }
+            active = i;
+        }
+        function render(results) {
+            list.innerHTML = '';
+            if (!results.length) {
+                var empty = document.createElement('div');
+                empty.className = 'qo-empty';
+                empty.textContent = 'No match';
+                list.appendChild(empty);
+            }
+            results.forEach(function (r) {
+                var a = document.createElement('a');
+                a.href = r.url;
+                var t = document.createElement('div'); t.className = 'fw-semibold'; t.textContent = r.title;
+                var sub = document.createElement('div'); sub.className = 'qo-sub'; sub.textContent = r.sub;
+                a.appendChild(t); a.appendChild(sub);
+                list.appendChild(a);
+            });
+            list.classList.remove('d-none');
+            active = -1;
+        }
+        function search() {
+            var q = input.value.trim();
+            if (!q) { hide(); return; }
+            var mine = ++seq;
+            fetch(form.dataset.suggestUrl + '?type=' + encodeURIComponent(type.value) + '&q=' + encodeURIComponent(q), { credentials: 'same-origin' })
+                .then(function (r) { return r.json(); })
+                .then(function (data) { if (mine === seq) render(data.results || []); })
+                .catch(hide);
+        }
+
+        input.addEventListener('input', function () { clearTimeout(timer); timer = setTimeout(search, 200); });
+        input.addEventListener('focus', function () { if (input.value.trim()) search(); });
+        type.addEventListener('change', function () { if (input.value.trim()) search(); input.focus(); });
+        input.addEventListener('keydown', function (e) {
+            var n = items().length;
+            if (e.key === 'ArrowDown' && n) { e.preventDefault(); highlight((active + 1) % n); }
+            else if (e.key === 'ArrowUp' && n) { e.preventDefault(); highlight(active <= 0 ? n - 1 : active - 1); }
+            else if (e.key === 'Escape') { hide(); }
+            else if (e.key === 'Enter' && active >= 0) { e.preventDefault(); window.location.href = items()[active].href; }
+        });
+        document.addEventListener('click', function (e) { if (!form.contains(e.target)) hide(); });
+    };
+
     document.addEventListener('DOMContentLoaded', window.enhanceSearchableSelects);
+    document.addEventListener('DOMContentLoaded', window.enhanceQuickOpen);
     document.addEventListener('DOMContentLoaded', window.enhanceDropdownSearchSelects);
     document.addEventListener('DOMContentLoaded', window.enhanceDatepickers);
     document.addEventListener('DOMContentLoaded', window.enhanceDatetimepickers);

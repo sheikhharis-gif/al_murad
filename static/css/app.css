@@ -1091,11 +1091,23 @@ span.flatpickr-weekday:nth-child(7n) { color: var(--danger); }
     box-shadow: 0 4px 12px var(--accent-glow);
 }
 
-/* Navbar "Open Trip # / Job #" box */
-.main-nav .quick-open { width: 210px; margin: 0 6px; }
-.main-nav .quick-open .form-select { flex: 0 0 82px; font-size: 0.8rem; font-weight: 600; }
-.main-nav .quick-open .form-control { font-size: 0.8rem; }
-@media (max-width: 1199.98px) { .main-nav .quick-open { width: 100%; margin: 6px 0; } }
+/* Navbar "Open Trip # / Job #" box (top-right corner) + live suggestions */
+.quick-open { position: relative; width: 250px; flex-wrap: nowrap; }
+.quick-open .form-select { flex: 0 0 82px; font-size: 0.8rem; font-weight: 600; }
+.quick-open .form-control { font-size: 0.8rem; }
+.quick-open-list {
+    position: absolute; top: calc(100% + 4px); right: 0; width: 340px; max-height: 360px; overflow-y: auto;
+    background: #fff; border-radius: 10px; z-index: 1060; padding: 4px 0;
+}
+.quick-open-list a { display: block; padding: 7px 12px; color: #0f172a; text-decoration: none; font-size: 0.8rem; line-height: 1.3; }
+.quick-open-list a .qo-sub { color: #64748b; font-size: 0.74rem; }
+.quick-open-list a:hover, .quick-open-list a.active { background: #eef4ff; }
+.quick-open-list .qo-empty { padding: 8px 12px; color: #64748b; font-size: 0.8rem; }
+@media (max-width: 575.98px) {
+    .quick-open { width: 170px; }
+    .quick-open .form-select { flex-basis: 68px; }
+    .quick-open-list { width: 280px; }
+}
 
 /* Trip opened from the navbar box: scroll offset + brief highlight */
 .trip-block { scroll-margin-top: 110px; }

@@ -6,8 +6,9 @@ from decimal import Decimal
 from pathlib import Path
 from django.contrib.auth.decorators import login_required
 from django.db.models import Count, Q, Sum
-from django.db.models.functions import TruncMonth
-from django.http import HttpResponse
+from django.db.models import CharField
+from django.db.models.functions import Cast, TruncMonth
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.template.loader import get_template
@@ -689,6 +690,45 @@ def quick_open(request):
         return redirect(reverse("job_edit", kwargs={"job_id": trip.job_id}) + f"#trip-{trip.id}")
     messages.error(request, f"Trip #{raw} not found.")
     return redirect(back)
+
+
+def _number_first(queryset, number_match, other_match, limit=10):
+    """Number matches first, then vehicle/bilty matches, up to `limit`."""
+    first = list(queryset.filter(number_match)[:limit])
+    seen = {obj.pk for obj in first}
+    rest = [obj for obj in queryset.filter(other_match).exclude(pk__in=seen)[:limit]]
+    return (first + rest)[:limit]
+
+
+def quick_open_suggest(request):
+    """Live suggestions for the navbar Open box: matches on the number (partial,
+    so "2" lists 000002, 000012, 000020...), vehicle number or bilty."""
+    kind = request.GET.get("type", "trip")
+    q = (request.GET.get("q") or "").strip().lstrip("#")
+    results = []
+    if q:
+        if kind == "job":
+            base = (Job.objects.select_related("vehicle")
+                    .annotate(no=Cast("job_number", CharField()), trip_count=Count("trips"))
+                    .order_by("-job_number"))
+            jobs = _number_first(base, Q(no__contains=q.lstrip("0") or q), Q(vehicle__vehicle_number__icontains=q))
+            for job in jobs:
+                results.append({
+                    "url": reverse("job_edit", kwargs={"job_id": job.job_number}),
+                    "title": f"Job #{job.job_number} - {job.vehicle.vehicle_number}",
+                    "sub": f"{job.job_date:%d-%b-%y} | {job.get_status_display()} | {job.trip_count} trip(s)",
+                })
+        else:
+            base = Trip.objects.select_related("vehicle", "client", "route").order_by("-id")
+            trips = _number_first(base, Q(trip_no__contains=q),
+                                  Q(vehicle__vehicle_number__icontains=q) | Q(bilty_number__icontains=q))
+            for trip in trips:
+                results.append({
+                    "url": reverse("job_edit", kwargs={"job_id": trip.job_id}) + f"#trip-{trip.id}",
+                    "title": f"Trip #{trip.trip_no} - {trip.vehicle.vehicle_number}",
+                    "sub": f"Job #{trip.job_id} | {trip.client.name} | {trip.route.route_code} | {trip.trip_date:%d-%b-%y}",
+                })
+    return JsonResponse({"results": results})
 
 
 def trip_add(request):

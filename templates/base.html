@@ -27,6 +27,16 @@
 
         <div class="d-flex align-items-center gap-2 order-xl-3">
             {% if not is_expense_only and not is_workshop_only %}
+            {# Replaces the old Trips / Expenses menus: type a Trip # or Job # and go straight to it #}
+            <form action="{% url 'quick_open' %}" method="get" class="quick-open input-group input-group-sm" data-suggest-url="{% url 'quick_open_suggest' %}" autocomplete="off">
+                <select name="type" class="form-select" aria-label="Open">
+                    <option value="trip">Trip #</option>
+                    <option value="job">Job #</option>
+                </select>
+                <input type="text" name="no" class="form-control" placeholder="No. / vehicle" aria-label="Number" required>
+                <button class="btn btn-light" type="submit" title="Open"><i class="bi bi-arrow-right"></i></button>
+                <div class="quick-open-list shadow-lg d-none"></div>
+            </form>
             <div class="dropdown">
                 <button class="icon-btn" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                     <i class="bi bi-bell"></i>
@@ -95,18 +105,6 @@
                     <a href="{% url 'dashboard' %}" class="nav-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
                         <i class="bi bi-grid-1x2-fill"></i> Dashboard
                     </a>
-                </li>
-
-                <li class="nav-item d-flex align-items-center">
-                    {# Replaces the old Trips / Expenses menus: type a Trip # or Job # and go straight to it #}
-                    <form action="{% url 'quick_open' %}" method="get" class="quick-open input-group input-group-sm">
-                        <select name="type" class="form-select" aria-label="Open">
-                            <option value="trip">Trip #</option>
-                            <option value="job">Job #</option>
-                        </select>
-                        <input type="text" name="no" inputmode="numeric" class="form-control" placeholder="No." aria-label="Number" required>
-                        <button class="btn btn-light" type="submit" title="Open"><i class="bi bi-arrow-right"></i></button>
-                    </form>
                 </li>
 
                 <li class="nav-item dropdown">
