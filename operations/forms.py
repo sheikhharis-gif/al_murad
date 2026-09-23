@@ -1,3 +1,4 @@
+import datetime as dt
 from zoneinfo import ZoneInfo
 
 from django import forms
@@ -130,6 +131,25 @@ class TripForm(forms.ModelForm):
             # Server TIME_ZONE is UTC, so use Pakistan time for "today" -
             # otherwise trips added between 12am and 5am PKT default to yesterday.
             self.initial["trip_date"] = timezone.localdate(timezone=ZoneInfo("Asia/Karachi"))
+        # ...and the four date-time boxes with the current Pakistan time. Saved
+        # times are stored/shown as-is under the UTC setting (that's how
+        # everyone already types them), so the Karachi wall-clock time is
+        # labelled UTC rather than converted.
+        if not self.instance.pk:
+            now = timezone.localtime(timezone.now(), ZoneInfo("Asia/Karachi")).replace(
+                tzinfo=dt.timezone.utc, second=0, microsecond=0)
+            for name in self.AUTO_FILLED - {"trip_date"}:
+                self.initial.setdefault(name, now)
+
+    # Pre-filled on new rows, so on their own they don't count as "the user
+    # filled this row in" - otherwise an untouched blank row would fail
+    # validation (its time default moves on by the time the page is saved).
+    AUTO_FILLED = {"trip_date", "reached_at", "departed_at", "arrived_at", "delivered_at"}
+
+    def has_changed(self):
+        if self.instance.pk:
+            return super().has_changed()
+        return any(name not in self.AUTO_FILLED for name in self.changed_data)
 
 
 TripFormSet = inlineformset_factory(

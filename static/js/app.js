@@ -335,6 +335,48 @@
     // field - people type the value in directly like they could with the
     // native widget; the clock icon still opens the picker for anyone who
     // wants to click through it instead.
+    // Reads whatever date/time people type into a Trip date-time box, so the
+    // calendar is never required: "27-Aug-26 07:00", "27/08/2026 7:00",
+    // "27.8.26 1930", "27-8 7pm", "2026-08-27 07:00" all work. Year left out =
+    // current year; time left out = keep the box's current time. Returns null
+    // if it can't be read.
+    var MONTHS = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+    window.parseFlexibleDateTime = function (text, fallback) {
+        var str = String(text || '').trim();
+        var y, mo, d, h, mi, ampm, m;
+        if ((m = str.match(/^(\d{4})-(\d{1,2})-(\d{1,2})(?:[ T]+(\d{1,2})(?:[:.]?(\d{2}))?)?$/))) {
+            y = +m[1]; mo = +m[2]; d = +m[3]; h = m[4]; mi = m[5];
+        } else if ((m = str.match(/^(\d{1,2})[\s\-\/.]+([a-z]{3,}|\d{1,2})(?:[\s\-\/.,]+(\d{4}|\d{2}))?(?:[\s,]+(\d{1,2})(?:[:.]?(\d{2}))?\s*(am|pm)?)?$/i))) {
+            d = +m[1];
+            mo = /^\d+$/.test(m[2]) ? +m[2] : MONTHS.indexOf(m[2].slice(0, 3).toLowerCase()) + 1;
+            y = m[3] ? +m[3] : new Date().getFullYear();
+            if (y < 100) y += 2000;
+            h = m[4]; mi = m[5]; ampm = m[6];
+        } else {
+            return null;
+        }
+        if (h === undefined) {
+            h = fallback ? fallback.getHours() : 0;
+            mi = fallback ? fallback.getMinutes() : 0;
+        } else {
+            h = +h; mi = mi ? +mi : 0;
+            if (ampm) {
+                ampm = ampm.toLowerCase();
+                if (ampm === 'pm' && h < 12) h += 12;
+                if (ampm === 'am' && h === 12) h = 0;
+            }
+        }
+        if (!mo || mo > 12 || h > 23 || mi > 59) return null;
+        var date = new Date(y, mo - 1, d, h, mi);
+        return date.getDate() === d && date.getMonth() === mo - 1 ? date : null;
+    };
+
+    window.formatIsoMinute = function (date) {
+        function pad(n) { return String(n).padStart(2, '0'); }
+        return date.getFullYear() + '-' + pad(date.getMonth() + 1) + '-' + pad(date.getDate()) +
+            ' ' + pad(date.getHours()) + ':' + pad(date.getMinutes());
+    };
+
     window.enhanceDatetimepickers = function () {
         if (typeof flatpickr === 'undefined') return;
         document.querySelectorAll('input.datetimepicker').forEach(function (el) {
@@ -355,6 +397,12 @@
                 allowInput: true,
                 clickOpens: false,
                 locale: { firstDayOfWeek: 1 },
+                // Typed text is read leniently (see parseFlexibleDateTime); a
+                // typo keeps the previous value instead of wiping the box.
+                parseDate: function (datestr) {
+                    var current = el._flatpickr && el._flatpickr.selectedDates[0];
+                    return window.parseFlexibleDateTime(datestr, current) || current || undefined;
+                },
                 onReady: function (selectedDates, dateStr, instance) {
                     var icon = document.createElement('i');
                     icon.className = 'bi bi-clock datepicker-icon';

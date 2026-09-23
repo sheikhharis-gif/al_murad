@@ -359,6 +359,19 @@
                 var templateRow = rows[rows.length - 1];
                 var newRow = templateRow.cloneNode(true);
 
+                // A cloned flatpickr field is a dead copy (its visible box has no
+                // name and it's flagged as already enhanced) - unwrap it back to
+                // the plain input so enhanceDatetimepickers/enhanceDatepickers
+                // set it up fresh below.
+                newRow.querySelectorAll('.datepicker-wrapper').forEach(function (wrap) {
+                    var input = wrap.querySelector('input[name]');
+                    if (!input) return;
+                    wrap.parentNode.insertBefore(input, wrap);
+                    wrap.remove();
+                    input.type = 'text';
+                    input.classList.remove('flatpickr-input');
+                    delete input.dataset.fpEnhanced;
+                });
                 newRow.querySelectorAll('input, select, textarea').forEach(function (field) {
                     var name = field.getAttribute('name');
                     var id = field.getAttribute('id');
@@ -366,6 +379,9 @@
                     if (id) field.setAttribute('id', id.replace(/-\d+-/, '-' + formNum + '-'));
                     if (field.type === 'checkbox') {
                         field.checked = false;
+                    } else if (field.classList.contains('datetimepicker')) {
+                        // New trip rows start on the current date & time.
+                        field.value = window.formatIsoMinute ? window.formatIsoMinute(new Date()) : '';
                     } else if (field.type === 'date') {
                         // New trip rows start on today's date, same as the server-rendered one.
                         var now = new Date();
