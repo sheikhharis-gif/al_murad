@@ -406,8 +406,9 @@
                     if (field.type === 'checkbox') {
                         field.checked = false;
                     } else if (field.classList.contains('datetimepicker')) {
-                        // New trip rows start on the current date & time.
-                        field.value = window.formatIsoMinute ? window.formatIsoMinute(new Date()) : '';
+                        // New trip rows: Reached starts on the current date & time,
+                        // Departure/Arrival/Delivery stay empty until they happen.
+                        field.value = /-reached_at$/.test(field.name) && window.formatIsoMinute ? window.formatIsoMinute(new Date()) : '';
                     } else if (field.type === 'date') {
                         // New trip rows start on today's date, same as the server-rendered one.
                         var now = new Date();

@@ -142,15 +142,17 @@ class TripForm(forms.ModelForm):
             # Server TIME_ZONE is UTC, so use Pakistan time for "today" -
             # otherwise trips added between 12am and 5am PKT default to yesterday.
             self.initial["trip_date"] = timezone.localdate(timezone=ZoneInfo("Asia/Karachi"))
-        # ...and the four date-time boxes with the current Pakistan time. Saved
+        # ...and Reached Date & Time with the current Pakistan time. Saved
         # times are stored/shown as-is under the UTC setting (that's how
         # everyone already types them), so the Karachi wall-clock time is
         # labelled UTC rather than converted.
         if not self.instance.pk:
             now = timezone.localtime(timezone.now(), ZoneInfo("Asia/Karachi")).replace(
                 tzinfo=dt.timezone.utc, second=0, microsecond=0)
-            for name in ("reached_at", "departed_at", "arrived_at", "delivered_at"):
-                self.initial.setdefault(name, now)
+            # Only Reached - the other three are filled in as the trip moves
+            # on, and together they drive the trip's Status (At Loading ->
+            # Departured -> Arrived -> Delivered).
+            self.initial.setdefault("reached_at", now)
 
     # Pre-filled on new rows, so on their own they don't count as "the user
     # filled this row in" - otherwise an untouched blank row would fail
