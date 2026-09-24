@@ -114,6 +114,67 @@
                 </form>
             </div>
             {% endif %}
+            {% if client.has_stopover %}
+            <div class="border rounded-3 px-3 py-2 mb-3 small bg-white">
+                <div class="d-flex align-items-center flex-wrap gap-2 mb-2">
+                    <span class="fw-bold text-muted text-uppercase" style="font-size:.7rem;">Stopover Charges</span>
+                    <span class="text-muted">Picked automatically on the Job Sheet when a Stopover City is chosen on a trip.</span>
+                </div>
+                <div class="row g-3">
+                    <div class="col-lg-4">
+                        <form method="post" action="{% url 'client_stopover_save' client.id %}" class="row g-2 align-items-end m-0">
+                            {% csrf_token %}
+                            <div class="col-12">
+                                <label class="form-label small fw-bold mb-1">Vehicle Type</label>
+                                <select name="vehicle_type" class="form-select form-select-sm" required>
+                                    <option value="">--- Select Vehicle Type ---</option>
+                                    {% for vt in all_vehicle_types %}<option value="{{ vt.id }}">{{ vt.name }}</option>{% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-7">
+                                <label class="form-label small fw-bold mb-1">Stop Location</label>
+                                <select name="zone" class="form-select form-select-sm" required>
+                                    {% for code, label in stopover_zones %}<option value="{{ code }}">{{ label }}</option>{% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-5">
+                                <label class="form-label small fw-bold mb-1">Charges</label>
+                                <input type="number" name="amount" step="0.01" min="0" class="form-control form-control-sm" placeholder="e.g. 5000" required>
+                            </div>
+                            <div class="col-12">
+                                <button class="btn btn-sm btn-dark w-100 fw-bold"><i class="bi bi-save me-1"></i>Save Stopover Charges</button>
+                                <div class="form-text small">Same vehicle type + location again replaces the amount.</div>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="col-lg-8">
+                        <table class="table table-sm align-middle mb-0">
+                            <thead>
+                                <tr class="text-muted small text-uppercase"><th>Vehicle Type</th><th>Stop Location</th><th class="text-end">Charges</th><th></th></tr>
+                            </thead>
+                            <tbody>
+                                {% for r in stopover_rates %}
+                                <tr>
+                                    <td class="fw-bold">{{ r.vehicle_type.name }}</td>
+                                    <td>{{ r.get_zone_display }}</td>
+                                    <td class="text-end fw-bold">{{ r.amount|floatformat:0 }}</td>
+                                    <td class="text-end">
+                                        <form method="post" action="{% url 'client_stopover_delete' client.id r.id %}" class="d-inline m-0">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-sm btn-white text-danger border py-0" title="Delete"
+                                                onclick="return confirm('Delete this stopover charge?')"><i class="bi bi-trash"></i></button>
+                                        </form>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr><td colspan="4" class="text-center py-3 text-muted">No stopover charges yet - add one on the left.</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
             <form method="post" class="rate-entry-form bg-light p-3 rounded-4 mb-3 border border-light-subtle">
                 {% csrf_token %}
                 {% if client.has_sub_categories %}

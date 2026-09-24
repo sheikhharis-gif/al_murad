@@ -12,6 +12,18 @@ from masters.models import (
     Vehicle, VehicleType, Client, ClientSubCategory, Route, Vendor, FuelProduct, City, StopoverRate, stopover_amount,
 )
 
+
+class ClientSelect(forms.Select):
+    """Client dropdown whose options say whether the client has stopover
+    charges (data-stopover), so the trip row can show/hide those fields."""
+
+    def create_option(self, name, value, label, selected, index, subindex=None, attrs=None):
+        option = super().create_option(name, value, label, selected, index, subindex, attrs)
+        instance = getattr(value, "instance", None)
+        if instance is not None and instance.has_stopover:
+            option["attrs"]["data-stopover"] = "1"
+        return option
+
 # -----------------------
 # JOB FORM (header only - date, vehicle, trip advance, remarks)
 # -----------------------
@@ -126,7 +138,7 @@ class TripForm(forms.ModelForm):
         ]
         widgets = {
             "trip_date": forms.DateInput(attrs={"class": "form-control form-control-sm", "type": "date"}),
-            "client": forms.Select(attrs={"class": "form-select form-select-sm"}),
+            "client": ClientSelect(attrs={"class": "form-select form-select-sm"}),
             "sub_category": SubCategorySelect(attrs={"class": "form-select form-select-sm trip-subcategory"}),
             "bilty_number": forms.TextInput(attrs={"class": "form-control form-control-sm", "placeholder": "Bilty #"}),
             "weight": forms.NumberInput(attrs={"class": "form-control form-control-sm", "step": "0.01", "placeholder": "Weight (Tons)"}),
@@ -172,9 +184,9 @@ class TripForm(forms.ModelForm):
         # Left blank, the charge is filled in from the Stopover Rates table
         # (vehicle type x city band); typing a value overrides it.
         self.fields["stopover_charges"].required = False
-        rates = {}
+        rates = {}  # client -> vehicle type -> stop location -> charges
         for r in StopoverRate.objects.all():
-            rates.setdefault(str(r.vehicle_type_id), {})[r.zone] = str(r.amount)
+            rates.setdefault(str(r.client_id), {}).setdefault(str(r.vehicle_type_id), {})[r.zone] = str(r.amount)
         self.fields["stopover_charges"].widget.attrs["data-rates"] = json.dumps(rates)
         self.fields["route"].queryset = Route.objects.all().order_by("route_code")
         self.fields["route"].empty_label = "--- Select Route ---"
@@ -215,7 +227,8 @@ class TripForm(forms.ModelForm):
                 cleaned["stopover_charges"] = Decimal(0)
             elif charges is None:
                 vt = cleaned.get("vehicle_type")
-                cleaned["stopover_charges"] = stopover_amount(vt.pk if vt else None, city) or Decimal(0)
+                cleaned["stopover_charges"] = stopover_amount(
+                    client.pk if client else None, vt.pk if vt else None, city) or Decimal(0)
         return cleaned
 
     # Pre-filled on new rows, so on their own they don't count as "the user

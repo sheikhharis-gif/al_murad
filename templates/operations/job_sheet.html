@@ -212,12 +212,12 @@
                             </div>
                         </div>
                         <div class="row g-2 mt-1 align-items-end">
-                            <div class="col-md-2">
+                            <div class="col-md-2 stopover-col">
                                 <label class="form-label x-small fw-bold mb-1">Stopover City</label>
                                 {{ tf.stopover_city }}
                                 {% if tf.stopover_city.errors %}<div class="text-danger small mt-1">{{ tf.stopover_city.errors.0 }}</div>{% endif %}
                             </div>
-                            <div class="col-md-2">
+                            <div class="col-md-2 stopover-col">
                                 <label class="form-label x-small fw-bold mb-1">Stopover Charges</label>
                                 {{ tf.stopover_charges }}
                                 {% if tf.stopover_charges.errors %}<div class="text-danger small mt-1">{{ tf.stopover_charges.errors.0 }}</div>{% endif %}
@@ -397,7 +397,20 @@
         // Stopover Charges: filled in from the Stopover Rates table (vehicle
         // type x city band) when the stopover city / vehicle type is chosen.
         // Typing a value yourself overrides it for that trip.
+        // Only clients flagged "Has Stopover Charges" show the two fields.
+        function syncStopoverVisibility(block) {
+            var client = block.querySelector('select[name$="-client"]');
+            var city = block.querySelector('select.trip-stopover-city');
+            var amt = block.querySelector('input.trip-stopover-charges');
+            if (!client || !city || !amt) return;
+            var opt = client.options[client.selectedIndex];
+            var enabled = !!opt && opt.getAttribute('data-stopover') === '1';
+            var hasValue = !!city.value || (parseFloat(amt.value) || 0) > 0;
+            var show = enabled || hasValue;
+            block.querySelectorAll('.stopover-col').forEach(function (c) { c.style.display = show ? '' : 'none'; });
+        }
         function syncStopover(block) {
+            var client = block.querySelector('select[name$="-client"]');
             var city = block.querySelector('select.trip-stopover-city');
             var amt = block.querySelector('input.trip-stopover-charges');
             var vt = block.querySelector('select[name$="-vehicle_type"]');
@@ -407,13 +420,27 @@
             var zone = city.options[city.selectedIndex].getAttribute('data-zone');
             var rates = {};
             try { rates = JSON.parse(amt.getAttribute('data-rates') || '{}'); } catch (err) {}
-            var v = (rates[vt ? vt.value : ''] || {})[zone];
+            var v = ((rates[client ? client.value : ''] || {})[vt ? vt.value : ''] || {})[zone];
             amt.value = v !== undefined ? parseFloat(v) : '';
         }
         var tripFormset = document.getElementById('trip-formset');
+        document.querySelectorAll('.trip-block').forEach(syncStopoverVisibility);
         tripFormset.addEventListener('change', function (e) {
-            if (e.target.matches('select.trip-stopover-city, select[name$="-vehicle_type"]')) {
-                syncStopover(e.target.closest('.trip-block'));
+            var blk = e.target.closest('.trip-block');
+            if (!blk) return;
+            if (e.target.matches('select[name$="-client"]')) {
+                // Switching client: stopover charges are per client, so a client
+                // without them loses this row's stopover; otherwise re-price it.
+                var opt = e.target.options[e.target.selectedIndex];
+                if (!(opt && opt.getAttribute('data-stopover') === '1')) {
+                    blk.querySelector('select.trip-stopover-city').value = '';
+                    var a = blk.querySelector('input.trip-stopover-charges');
+                    a.value = ''; delete a.dataset.manual;
+                }
+                syncStopover(blk);
+                syncStopoverVisibility(blk);
+            } else if (e.target.matches('select.trip-stopover-city, select[name$="-vehicle_type"]')) {
+                syncStopover(blk);
             }
         });
         tripFormset.addEventListener('input', function (e) {
@@ -493,6 +520,7 @@
                 if (rowClass === 'trip-block') {
                     syncSubCategory(newRow);
                     newRow.querySelectorAll('.trip-stopover-charges').forEach(function (el) { delete el.dataset.manual; });
+                    syncStopoverVisibility(newRow);
                 }
                 if (window.enhanceDatepickers) window.enhanceDatepickers();
                 if (window.enhanceDatetimepickers) window.enhanceDatetimepickers();

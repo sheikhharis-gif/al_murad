@@ -56,6 +56,8 @@ urlpatterns = [
     path("clients/<int:client_id>/rates/apply-fuel/", rate_fuel.client_rate_apply_fuel, name="client_rate_apply_fuel"),
     path("clients/<int:client_id>/rates/fuel-update/<int:batch_id>/undo/", rate_fuel.client_rate_fuel_undo, name="client_rate_fuel_undo"),
     path("clients/<int:client_id>/rates/copy/", rate_copy.client_rate_copy, name="client_rate_copy"),
+    path("clients/<int:client_id>/stopover/save/", views.client_stopover_save, name="client_stopover_save"),
+    path("clients/<int:client_id>/stopover/<int:rate_id>/delete/", views.client_stopover_delete, name="client_stopover_delete"),
     path("clients/<int:client_id>/subcategories/add/", views.client_subcategory_add, name="client_subcategory_add"),
     path("clients/<int:client_id>/subcategories/<int:sub_id>/delete/", views.client_subcategory_delete, name="client_subcategory_delete"),
     path("clients/<int:client_id>/rates/excel/", rate_exports.client_rates_excel, name="client_rates_excel"),
@@ -81,7 +83,6 @@ urlpatterns = [
     path("locations/", views.locations_master, name="locations_master"),
     path("locations/city/<int:city_id>/edit/", views.city_edit, name="city_edit"),
     path("locations/city/<int:city_id>/delete/", views.city_delete, name="city_delete"),
-    path("locations/stopover/<int:rate_id>/delete/", views.stopover_rate_delete, name="stopover_rate_delete"),
     path("locations/route/<int:route_id>/edit/", views.route_edit, name="route_edit"),
     path("locations/route/<int:route_id>/delete/", views.route_delete, name="route_delete"),
 

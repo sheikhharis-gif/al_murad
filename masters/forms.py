@@ -470,6 +470,7 @@ class ClientForm(forms.ModelForm):
             "address": forms.Textarea(attrs={"class": "form-control text-uppercase", "rows": 3, "data-uppercase": "1"}),
             "is_active": forms.CheckboxInput(attrs={"class": "form-check-input"}),
             "has_sub_categories": forms.CheckboxInput(attrs={"class": "form-check-input"}),
+            "has_stopover": forms.CheckboxInput(attrs={"class": "form-check-input"}),
         })
 
     def __init__(self, *args, **kwargs):

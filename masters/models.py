@@ -467,6 +467,9 @@ class Client(models.Model):
     # Star: Assia / Revo). Only for those does the Sub-Category and Fixed/Auto
     # Rate Type machinery show up - everyone else works exactly as before.
     has_sub_categories = models.BooleanField("Has Sub-Categories", default=False)
+    # Clients billed a charge for stops on the way: shows the Stopover Charges
+    # table on their Client Rates page and the Stopover fields on their trips.
+    has_stopover = models.BooleanField("Has Stopover Charges", default=False)
 
     def save(self, *args, **kwargs):
         for field in (
@@ -724,6 +727,7 @@ class City(models.Model):
 class StopoverRate(models.Model):
     ZONE_CHOICES = [("KHI", "Within Karachi"), ("OTHER", "Other Cities")]
 
+    client = models.ForeignKey("Client", on_delete=models.CASCADE, related_name="stopover_rates")
     vehicle_type = models.ForeignKey(VehicleType, on_delete=models.CASCADE, related_name="stopover_rates")
     zone = models.CharField(max_length=5, choices=ZONE_CHOICES)
     amount = models.DecimalField(max_digits=10, decimal_places=2)
@@ -731,18 +735,19 @@ class StopoverRate(models.Model):
     class Meta:
         ordering = ["vehicle_type__name", "zone"]
         constraints = [
-            models.UniqueConstraint(fields=["vehicle_type", "zone"], name="uniq_stopover_rate_type_zone"),
+            models.UniqueConstraint(fields=["client", "vehicle_type", "zone"], name="uniq_stopover_rate_client_type_zone"),
         ]
 
     def __str__(self):
         return f"{self.vehicle_type} / {self.get_zone_display()}: {self.amount}"
 
 
-def stopover_amount(vehicle_type_id, city):
-    """Stopover charge for this vehicle type at this city, or None if no rate is set."""
-    if not (vehicle_type_id and city):
+def stopover_amount(client_id, vehicle_type_id, city):
+    """Client's stopover charge for this vehicle type at this city, or None if no rate is set."""
+    if not (client_id and vehicle_type_id and city):
         return None
-    rate = StopoverRate.objects.filter(vehicle_type_id=vehicle_type_id, zone=city.stopover_zone).first()
+    rate = StopoverRate.objects.filter(
+        client_id=client_id, vehicle_type_id=vehicle_type_id, zone=city.stopover_zone).first()
     return rate.amount if rate else None
 
 

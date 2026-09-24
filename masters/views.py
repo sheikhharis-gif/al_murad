@@ -495,22 +495,6 @@ def locations_master(request):
                 messages.success(request, f"City '{city_name.upper()}' registered successfully.")
             return redirect("locations_master")
 
-        # ---- STOPOVER RATE (one amount per vehicle type + city band) ----
-        if "save_stopover" in request.POST:
-            vt_id = request.POST.get("vehicle_type")
-            zone = request.POST.get("zone")
-            try:
-                amount = Decimal(request.POST.get("amount") or "")
-            except InvalidOperation:
-                amount = None
-            if not vt_id or zone not in dict(StopoverRate.ZONE_CHOICES) or amount is None or amount < 0:
-                messages.error(request, "Choose a vehicle type and city band, and enter the stopover amount.")
-            else:
-                rate, created = StopoverRate.objects.update_or_create(
-                    vehicle_type_id=vt_id, zone=zone, defaults={"amount": amount})
-                messages.success(request, f"Stopover rate {'added' if created else 'updated'}: {rate}.")
-            return redirect("locations_master")
-
         # ---- ADD ROUTE (MANUAL KMs & TT HOURS) ----
         if "add_route" in request.POST:
             origin_id = request.POST.get("origin")
@@ -539,18 +523,7 @@ def locations_master(request):
     return render(request, "locations/locations.html", {
         "cities": cities,
         "routes": routes,
-        "stopover_rates": StopoverRate.objects.select_related("vehicle_type"),
-        "vehicle_types": VehicleType.objects.order_by("name"),
-        "stopover_zones": StopoverRate.ZONE_CHOICES,
     })
-
-
-def stopover_rate_delete(request, rate_id):
-    rate = get_object_or_404(StopoverRate, id=rate_id)
-    if request.method == "POST":
-        rate.delete()
-        messages.success(request, "Stopover rate deleted.")
-    return redirect("locations_master")
 
 
 def city_edit(request, city_id):
@@ -1016,6 +989,8 @@ def client_rates(request, client_id):
         "form": form,
         "rates": rates,
         "sub_categories": ClientSubCategory.objects.filter(client=client),
+        "stopover_rates": StopoverRate.objects.filter(client=client).select_related("vehicle_type"),
+        "stopover_zones": StopoverRate.ZONE_CHOICES,
         "last_by_route_json": json.dumps(last_by_route),
         "latest_fuel_prices_json": json.dumps(latest_fuel_prices),
         "dedicated_rates": dedicated_rates,
@@ -1030,6 +1005,32 @@ def client_rates(request, client_id):
         "all_vehicle_types": VehicleType.objects.order_by("name"),
         **rate_fuel.fuel_price_choices(client),
     })
+
+
+def client_stopover_save(request, client_id):
+    client = get_object_or_404(Client, id=client_id)
+    if request.method == "POST":
+        vt_id = request.POST.get("vehicle_type")
+        zone = request.POST.get("zone")
+        try:
+            amount = Decimal(request.POST.get("amount") or "")
+        except InvalidOperation:
+            amount = None
+        if not vt_id or zone not in dict(StopoverRate.ZONE_CHOICES) or amount is None or amount < 0:
+            messages.error(request, "Choose a vehicle type and stop location, and enter the stopover charges.")
+        else:
+            rate, created = StopoverRate.objects.update_or_create(
+                client=client, vehicle_type_id=vt_id, zone=zone, defaults={"amount": amount})
+            messages.success(request, f"Stopover charges {'added' if created else 'updated'}: {rate}.")
+    return redirect("client_rates", client_id=client.id)
+
+
+def client_stopover_delete(request, client_id, rate_id):
+    rate = get_object_or_404(StopoverRate, id=rate_id, client_id=client_id)
+    if request.method == "POST":
+        rate.delete()
+        messages.success(request, "Stopover charges deleted.")
+    return redirect("client_rates", client_id=client_id)
 
 
 def client_subcategory_add(request, client_id):
