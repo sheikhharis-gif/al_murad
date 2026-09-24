@@ -29,9 +29,10 @@ from .models import Job, JobExpense, JobFuelEntry, Trip
 
 MIS_HEADERS = [
     "JOB #", "Trip #", "Vehicle #", "Vehicle Type", "Date", "Client", "Bilty #",
-    "Weight (Tons)", "Route", "Status", "Departure Meter", "Arrival Meter", "Running KMs",
+    "Weight (Tons)", "Route", "Status", "Trip Charges", "Additional Charges",
+    "Departure Meter", "Arrival Meter", "Running KMs",
     "Reached Date & Time", "Departure Date & Time", "Arrival Date & Time",
-    "Delivery Date & Time", "Actual Transit", "Trip Charges", "Additional Charges",
+    "Delivery Date & Time", "Actual Transit",
     "Toll Plaza", "Food", "Incentive", "Mobile Expense", "Challan", "Tyre Expense",
     "Service", "Loading", "Offloading", "Weighbridge", "Maintenance",
     "Labor Charges", "Fuel", "Other", "Total", "Remarks",
@@ -46,9 +47,12 @@ EXPENSE_FIELDS = [
     ("fuel", "Fuel"), ("other", "Other"),
 ]
 
-# Columns in MIS_HEADERS that hold money and get summed in the Total row
-MONEY_START = MIS_HEADERS.index("Trip Charges")
-MONEY_END = MIS_HEADERS.index("Total")
+# Columns in MIS_HEADERS that hold money and get summed in the Total row: the
+# two trip-charge columns (right after Status) and the expense block.
+MONEY_COLS = (
+    [MIS_HEADERS.index("Trip Charges"), MIS_HEADERS.index("Additional Charges")]
+    + list(range(MIS_HEADERS.index("Toll Plaza"), MIS_HEADERS.index("Total") + 1))
+)
 
 
 def _d(value):
@@ -120,6 +124,8 @@ def build_mis(request):
                 t.client.name if t else "", t.bilty_number if t else "",
                 t.weight if t else None, t.route.route_code if t else "",
                 t.status_display if t else "",
+                (t.freight - (t.additional_charges or 0)) if t else None,
+                t.additional_charges if t else None,
                 # Meters / KMs are whole numbers - shown without decimals
                 _whole(t.departure_meter) if t else None, _whole(t.arrival_meter) if t else None,
                 _whole(t.arrival_meter - t.departure_meter)
@@ -127,8 +133,6 @@ def build_mis(request):
                 _local(t.reached_at) if t else None, _local(t.departed_at) if t else None,
                 _local(t.arrived_at) if t else None, _local(t.delivered_at) if t else None,
                 t.actual_transit_display if t else "",
-                (t.freight - (t.additional_charges or 0)) if t else None,
-                t.additional_charges if t else None,
             ]
             show_expense = idx == 0 and expense is not None
             for field, _ in EXPENSE_FIELDS:
@@ -139,7 +143,7 @@ def build_mis(request):
 
     totals = [None] * len(MIS_HEADERS)
     totals[0] = "Total"
-    for col in range(MONEY_START, MONEY_END + 1):
+    for col in MONEY_COLS:
         totals[col] = sum((_d(r[col]) for r in rows), Decimal(0))
     km_col = MIS_HEADERS.index("Running KMs")
     totals[km_col] = sum((r[km_col] or 0 for r in rows), 0)
