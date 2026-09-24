@@ -1007,6 +1007,17 @@ def client_rates(request, client_id):
     })
 
 
+def client_rate_options(request, client_id):
+    """The Has Sub-Categories / Has Stopover Charges switches on Client Rates."""
+    client = get_object_or_404(Client, id=client_id)
+    if request.method == "POST":
+        client.has_sub_categories = "has_sub_categories" in request.POST
+        client.has_stopover = "has_stopover" in request.POST
+        client.save(update_fields=["has_sub_categories", "has_stopover"])
+        messages.success(request, f"Options updated for {client.name}.")
+    return redirect("client_rates", client_id=client.id)
+
+
 def client_stopover_save(request, client_id):
     client = get_object_or_404(Client, id=client_id)
     if request.method == "POST":

@@ -446,7 +446,9 @@ class ClientTypeForm(forms.ModelForm):
 class ClientForm(forms.ModelForm):
     class Meta:
         model = Client
-        fields = "__all__"
+        # Has Sub-Categories / Has Stopover Charges live on the Client Rates
+        # page - left out here so saving a client never resets them.
+        exclude = ["has_sub_categories", "has_stopover"]
 
         text_fields = [
             "name", "poc1_name", "poc1_phone", "poc2_name", "poc2_phone",
@@ -469,8 +471,6 @@ class ClientForm(forms.ModelForm):
             "poc2_email": forms.EmailInput(attrs={"class": "form-control text-uppercase", "data-uppercase": "1"}),
             "address": forms.Textarea(attrs={"class": "form-control text-uppercase", "rows": 3, "data-uppercase": "1"}),
             "is_active": forms.CheckboxInput(attrs={"class": "form-check-input"}),
-            "has_sub_categories": forms.CheckboxInput(attrs={"class": "form-check-input"}),
-            "has_stopover": forms.CheckboxInput(attrs={"class": "form-check-input"}),
         })
 
     def __init__(self, *args, **kwargs):
