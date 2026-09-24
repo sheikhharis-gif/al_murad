@@ -711,8 +711,39 @@ class City(models.Model):
     def __str__(self):
         return f"{self.name} ({self.code})"
 
+    @property
+    def stopover_zone(self):
+        # Stopover charges have two bands: inside Karachi, or any other city.
+        return "KHI" if self.code == "KHI" or self.name == "KARACHI" else "OTHER"
+
     class Meta:
         ordering = ["name"]
+
+
+# ================= STOPOVER RATE =================
+class StopoverRate(models.Model):
+    ZONE_CHOICES = [("KHI", "Within Karachi"), ("OTHER", "Other Cities")]
+
+    vehicle_type = models.ForeignKey(VehicleType, on_delete=models.CASCADE, related_name="stopover_rates")
+    zone = models.CharField(max_length=5, choices=ZONE_CHOICES)
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+
+    class Meta:
+        ordering = ["vehicle_type__name", "zone"]
+        constraints = [
+            models.UniqueConstraint(fields=["vehicle_type", "zone"], name="uniq_stopover_rate_type_zone"),
+        ]
+
+    def __str__(self):
+        return f"{self.vehicle_type} / {self.get_zone_display()}: {self.amount}"
+
+
+def stopover_amount(vehicle_type_id, city):
+    """Stopover charge for this vehicle type at this city, or None if no rate is set."""
+    if not (vehicle_type_id and city):
+        return None
+    rate = StopoverRate.objects.filter(vehicle_type_id=vehicle_type_id, zone=city.stopover_zone).first()
+    return rate.amount if rate else None
 
 
 # ================= ROUTE =================

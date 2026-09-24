@@ -81,6 +81,7 @@ urlpatterns = [
     path("locations/", views.locations_master, name="locations_master"),
     path("locations/city/<int:city_id>/edit/", views.city_edit, name="city_edit"),
     path("locations/city/<int:city_id>/delete/", views.city_delete, name="city_delete"),
+    path("locations/stopover/<int:rate_id>/delete/", views.stopover_rate_delete, name="stopover_rate_delete"),
     path("locations/route/<int:route_id>/edit/", views.route_edit, name="route_edit"),
     path("locations/route/<int:route_id>/delete/", views.route_delete, name="route_delete"),
 

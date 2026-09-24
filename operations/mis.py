@@ -29,7 +29,7 @@ from .models import Job, JobExpense, JobFuelEntry, Trip
 
 MIS_HEADERS = [
     "JOB #", "Trip #", "Vehicle #", "Vehicle Type", "Date", "Client", "Sub-Category", "Bilty #",
-    "Weight (Tons)", "Route", "Status", "Trip Charges", "Additional Charges",
+    "Weight (Tons)", "Route", "Status", "Trip Charges", "Stopover City", "Stopover Charges", "Additional Charges",
     "Departure Meter", "Arrival Meter", "Running KMs",
     "Reached Date & Time", "Departure Date & Time", "Arrival Date & Time",
     "Delivery Date & Time", "Actual Transit",
@@ -50,7 +50,7 @@ EXPENSE_FIELDS = [
 # Columns in MIS_HEADERS that hold money and get summed in the Total row: the
 # two trip-charge columns (right after Status) and the expense block.
 MONEY_COLS = (
-    [MIS_HEADERS.index("Trip Charges"), MIS_HEADERS.index("Additional Charges")]
+    [MIS_HEADERS.index("Trip Charges"), MIS_HEADERS.index("Stopover Charges"), MIS_HEADERS.index("Additional Charges")]
     + list(range(MIS_HEADERS.index("Toll Plaza"), MIS_HEADERS.index("Total") + 1))
 )
 
@@ -91,7 +91,7 @@ def build_mis(request):
     job_ids = [j.job_number for j in jobs]
 
     trips = Trip.objects.filter(job_id__in=job_ids).select_related(
-        "client", "route", "vehicle__vehicle_type", "vehicle_type"
+        "client", "route", "vehicle__vehicle_type", "vehicle_type", "sub_category", "stopover_city"
     ).order_by("job_id", "id")
     if client_id:
         trips = trips.filter(client_id=client_id)
@@ -126,7 +126,9 @@ def build_mis(request):
                 t.bilty_number if t else "",
                 t.weight if t else None, t.route.route_code if t else "",
                 t.status_display if t else "",
-                (t.freight - (t.additional_charges or 0)) if t else None,
+                (t.freight - (t.additional_charges or 0) - (t.stopover_charges or 0)) if t else None,
+                (t.stopover_city.name if t and t.stopover_city_id else ""),
+                t.stopover_charges if t else None,
                 t.additional_charges if t else None,
                 # Meters / KMs are whole numbers - shown without decimals
                 _whole(t.departure_meter) if t else None, _whole(t.arrival_meter) if t else None,

@@ -213,6 +213,16 @@
                         </div>
                         <div class="row g-2 mt-1 align-items-end">
                             <div class="col-md-2">
+                                <label class="form-label x-small fw-bold mb-1">Stopover City</label>
+                                {{ tf.stopover_city }}
+                                {% if tf.stopover_city.errors %}<div class="text-danger small mt-1">{{ tf.stopover_city.errors.0 }}</div>{% endif %}
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label x-small fw-bold mb-1">Stopover Charges</label>
+                                {{ tf.stopover_charges }}
+                                {% if tf.stopover_charges.errors %}<div class="text-danger small mt-1">{{ tf.stopover_charges.errors.0 }}</div>{% endif %}
+                            </div>
+                            <div class="col-md-2">
                                 <label class="form-label x-small fw-bold mb-1">Additional Charges</label>
                                 {{ tf.additional_charges }}
                             </div>
@@ -220,9 +230,8 @@
                                 <label class="form-label x-small fw-bold mb-1">Remarks</label>
                                 {{ tf.remarks }}
                             </div>
-                            <div class="col-md-1"></div>
                             {% if tf.instance.pk %}
-                            <div class="col-md-2">
+                            <div class="col-auto">
                                 <div class="form-check">
                                     {{ tf.DELETE }}
                                     <label class="form-check-label small text-danger">Delete this trip</label>
@@ -385,6 +394,32 @@
             if (e.target.matches('select[name$="-client"]')) syncSubCategory(e.target.closest('.trip-block'));
         });
 
+        // Stopover Charges: filled in from the Stopover Rates table (vehicle
+        // type x city band) when the stopover city / vehicle type is chosen.
+        // Typing a value yourself overrides it for that trip.
+        function syncStopover(block) {
+            var city = block.querySelector('select.trip-stopover-city');
+            var amt = block.querySelector('input.trip-stopover-charges');
+            var vt = block.querySelector('select[name$="-vehicle_type"]');
+            if (!city || !amt) return;
+            if (amt.dataset.manual === '1' && amt.value !== '') return;
+            if (!city.value) { amt.value = ''; return; }
+            var zone = city.options[city.selectedIndex].getAttribute('data-zone');
+            var rates = {};
+            try { rates = JSON.parse(amt.getAttribute('data-rates') || '{}'); } catch (err) {}
+            var v = (rates[vt ? vt.value : ''] || {})[zone];
+            amt.value = v !== undefined ? parseFloat(v) : '';
+        }
+        var tripFormset = document.getElementById('trip-formset');
+        tripFormset.addEventListener('change', function (e) {
+            if (e.target.matches('select.trip-stopover-city, select[name$="-vehicle_type"]')) {
+                syncStopover(e.target.closest('.trip-block'));
+            }
+        });
+        tripFormset.addEventListener('input', function (e) {
+            if (e.target.matches('input.trip-stopover-charges')) e.target.dataset.manual = '1';
+        });
+
         var rentalFlag = document.getElementById('id_is_rental');
         if (rentalFlag && rentalFlag.checked) {
             document.getElementById('own-vehicle-block').classList.add('d-none');
@@ -455,7 +490,10 @@
 
                 container.appendChild(newRow);
                 totalForms.value = formNum + 1;
-                if (rowClass === 'trip-block') syncSubCategory(newRow);
+                if (rowClass === 'trip-block') {
+                    syncSubCategory(newRow);
+                    newRow.querySelectorAll('.trip-stopover-charges').forEach(function (el) { delete el.dataset.manual; });
+                }
                 if (window.enhanceDatepickers) window.enhanceDatepickers();
                 if (window.enhanceDatetimepickers) window.enhanceDatetimepickers();
                 if (window.enhanceDropdownSearchSelects) window.enhanceDropdownSearchSelects();

@@ -474,7 +474,7 @@ def trips_excel(request):
             set_cell(19, label_col, 'Additional Charges', bold=True)
             set_cell(19, value_col, float(trip.additional_charges))
             set_cell(20, label_col, 'Additional Stop', bold=True)
-            set_cell(20, value_col, 0)
+            set_cell(20, value_col, float(trip.stopover_charges))
             set_cell(21, label_col, 'Total Freight', bold=True)
             set_cell(21, value_col, float(trip.freight))
             set_cell(23, label_col, 'Departure Date', bold=True)

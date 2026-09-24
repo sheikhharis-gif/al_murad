@@ -1,4 +1,6 @@
 import datetime as dt
+import json
+from decimal import Decimal
 from zoneinfo import ZoneInfo
 
 from django import forms
@@ -6,7 +8,9 @@ from django.db.models import Q
 from django.forms import inlineformset_factory
 from django.utils import timezone
 from .models import Job, Trip, JobExpense, JobFuelEntry
-from masters.models import Vehicle, VehicleType, Client, ClientSubCategory, Route, Vendor, FuelProduct
+from masters.models import (
+    Vehicle, VehicleType, Client, ClientSubCategory, Route, Vendor, FuelProduct, City, StopoverRate, stopover_amount,
+)
 
 # -----------------------
 # JOB FORM (header only - date, vehicle, trip advance, remarks)
@@ -100,13 +104,25 @@ class SubCategorySelect(forms.Select):
         return option
 
 
+class StopoverCitySelect(forms.Select):
+    """City dropdown whose options carry their stopover band (data-zone:
+    KHI = within Karachi, OTHER), so the page can look up the charge."""
+
+    def create_option(self, name, value, label, selected, index, subindex=None, attrs=None):
+        option = super().create_option(name, value, label, selected, index, subindex, attrs)
+        instance = getattr(value, "instance", None)
+        if instance is not None:
+            option["attrs"]["data-zone"] = instance.stopover_zone
+        return option
+
+
 class TripForm(forms.ModelForm):
     class Meta:
         model = Trip
         fields = [
             "trip_date", "client", "sub_category", "bilty_number", "weight", "route", "vehicle_type",
             "reached_at", "departed_at", "arrived_at", "delivered_at",
-            "additional_charges", "remarks",
+            "stopover_city", "stopover_charges", "additional_charges", "remarks",
         ]
         widgets = {
             "trip_date": forms.DateInput(attrs={"class": "form-control form-control-sm", "type": "date"}),
@@ -133,6 +149,10 @@ class TripForm(forms.ModelForm):
             "departed_at": forms.DateTimeInput(attrs={"class": "form-control form-control-sm datetimepicker"}, format="%Y-%m-%d %H:%M"),
             "arrived_at": forms.DateTimeInput(attrs={"class": "form-control form-control-sm datetimepicker"}, format="%Y-%m-%d %H:%M"),
             "delivered_at": forms.DateTimeInput(attrs={"class": "form-control form-control-sm datetimepicker"}, format="%Y-%m-%d %H:%M"),
+            "stopover_city": StopoverCitySelect(attrs={"class": "form-select form-select-sm trip-stopover-city"}),
+            "stopover_charges": forms.NumberInput(attrs={
+                "class": "form-control form-control-sm trip-stopover-charges", "step": "0.01", "placeholder": "Auto",
+            }),
             "additional_charges": forms.NumberInput(attrs={"class": "form-control form-control-sm", "step": "0.01"}),
             "remarks": forms.TextInput(attrs={"class": "form-control form-control-sm", "placeholder": "Remarks"}),
         }
@@ -147,6 +167,15 @@ class TripForm(forms.ModelForm):
         self.fields["sub_category"].queryset = ClientSubCategory.objects.filter(
             client__has_sub_categories=True).select_related("client").order_by("name")
         self.fields["sub_category"].empty_label = "--- Sub-Category ---"
+        self.fields["stopover_city"].queryset = City.objects.order_by("name")
+        self.fields["stopover_city"].empty_label = "--- No Stopover ---"
+        # Left blank, the charge is filled in from the Stopover Rates table
+        # (vehicle type x city band); typing a value overrides it.
+        self.fields["stopover_charges"].required = False
+        rates = {}
+        for r in StopoverRate.objects.all():
+            rates.setdefault(str(r.vehicle_type_id), {})[r.zone] = str(r.amount)
+        self.fields["stopover_charges"].widget.attrs["data-rates"] = json.dumps(rates)
         self.fields["route"].queryset = Route.objects.all().order_by("route_code")
         self.fields["route"].empty_label = "--- Select Route ---"
         self.fields["vehicle_type"].queryset = VehicleType.objects.order_by("name")
@@ -177,6 +206,16 @@ class TripForm(forms.ModelForm):
             self.add_error("sub_category", f"{sub.name} doesn't belong to {client.name}.")
         elif client and not sub and client.has_sub_categories and client.sub_categories.exists():
             self.add_error("sub_category", f"{client.name} has sub-categories ({', '.join(s.name for s in client.sub_categories.all())}) - please choose one.")
+
+        city, charges = cleaned.get("stopover_city"), cleaned.get("stopover_charges")
+        if "stopover_charges" not in self.errors:
+            if not city:
+                if charges:
+                    self.add_error("stopover_city", "Choose the stopover city these charges are for.")
+                cleaned["stopover_charges"] = Decimal(0)
+            elif charges is None:
+                vt = cleaned.get("vehicle_type")
+                cleaned["stopover_charges"] = stopover_amount(vt.pk if vt else None, city) or Decimal(0)
         return cleaned
 
     # Pre-filled on new rows, so on their own they don't count as "the user

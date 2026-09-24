@@ -161,6 +161,13 @@ class Trip(models.Model):
     arrived_at = models.DateTimeField("Arrival Date & Time", null=True, blank=True)
     delivered_at = models.DateTimeField("Delivery Date & Time", null=True, blank=True)
 
+    # Stop on the way (route is the main leg, e.g. KHI-LRK, stopover e.g. SKZ).
+    # Charged separately from Additional Charges; both are part of freight.
+    stopover_city = models.ForeignKey(
+        "masters.City", on_delete=models.PROTECT, null=True, blank=True, related_name="stopover_trips",
+        verbose_name="Stopover City",
+    )
+    stopover_charges = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     additional_charges = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     remarks = models.CharField(max_length=255, blank=True)
     freight = models.DecimalField(max_digits=12, decimal_places=2, default=0, editable=False)
@@ -221,7 +228,7 @@ class Trip(models.Model):
         never be substituted in, even if it's the only one on file."""
         rate = matching_trip_cost(self.client_id, self.route_id, self.vehicle_type_id, self.weight, self.trip_date,
                                   sub_category_id=self.sub_category_id)
-        return (rate or 0) + (self.additional_charges or 0)
+        return (rate or 0) + (self.additional_charges or 0) + (self.stopover_charges or 0)
 
     @property
     def status_display(self):
@@ -289,12 +296,12 @@ def refresh_trip_freight(client_id, route_id, vehicle_type_id, weight, sub_categ
     # (no sub-category) rate can also be what its sub-category trips fall back to.
     if sub_category_id:
         trips = trips.filter(sub_category_id=sub_category_id)
-    for trip in trips.only("id", "freight", "additional_charges", "trip_date", "sub_category_id"):
+    for trip in trips.only("id", "freight", "additional_charges", "stopover_charges", "trip_date", "sub_category_id"):
         key = (trip.trip_date, trip.sub_category_id)
         if key not in rate_on:
             rate_on[key] = matching_trip_cost(client_id, route_id, vehicle_type_id, weight, trip.trip_date,
                                               sub_category_id=trip.sub_category_id) or 0
-        freight = rate_on[key] + (trip.additional_charges or 0)
+        freight = rate_on[key] + (trip.additional_charges or 0) + (trip.stopover_charges or 0)
         if trip.freight != freight:
             Trip.objects.filter(pk=trip.pk).update(freight=freight)
             changed += 1
