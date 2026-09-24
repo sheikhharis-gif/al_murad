@@ -28,7 +28,7 @@ from masters.models import Client, MaintenanceJob, Staff, Vehicle
 from .models import Job, JobExpense, JobFuelEntry, Trip
 
 MIS_HEADERS = [
-    "JOB #", "Trip #", "Vehicle #", "Vehicle Type", "Date", "Client", "Bilty #",
+    "JOB #", "Trip #", "Vehicle #", "Vehicle Type", "Date", "Client", "Sub-Category", "Bilty #",
     "Weight (Tons)", "Route", "Status", "Trip Charges", "Additional Charges",
     "Departure Meter", "Arrival Meter", "Running KMs",
     "Reached Date & Time", "Departure Date & Time", "Arrival Date & Time",
@@ -121,7 +121,9 @@ def build_mis(request):
                 job.job_code, t.trip_no if t else "", vehicle.vehicle_number,
                 str((t.vehicle_type if t else None) or vehicle.vehicle_type or ""),
                 t.trip_date if t else job.job_date,
-                t.client.name if t else "", t.bilty_number if t else "",
+                t.client.name if t else "",
+                (t.sub_category.name if t and t.sub_category_id else ""),
+                t.bilty_number if t else "",
                 t.weight if t else None, t.route.route_code if t else "",
                 t.status_display if t else "",
                 (t.freight - (t.additional_charges or 0)) if t else None,

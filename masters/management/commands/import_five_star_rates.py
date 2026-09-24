@@ -4,7 +4,7 @@ from decimal import Decimal
 from django.core.management.base import BaseCommand
 from django.db import transaction
 
-from masters.models import City, Route, Client, FuelProduct, VehicleType, ClientRate
+from masters.models import City, Route, Client, ClientSubCategory, FuelProduct, VehicleType, ClientRate
 
 CLIENT_NAME = "Five Star 3PL SERVICES"
 
@@ -128,6 +128,9 @@ class Command(BaseCommand):
         # it directly so a re-run of this command can't recreate "DIESEL".
         diesel_product, _ = FuelProduct.objects.get_or_create(name="HI-CETANE DIESEL EURO5")
 
+        # These are the ASSIA rates (REVO has its own fixed rates, entered separately)
+        assia, _ = ClientSubCategory.objects.get_or_create(client=client, name="ASSIA")
+
         khi_name, khi_lat, khi_lng, _ = CITY_DATA["KHI"]
         khi_city, _ = City.objects.get_or_create(
             code="KHI", defaults={"name": khi_name, "latitude": khi_lat, "longitude": khi_lng}
@@ -161,6 +164,7 @@ class Command(BaseCommand):
 
                 obj, was_created = ClientRate.objects.update_or_create(
                     client=client,
+                    sub_category=assia,
                     route=route,
                     fuel_product=diesel_product,
                     vehicle_type=vehicle_type,

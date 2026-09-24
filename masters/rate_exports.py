@@ -58,15 +58,26 @@ def _period_label(start, end):
         f"Effective from {start:%d-%b-%Y}" if start else f"Effective up to {end:%d-%b-%Y}")
 
 
+def _rate_headers(client):
+    """Sub-Category / Rate Type columns only for clients that use them."""
+    return (["Sub-Category", "Rate Type"] if client.has_sub_categories else []) + RATE_HEADERS
+
+
 def _rate_rows(client, start=None, end=None):
     rates = _in_range(ClientRate.objects.filter(client=client), start, end).select_related(
-        "route", "fuel_product", "vehicle_type")
-    return [[
-        r.route.route_code.upper(), (r.fuel_product.name.upper() if r.fuel_product_id else ""),
-        r.current_fuel_price, r.current_rate, r.effective_percent, r.rate_subject_to_revision,
-        r.updated_fuel_price, r.fuel_price_change_percent, r.rate_adjustment, r.updated_trip_cost,
-        r.weight_tons, (r.vehicle_type.name.upper() if r.vehicle_type_id else ""), r.effective_date,
-    ] for r in rates]
+        "route", "fuel_product", "vehicle_type", "sub_category")
+    rows = []
+    for r in rates:
+        row = [
+            r.route.route_code.upper(), (r.fuel_product.name.upper() if r.fuel_product_id else ""),
+            r.current_fuel_price, r.current_rate, r.effective_percent, r.rate_subject_to_revision,
+            r.updated_fuel_price, r.fuel_price_change_percent, r.rate_adjustment, r.updated_trip_cost,
+            r.weight_tons, (r.vehicle_type.name.upper() if r.vehicle_type_id else ""), r.effective_date,
+        ]
+        if client.has_sub_categories:
+            row = [(r.sub_category.name if r.sub_category_id else ""), r.get_rate_type_display().split(" ")[0]] + row
+        rows.append(row)
+    return rows
 
 
 def _dedicated_rows(client, start=None, end=None):
@@ -125,7 +136,7 @@ def client_rates_excel(request, client_id):
 
     ws = wb.active
     ws.title = "Rate Details"
-    sheet(ws, "Rate Details", RATE_HEADERS, _rate_rows(client, start, end))
+    sheet(ws, "Rate Details", _rate_headers(client), _rate_rows(client, start, end))
     dedicated = _dedicated_rows(client, start, end)
     if dedicated:
         sheet(wb.create_sheet("Dedicated Rates"), "Dedicated Rates", DEDICATED_HEADERS, dedicated)
@@ -179,7 +190,7 @@ def client_rates_pdf(request, client_id):
         elements.append(t)
         elements.append(Spacer(1, 6 * mm))
 
-    table("Rate Details", RATE_HEADERS, _rate_rows(client, start, end))
+    table("Rate Details", _rate_headers(client), _rate_rows(client, start, end))
     dedicated = _dedicated_rows(client, start, end)
     if dedicated:
         table("Dedicated Rates", DEDICATED_HEADERS, dedicated)

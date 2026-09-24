@@ -4,7 +4,7 @@ from django.utils import timezone
 from django.forms import modelformset_factory
 from .models import (
     Vehicle, VehicleType, Wheeler, VehicleTyre, Staff, Vendor, SupplierType,
-    City, Route, Client, ClientType, Expense, ClientRate, DedicatedRate, DriverSalary,
+    City, Route, Client, ClientType, Expense, ClientRate, ClientSubCategory, DedicatedRate, DriverSalary,
     StaffAttendanceEntry, StaffAccountEntry, FuelProduct, VendorFuelPrice,
 )
 from django.forms import inlineformset_factory
@@ -469,6 +469,7 @@ class ClientForm(forms.ModelForm):
             "poc2_email": forms.EmailInput(attrs={"class": "form-control text-uppercase", "data-uppercase": "1"}),
             "address": forms.Textarea(attrs={"class": "form-control text-uppercase", "rows": 3, "data-uppercase": "1"}),
             "is_active": forms.CheckboxInput(attrs={"class": "form-check-input"}),
+            "has_sub_categories": forms.CheckboxInput(attrs={"class": "form-check-input"}),
         })
 
     def __init__(self, *args, **kwargs):
@@ -521,10 +522,12 @@ class ClientRateForm(forms.ModelForm):
     class Meta:
         model = ClientRate
         fields = [
-            "route", "fuel_product", "current_fuel_price", "current_rate", "effective_percent",
-            "updated_fuel_price", "weight_tons", "vehicle_type", "effective_date",
+            "sub_category", "rate_type", "route", "fuel_product", "current_fuel_price", "current_rate",
+            "effective_percent", "updated_fuel_price", "weight_tons", "vehicle_type", "effective_date",
         ]
         widgets = {
+            "sub_category": forms.Select(attrs={"class": "form-select"}),
+            "rate_type": forms.Select(attrs={"class": "form-select"}),
             "route": forms.Select(attrs={
                 "class": "form-select dropdown-search-select",
                 "autofocus": "autofocus",
@@ -545,15 +548,41 @@ class ClientRateForm(forms.ModelForm):
         self.client = client or getattr(self.instance, "client", None)
         self.fields["vehicle_type"].empty_label = "--- Select Type ---"
         self.fields["fuel_product"].empty_label = "--- Select Fuel Product ---"
+        self.fields["sub_category"].empty_label = "--- Client default ---"
+        self.fields["sub_category"].queryset = (
+            ClientSubCategory.objects.filter(client=self.client) if self.client else ClientSubCategory.objects.none()
+        )
+        # Sub-Category / Rate Type only exist for clients flagged "Has
+        # Sub-Categories" - for everyone else the form is exactly as before
+        # (rate_type then stays AUTO, sub_category blank).
+        if not (self.client and self.client.has_sub_categories):
+            del self.fields["sub_category"]
+            del self.fields["rate_type"]
+        # The fuel-price fields aren't needed for a Fixed rate; for Auto they
+        # are still required (checked in clean() below).
+        for name in self.FUEL_FIELDS:
+            self.fields[name].required = False
         self.fields["fuel_product"].queryset = FuelProduct.objects.all().order_by("name")
+
+    FUEL_FIELDS = ("current_fuel_price", "effective_percent", "updated_fuel_price")
 
     def clean(self):
         cleaned = super().clean()
+        if cleaned.get("rate_type") == "FIXED":
+            if cleaned.get("current_rate") is None:
+                self.add_error("current_rate", "Enter the fixed rate.")
+            for name in self.FUEL_FIELDS:
+                cleaned[name] = Decimal(0)
+        else:
+            for name in self.FUEL_FIELDS + ("current_rate",):
+                if cleaned.get(name) is None and name not in self.errors:
+                    self.add_error(name, "This field is required.")
         route = cleaned.get("route")
         effective_date = cleaned.get("effective_date")
         if self.client and route and effective_date:
             dupes = ClientRate.objects.filter(
                 client=self.client,
+                sub_category=cleaned.get("sub_category"),
                 route=route,
                 fuel_product=cleaned.get("fuel_product"),
                 vehicle_type=cleaned.get("vehicle_type"),

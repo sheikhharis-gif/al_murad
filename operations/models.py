@@ -141,6 +141,13 @@ class Trip(models.Model):
     trip_date = models.DateField()
     route = models.ForeignKey("masters.Route", on_delete=models.PROTECT, related_name="job_trips")
 
+    # Optional unit of the client this trip is for (e.g. Five Star -> Assia /
+    # Revo) - picks which set of Client Rates prices the trip.
+    sub_category = models.ForeignKey(
+        "masters.ClientSubCategory", on_delete=models.PROTECT, null=True, blank=True, related_name="trips",
+        verbose_name="Sub-Category",
+    )
+
     # Per-trip vehicle type - defaults to the job vehicle's type but can be
     # changed on the trip (drives the freight rate lookup below).
     vehicle_type = models.ForeignKey(VehicleType, on_delete=models.PROTECT, null=True, blank=True, related_name="trips")
@@ -212,7 +219,8 @@ class Trip(models.Model):
         date + Additional Charges. Must match vehicle type AND weight exactly -
         a rate for a different tonnage on the same route/vehicle type must
         never be substituted in, even if it's the only one on file."""
-        rate = matching_trip_cost(self.client_id, self.route_id, self.vehicle_type_id, self.weight, self.trip_date)
+        rate = matching_trip_cost(self.client_id, self.route_id, self.vehicle_type_id, self.weight, self.trip_date,
+                                  sub_category_id=self.sub_category_id)
         return (rate or 0) + (self.additional_charges or 0)
 
     @property
@@ -237,41 +245,56 @@ class Trip(models.Model):
         return f"Job {self.job.job_number} | Trip {self.trip_no}"
 
 
-def matching_trip_cost(client_id, route_id, vehicle_type_id, weight, on_date=None):
+def matching_trip_cost(client_id, route_id, vehicle_type_id, weight, on_date=None, sub_category_id=None):
     """Updated Trip Cost of the Client Rate for this client + route + vehicle
     type + tonnage that was in force on `on_date` (the latest one effective on
     or before it), so revising a rate never re-prices older trips. A trip
     dated before the first rate on file uses that first rate. None if there's
-    no rate at all."""
+    no rate at all.
+
+    A trip with a sub-category (e.g. Revo) uses that sub-category's own rates;
+    if it has none for this route/type/tonnage it falls back to the client's
+    plain default rates (sub-category left blank)."""
     if not (client_id and route_id and vehicle_type_id):
         return None
     from masters.models import ClientRate
-    rates = ClientRate.objects.filter(
-        client_id=client_id, route_id=route_id, vehicle_type_id=vehicle_type_id, weight_tons=weight,
-    ).only("updated_trip_cost")
-    rate = None
-    if on_date:
-        rate = rates.filter(effective_date__lte=on_date).order_by("-effective_date", "-id").first()
-        if not rate:
-            rate = rates.order_by("effective_date", "id").first()
-    else:
-        rate = rates.order_by("-effective_date", "-id").first()
-    return rate.updated_trip_cost if rate else None
+    for sub_id in ([sub_category_id, None] if sub_category_id else [None]):
+        rates = ClientRate.objects.filter(
+            client_id=client_id, route_id=route_id, vehicle_type_id=vehicle_type_id, weight_tons=weight,
+            sub_category_id=sub_id,
+        ).only("updated_trip_cost")
+        rate = None
+        if on_date:
+            rate = rates.filter(effective_date__lte=on_date).order_by("-effective_date", "-id").first()
+            if not rate:
+                rate = rates.order_by("effective_date", "id").first()
+        else:
+            rate = rates.order_by("-effective_date", "-id").first()
+        if rate:
+            return rate.updated_trip_cost
+    return None
 
 
-def refresh_trip_freight(client_id, route_id, vehicle_type_id, weight):
+def refresh_trip_freight(client_id, route_id, vehicle_type_id, weight, sub_category_id=None):
     """Re-price every trip a Client Rate applies to, after that rate is added,
     edited, deleted or copied - a trip's freight is otherwise only worked out
     when the trip itself is saved, so trips entered before their rate existed
     stayed at 0. Only the freight column is touched (not meters/odometer).
     Returns how many trips changed."""
-    rate_on = {}  # trip date -> rate in force that day
+    rate_on = {}  # (trip date, trip sub-category) -> rate in force that day
     changed = 0
-    for trip in Trip.objects.filter(client_id=client_id, route_id=route_id, vehicle_type_id=vehicle_type_id,
-                                    weight=weight).only("id", "freight", "additional_charges", "trip_date"):
-        if trip.trip_date not in rate_on:
-            rate_on[trip.trip_date] = matching_trip_cost(client_id, route_id, vehicle_type_id, weight, trip.trip_date) or 0
-        freight = rate_on[trip.trip_date] + (trip.additional_charges or 0)
+    trips = Trip.objects.filter(client_id=client_id, route_id=route_id, vehicle_type_id=vehicle_type_id,
+                                weight=weight)
+    # A sub-category's rate only touches that sub-category's trips; a default
+    # (no sub-category) rate can also be what its sub-category trips fall back to.
+    if sub_category_id:
+        trips = trips.filter(sub_category_id=sub_category_id)
+    for trip in trips.only("id", "freight", "additional_charges", "trip_date", "sub_category_id"):
+        key = (trip.trip_date, trip.sub_category_id)
+        if key not in rate_on:
+            rate_on[key] = matching_trip_cost(client_id, route_id, vehicle_type_id, weight, trip.trip_date,
+                                              sub_category_id=trip.sub_category_id) or 0
+        freight = rate_on[key] + (trip.additional_charges or 0)
         if trip.freight != freight:
             Trip.objects.filter(pk=trip.pk).update(freight=freight)
             changed += 1

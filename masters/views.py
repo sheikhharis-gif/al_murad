@@ -14,7 +14,7 @@ from datetime import date
 from .models import (
     Staff, Vehicle, VehicleType, Wheeler, City, Route,
     Vendor, SupplierType, Client, Expense, VehicleTyre,
-    ClientRate, DriverSalary,
+    ClientRate, ClientSubCategory, DriverSalary,
     StaffMonthlyAccount, StaffAttendanceEntry, StaffAccountEntry,
     FuelProduct, VendorFuelPrice,
 )
@@ -953,7 +953,7 @@ def client_rates(request, client_id):
         form = ClientRateForm(client=client)
 
     rates = ClientRate.objects.filter(client=client).select_related(
-        "route__origin", "route__destination", "fuel_product", "vehicle_type")
+        "route__origin", "route__destination", "fuel_product", "vehicle_type", "sub_category")
 
     # Latest revision per route + vehicle type + weight, and the latest
     # known price per fuel product (now fed by PSO Fuel Prices too) - the
@@ -962,7 +962,7 @@ def client_rates(request, client_id):
     last_by_route = {}
     for r in rates:
         weight_key = format(r.weight_tons.normalize(), "f") if r.weight_tons is not None else ""
-        key = f"{r.route_id}|{r.fuel_product_id or ''}|{r.vehicle_type_id or ''}|{weight_key}"
+        key = f"{r.route_id}|{r.fuel_product_id or ''}|{r.vehicle_type_id or ''}|{weight_key}|{r.sub_category_id or ''}"
         if key not in last_by_route:
             last_by_route[key] = {
                 "fuel_price": str(r.updated_fuel_price),
@@ -987,6 +987,7 @@ def client_rates(request, client_id):
         "client": client,
         "form": form,
         "rates": rates,
+        "sub_categories": ClientSubCategory.objects.filter(client=client),
         "last_by_route_json": json.dumps(last_by_route),
         "latest_fuel_prices_json": json.dumps(latest_fuel_prices),
         "dedicated_rates": dedicated_rates,
@@ -995,12 +996,38 @@ def client_rates(request, client_id):
         # Copy Rates window: types this client has rates for (with how many
         # route/tonnage rates each), and every type as a possible target.
         "copy_source_types": [
-            (vt, len({(r.route_id, r.fuel_product_id, r.weight_tons) for r in rates if r.vehicle_type_id == vt.id}))
+            (vt, len({(r.sub_category_id, r.route_id, r.fuel_product_id, r.weight_tons) for r in rates if r.vehicle_type_id == vt.id}))
             for vt in VehicleType.objects.filter(client_rates__client=client).distinct().order_by("name")
         ],
         "all_vehicle_types": VehicleType.objects.order_by("name"),
         **rate_fuel.fuel_price_choices(client),
     })
+
+
+def client_subcategory_add(request, client_id):
+    client = get_object_or_404(Client, id=client_id)
+    name = (request.POST.get("name") or "").strip().upper()
+    if request.method == "POST":
+        if not name:
+            messages.error(request, "Sub-Category name is required.")
+        elif ClientSubCategory.objects.filter(client=client, name=name).exists():
+            messages.info(request, f"'{name}' already exists for {client.name}.")
+        else:
+            ClientSubCategory.objects.create(client=client, name=name)
+            messages.success(request, f"Sub-Category '{name}' added to {client.name}.")
+    return redirect("client_rates", client_id=client.id)
+
+
+def client_subcategory_delete(request, client_id, sub_id):
+    client = get_object_or_404(Client, id=client_id)
+    sub = get_object_or_404(ClientSubCategory, id=sub_id, client=client)
+    if request.method == "POST":
+        try:
+            sub.delete()
+            messages.success(request, f"Sub-Category '{sub.name}' deleted.")
+        except ProtectedError:
+            messages.error(request, f"Can't delete '{sub.name}' - it still has rates or trips. Remove or move those first.")
+    return redirect("client_rates", client_id=client.id)
 
 
 def client_rate_edit(request, client_id, rate_id):

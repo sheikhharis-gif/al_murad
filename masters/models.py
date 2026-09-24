@@ -1,5 +1,6 @@
 import re
 from datetime import date, timedelta
+from decimal import Decimal
 from django.db import models
 
 # ================= STAFF =================
@@ -462,6 +463,10 @@ class Client(models.Model):
     address = models.TextField()
     billing_company = models.CharField(max_length=150, blank=True)
     is_active = models.BooleanField(default=True)
+    # Some clients have separate units billed on different rates (e.g. Five
+    # Star: Assia / Revo). Only for those does the Sub-Category and Fixed/Auto
+    # Rate Type machinery show up - everyone else works exactly as before.
+    has_sub_categories = models.BooleanField("Has Sub-Categories", default=False)
 
     def save(self, *args, **kwargs):
         for field in (
@@ -501,8 +506,39 @@ class FuelRateBatch(models.Model):
         return f"{self.client} - {self.fuel_price} ({self.effective_date})"
 
 
+class ClientSubCategory(models.Model):
+    """A unit/deployment of one client billed on its own rates (e.g. Five Star
+    3PL -> Assia, Revo). Client Rates and Trips can be tagged with one; a rate
+    with no sub-category is the client's plain default."""
+    client = models.ForeignKey(Client, on_delete=models.CASCADE, related_name="sub_categories")
+    name = models.CharField(max_length=100)
+
+    class Meta:
+        ordering = ["name"]
+        constraints = [models.UniqueConstraint(fields=["client", "name"], name="uniq_client_subcategory_name")]
+
+    def save(self, *args, **kwargs):
+        self.name = (self.name or "").strip().upper()
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return self.name
+
+
 class ClientRate(models.Model):
+    RATE_TYPE_CHOICES = [
+        ("AUTO", "Auto (fuel-linked)"),
+        ("FIXED", "Fixed"),
+    ]
+
     client = models.ForeignKey(Client, on_delete=models.CASCADE, related_name="rates")
+    # AUTO: revised with the fuel price (the normal Client Rate). FIXED: a flat
+    # rate that never moves with fuel - Apply Fuel Price / Correct skip it.
+    rate_type = models.CharField(max_length=5, choices=RATE_TYPE_CHOICES, default="AUTO")
+    sub_category = models.ForeignKey(
+        ClientSubCategory, on_delete=models.PROTECT, null=True, blank=True, related_name="rates",
+        verbose_name="Sub-Category",
+    )
     route = models.ForeignKey("Route", on_delete=models.CASCADE, related_name="client_rates")
     fuel_product = models.ForeignKey(
         FuelProduct, on_delete=models.SET_NULL, null=True, blank=True, related_name="client_rates"
@@ -528,9 +564,18 @@ class ClientRate(models.Model):
         ordering = ["route__route_code", "-effective_date", "-id"]
 
     def save(self, *args, **kwargs):
+        if self.rate_type == "FIXED":
+            zero = Decimal(0)
+            self.current_fuel_price = self.updated_fuel_price = self.effective_percent = zero
+            self.rate_subject_to_revision = self.fuel_price_change_percent = self.rate_adjustment = zero
+            self.updated_trip_cost = self.current_rate
+            super().save(*args, **kwargs)
+            return
         if not self.pk:
             same_rate = ClientRate.objects.filter(
                 client=self.client,
+                rate_type="AUTO",
+                sub_category=self.sub_category,
                 route=self.route,
                 vehicle_type=self.vehicle_type,
                 weight_tons=self.weight_tons,

@@ -16,17 +16,17 @@ from .models import Client, ClientRate, VehicleType
 # Stored columns copied verbatim (including the computed ones - the copy must
 # carry the source's exact trip cost, not be re-chained off the target's history)
 COPY_FIELDS = [
-    "route_id", "fuel_product_id", "current_fuel_price", "current_rate", "effective_percent",
+    "sub_category_id", "rate_type", "route_id", "fuel_product_id", "current_fuel_price", "current_rate", "effective_percent",
     "rate_subject_to_revision", "updated_fuel_price", "fuel_price_change_percent",
     "rate_adjustment", "updated_trip_cost", "weight_tons", "effective_date",
 ]
 
 
 def _latest_by_key(rates):
-    """Latest entry per (route, fuel product, weight) - rates must be ordered newest first."""
+    """Latest entry per (sub-category, route, fuel product, weight) - rates must be ordered newest first."""
     latest = {}
     for r in rates:
-        latest.setdefault((r.route_id, r.fuel_product_id, r.weight_tons), r)
+        latest.setdefault((r.sub_category_id, r.route_id, r.fuel_product_id, r.weight_tons), r)
     return latest
 
 
@@ -52,7 +52,7 @@ def copy_rates(client, source_type, target_types):
     ClientRate.objects.bulk_create(to_create)
     # bulk_create sends no signals - re-price the trips these copies apply to
     from operations.models import refresh_trip_freight
-    for key in {(c.client_id, c.route_id, c.vehicle_type_id, c.weight_tons) for c in to_create}:
+    for key in {(c.client_id, c.route_id, c.vehicle_type_id, c.weight_tons, c.sub_category_id) for c in to_create}:
         refresh_trip_freight(*key)
     return len(to_create), skipped
 

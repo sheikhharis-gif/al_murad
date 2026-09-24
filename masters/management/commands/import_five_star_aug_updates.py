@@ -4,7 +4,7 @@ from decimal import Decimal
 from django.core.management.base import BaseCommand
 from django.db import transaction
 
-from masters.models import Route, VehicleType, FuelProduct, Client, ClientRate
+from masters.models import Route, VehicleType, FuelProduct, Client, ClientRate, ClientSubCategory
 from .import_five_star_rates import CLIENT_NAME, ROWS, VEHICLE_SIZE_MAP
 
 # Same date-wise diesel price series applied to every route/vehicle/weight
@@ -54,6 +54,9 @@ class Command(BaseCommand):
             ))
             return
 
+        # These are the ASSIA rates (REVO has its own fixed rates, entered separately)
+        assia, _ = ClientSubCategory.objects.get_or_create(client=client, name="ASSIA")
+
         created, updated, skipped_combos = 0, 0, 0
         # One transaction for all ~1000 writes instead of one per row - SQLite
         # only allows a single writer, so hundreds of separate commits each
@@ -80,6 +83,7 @@ class Command(BaseCommand):
                 for eff_date, price in AUG_UPDATES:
                     obj, was_created = ClientRate.objects.update_or_create(
                         client=client,
+                        sub_category=assia,
                         route=route,
                         fuel_product=diesel_product,
                         vehicle_type=vehicle_type,

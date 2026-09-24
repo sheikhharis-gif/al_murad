@@ -31,7 +31,7 @@ CENT = Decimal("0.01")
 def rates_using(product_id, eff_date, price):
     """Client rate entries built on this PSO price: that date, that fuel price,
     on that product (or saved with no fuel product)."""
-    return ClientRate.objects.filter(effective_date=eff_date, updated_fuel_price=price).filter(
+    return ClientRate.objects.filter(effective_date=eff_date, updated_fuel_price=price, rate_type="AUTO").filter(
         Q(fuel_product_id=product_id) | Q(fuel_product__isnull=True))
 
 
@@ -72,13 +72,13 @@ def plan_correction(product_id, eff_date, old_price, new_price):
     affected_ids = {r.id for r in affected}
     keys = OrderedDict()
     for r in affected:
-        keys.setdefault((r.client_id, r.route_id, r.vehicle_type_id, r.weight_tons), r)
+        keys.setdefault((r.client_id, r.route_id, r.vehicle_type_id, r.weight_tons, r.sub_category_id), r)
 
     chains = []
-    for (client_id, route_id, vt_id, weight), sample in keys.items():
+    for (client_id, route_id, vt_id, weight, sub_id), sample in keys.items():
         entries = ClientRate.objects.filter(
             client_id=client_id, route_id=route_id, vehicle_type_id=vt_id, weight_tons=weight,
-            effective_date__gte=eff_date,
+            sub_category_id=sub_id, rate_type="AUTO", effective_date__gte=eff_date,
         ).filter(Q(fuel_product_id=product_id) | Q(fuel_product__isnull=True)).select_related(
             "client", "route", "vehicle_type").order_by("effective_date", "id")
         rows, prev = [], None
@@ -91,7 +91,10 @@ def plan_correction(product_id, eff_date, old_price, new_price):
                          "is_corrected_date": e.id in affected_ids})
             prev = new
         trips = Trip.objects.filter(client_id=client_id, route_id=route_id, vehicle_type_id=vt_id,
-                                    weight=weight, trip_date__gte=eff_date).count()
+                                    weight=weight, trip_date__gte=eff_date)
+        if sub_id:
+            trips = trips.filter(sub_category_id=sub_id)
+        trips = trips.count()
         chains.append({"sample": sample, "rows": rows, "trips": trips})
     chains.sort(key=lambda c: (c["sample"].client.name, c["sample"].route.route_code,
                                str(c["sample"].vehicle_type or ""), c["sample"].weight_tons or 0))
@@ -139,7 +142,7 @@ def fuel_price_correct(request):
         repriced = 0
         for chain in chains:
             s = chain["sample"]
-            repriced += refresh_trip_freight(s.client_id, s.route_id, s.vehicle_type_id, s.weight_tons)
+            repriced += refresh_trip_freight(s.client_id, s.route_id, s.vehicle_type_id, s.weight_tons, s.sub_category_id)
         entries = sum(len(c["rows"]) for c in chains)
         messages.success(request, f"Corrected {product.name} on {eff_date:%d-%b-%y}: {old_price} -> {new_price}. "
                          f"{entries} rate entr{'y' if entries == 1 else 'ies'} recalculated date by date, "

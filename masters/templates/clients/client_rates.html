@@ -93,14 +93,47 @@
                 {{ form.non_field_errors.0|default:"Please fix the highlighted field(s) below." }}
             </div>
             {% endif %}
+            {% if client.has_sub_categories %}
+            <div class="border rounded-3 px-3 py-2 mb-3 small bg-white d-flex align-items-center flex-wrap gap-2">
+                <span class="fw-bold text-muted text-uppercase" style="font-size:.7rem;">Sub-Categories</span>
+                {% for sc in sub_categories %}
+                <span class="badge bg-primary-subtle text-primary-emphasis border d-inline-flex align-items-center gap-1 px-2 py-1">
+                    {{ sc.name }}
+                    <form method="post" action="{% url 'client_subcategory_delete' client.id sc.id %}" class="d-inline m-0"
+                          onsubmit="return confirm('Delete sub-category {{ sc.name }}?')">
+                        {% csrf_token %}<button type="submit" class="btn-close ms-1" style="font-size:.5rem;" title="Delete"></button>
+                    </form>
+                </span>
+                {% empty %}
+                <span class="text-muted">None yet - add one (e.g. ASSIA, REVO) if this client has separate units billed on different rates.</span>
+                {% endfor %}
+                <form method="post" action="{% url 'client_subcategory_add' client.id %}" class="d-flex gap-1 ms-auto m-0">
+                    {% csrf_token %}
+                    <input type="text" name="name" class="form-control form-control-sm" style="width:150px;" placeholder="New sub-category" data-uppercase>
+                    <button type="submit" class="btn btn-sm btn-outline-primary fw-bold"><i class="bi bi-plus-lg"></i> Add</button>
+                </form>
+            </div>
+            {% endif %}
             <form method="post" class="rate-entry-form bg-light p-3 rounded-4 mb-3 border border-light-subtle">
                 {% csrf_token %}
+                {% if client.has_sub_categories %}
+                <div class="row g-2 align-items-end mb-1">
+                    <div class="col-md-3">
+                        <label class="form-label small fw-bold">Sub-Category</label>
+                        {{ form.sub_category }}{{ form.sub_category.errors }}
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small fw-bold">Rate Type</label>
+                        {{ form.rate_type }}
+                    </div>
+                </div>
+                {% endif %}
                 <div class="row g-2 align-items-end">
                     <div class="col-md-3">
                         <label class="form-label small fw-bold">Route</label>
                         {{ form.route }}{{ form.route.errors }}
                     </div>
-                    <div class="col-md-2">
+                    <div class="col-md-2 auto-only">
                         <label class="form-label small fw-bold">Fuel Product</label>
                         {{ form.fuel_product }}{{ form.fuel_product.errors }}
                     </div>
@@ -118,7 +151,7 @@
                     </div>
                 </div>
                 <div class="row g-2 align-items-end mt-1">
-                    <div class="col-md-3">
+                    <div class="col-md-3 auto-only">
                         <label class="form-label small fw-bold">
                             Current Fuel Price
                             <i class="bi bi-info-circle text-muted" data-bs-toggle="tooltip" data-bs-placement="top"
@@ -127,16 +160,16 @@
                         {{ form.current_fuel_price }}
                     </div>
                     <div class="col-md-3">
-                        <label class="form-label small fw-bold">Current Rate</label>
-                        {{ form.current_rate }}
+                        <label class="form-label small fw-bold"><span class="cur-rate-label">Current Rate</span></label>
+                        {{ form.current_rate }}{{ form.current_rate.errors }}
                     </div>
-                    <div class="col-md-3">
+                    <div class="col-md-3 auto-only">
                         <label class="form-label small fw-bold">Effective %</label>
-                        {{ form.effective_percent }}
+                        {{ form.effective_percent }}{{ form.effective_percent.errors }}
                     </div>
-                    <div class="col-md-3">
+                    <div class="col-md-3 auto-only">
                         <label class="form-label small fw-bold">Updated Fuel Price</label>
-                        {{ form.updated_fuel_price }}
+                        {{ form.updated_fuel_price }}{{ form.updated_fuel_price.errors }}
                     </div>
                 </div>
                 <div class="row g-2 mt-1">
@@ -159,6 +192,7 @@
             <div style="max-height: 400px; overflow-y: auto;">
                 <table class="table table-hover align-middle custom-table rate-table mb-0">
                     <colgroup>
+                        {% if client.has_sub_categories %}<col style="width:7%"><col style="width:6%">{% endif %}
                         <col style="width:9%">
                         <col style="width:7%">
                         <col style="width:8%">
@@ -176,6 +210,7 @@
                     </colgroup>
                     <thead class="sticky-top">
                         <tr class="text-uppercase">
+                            {% if client.has_sub_categories %}<th class="text-center">Sub-Category</th><th class="text-center">Rate Type</th>{% endif %}
                             <th>Route</th>
                             <th class="text-center">Fuel Product</th>
                             <th class="text-center">Current Fuel Price</th>
@@ -194,14 +229,18 @@
                     </thead>
                     <tbody id="rateTableBody">
                         {% for r in rates %}
-                        <tr class="rate-row" data-search="{{ r.route.route_code }} {{ r.route.origin.name }} {{ r.route.destination.name }} {{ r.fuel_product.name|default:'' }} {{ r.vehicle_type.name|default:'' }} {{ r.weight_tons|floatformat:'-2' }}">
+                        <tr class="rate-row" data-search="{{ r.sub_category.name|default:'' }} {{ r.get_rate_type_display }} {{ r.route.route_code }} {{ r.route.origin.name }} {{ r.route.destination.name }} {{ r.fuel_product.name|default:'' }} {{ r.vehicle_type.name|default:'' }} {{ r.weight_tons|floatformat:'-2' }}">
+                            {% if client.has_sub_categories %}
+                            <td class="text-center">{{ r.sub_category.name|default:"--" }}</td>
+                            <td class="text-center">{% if r.rate_type == 'FIXED' %}<span class="badge bg-warning-subtle text-warning-emphasis border">FIXED</span>{% else %}<span class="badge bg-success-subtle text-success-emphasis border">AUTO</span>{% endif %}</td>
+                            {% endif %}
                             <td class="fw-bold text-dark">{{ r.route.route_code|upper }}</td>
                             <td class="text-center">{{ r.fuel_product.name|upper|default:"--" }}</td>
-                            <td class="text-center">{{ r.current_fuel_price|acct }}</td>
+                            <td class="text-center">{% if r.rate_type == 'FIXED' %}--{% else %}{{ r.current_fuel_price|acct }}{% endif %}</td>
                             <td class="text-center">{{ r.current_rate|acct }}</td>
-                            <td class="text-center">{{ r.effective_percent|pct_trim }}</td>
-                            <td class="text-center rsr-col">{{ r.rate_subject_to_revision|acct }}</td>
-                            <td class="text-center">{{ r.updated_fuel_price|acct }}</td>
+                            <td class="text-center">{% if r.rate_type == 'FIXED' %}--{% else %}{{ r.effective_percent|pct_trim }}{% endif %}</td>
+                            <td class="text-center rsr-col">{% if r.rate_type == 'FIXED' %}--{% else %}{{ r.rate_subject_to_revision|acct }}{% endif %}</td>
+                            <td class="text-center">{% if r.rate_type == 'FIXED' %}--{% else %}{{ r.updated_fuel_price|acct }}{% endif %}</td>
                             <td class="text-center {% if r.fuel_price_change_percent < 0 %}text-danger{% elif r.fuel_price_change_percent > 0 %}text-success{% endif %}">{{ r.fuel_price_change_percent|pct }}</td>
                             <td class="text-center {% if r.rate_adjustment < 0 %}text-danger{% elif r.rate_adjustment > 0 %}text-success{% endif %}">{{ r.rate_adjustment|acct }}</td>
                             <td class="text-center utc-col">{{ r.updated_trip_cost|acct }}</td>
@@ -214,6 +253,8 @@
                                         class="btn btn-sm btn-white text-warning border-end edit-rate-btn"
                                         data-edit-url="{% url 'client_rate_edit' client.id r.id %}"
                                         data-route="{{ r.route_id }}"
+                                        data-sub-category="{{ r.sub_category_id|default:'' }}"
+                                        data-rate-type="{{ r.rate_type }}"
                                         data-fuel-product="{{ r.fuel_product_id|default:'' }}"
                                         data-current-fuel-price="{{ r.current_fuel_price }}"
                                         data-current-rate="{{ r.current_rate }}"
@@ -236,7 +277,7 @@
                             </td>
                         </tr>
                         {% empty %}
-                        <tr><td colspan="13" class="text-center py-4 text-muted">No rate entries recorded for this client yet.</td></tr>
+                        <tr><td colspan="17" class="text-center py-4 text-muted">No rate entries recorded for this client yet.</td></tr>
                         {% endfor %}
                     </tbody>
                 </table>
@@ -510,6 +551,22 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body pt-2">
+                    {% if client.has_sub_categories %}
+                    <div class="mb-2">
+                        <label class="form-label small fw-bold">Sub-Category</label>
+                        <select name="sub_category" id="editSubCategory" class="form-select">
+                            <option value="">--- Client default ---</option>
+                            {% for sc in sub_categories %}<option value="{{ sc.id }}">{{ sc.name }}</option>{% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label small fw-bold">Rate Type</label>
+                        <select name="rate_type" id="editRateType" class="form-select">
+                            <option value="AUTO">Auto (fuel-linked)</option>
+                            <option value="FIXED">Fixed</option>
+                        </select>
+                    </div>
+                    {% endif %}
                     <div class="mb-2">
                         <label class="form-label small fw-bold">Route</label>
                         <select name="route" id="editRoute" class="form-select" required>
@@ -518,7 +575,7 @@
                             {% endfor %}
                         </select>
                     </div>
-                    <div class="mb-2">
+                    <div class="mb-2 auto-only">
                         <label class="form-label small fw-bold">Fuel Product</label>
                         <select name="fuel_product" id="editFuelProduct" class="form-select">
                             <option value="">--- Select Fuel Product ---</option>
@@ -527,19 +584,19 @@
                             {% endfor %}
                         </select>
                     </div>
-                    <div class="mb-2">
+                    <div class="mb-2 auto-only">
                         <label class="form-label small fw-bold">Current Fuel Price</label>
                         <input type="number" step="0.01" name="current_fuel_price" id="editCurrentFuelPrice" class="form-control" required>
                     </div>
                     <div class="mb-2">
-                        <label class="form-label small fw-bold">Current Rate</label>
+                        <label class="form-label small fw-bold"><span class="cur-rate-label">Current Rate</span></label>
                         <input type="number" step="0.01" name="current_rate" id="editCurrentRate" class="form-control" required>
                     </div>
-                    <div class="mb-2">
+                    <div class="mb-2 auto-only">
                         <label class="form-label small fw-bold">Effective %</label>
                         <input type="number" step="0.01" name="effective_percent" id="editEffectivePercent" class="form-control" required>
                     </div>
-                    <div class="mb-2">
+                    <div class="mb-2 auto-only">
                         <label class="form-label small fw-bold">Updated Fuel Price</label>
                         <input type="number" step="0.01" name="updated_fuel_price" id="editUpdatedFuelPrice" class="form-control" required>
                     </div>
@@ -694,6 +751,7 @@ document.addEventListener('DOMContentLoaded', function () {
     var fuelProductSelect = document.getElementById('id_fuel_product');
     var vehicleTypeSelect = document.getElementById('id_vehicle_type');
     var weightTons = document.getElementById('id_weight_tons');
+    var subCategorySelect = document.getElementById('id_sub_category');
     var curFuel = document.getElementById('id_current_fuel_price');
     var curRate = document.getElementById('id_current_rate');
     var effPct = document.getElementById('id_effective_percent');
@@ -703,7 +761,8 @@ document.addEventListener('DOMContentLoaded', function () {
         var weight = weightTons && weightTons.value.trim() ? String(parseFloat(weightTons.value)) : '';
         return (routeSelect ? routeSelect.value : '') + '|' +
             (fuelProduct !== undefined ? fuelProduct : (fuelProductSelect ? fuelProductSelect.value : '')) + '|' +
-            (vehicleTypeSelect ? vehicleTypeSelect.value : '') + '|' + weight;
+            (vehicleTypeSelect ? vehicleTypeSelect.value : '') + '|' + weight + '|' +
+            (subCategorySelect ? subCategorySelect.value : '');
     }
 
     function syncCurrentFields() {
@@ -731,16 +790,41 @@ document.addEventListener('DOMContentLoaded', function () {
     if (vehicleTypeSelect) vehicleTypeSelect.addEventListener('change', syncCurrentFields);
     if (fuelProductSelect) fuelProductSelect.addEventListener('change', syncCurrentFields);
     if (weightTons) weightTons.addEventListener('input', syncCurrentFields);
+    if (subCategorySelect) subCategorySelect.addEventListener('change', syncCurrentFields);
     syncCurrentFields();
 
     document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function (el) {
         new bootstrap.Tooltip(el);
     });
 
+    // Fixed rate: hide + disable the fuel-price fields (they don't apply and
+    // a disabled field neither validates nor posts), relabel Current Rate.
+    function syncRateType(scope) {
+        if (!scope) return;
+        var sel = scope.querySelector('select[name="rate_type"]');
+        var fixed = !!sel && sel.value === 'FIXED';
+        scope.querySelectorAll('.auto-only').forEach(function (box) {
+            box.style.display = fixed ? 'none' : '';
+            box.querySelectorAll('input, select').forEach(function (f) { f.disabled = fixed; });
+        });
+        scope.querySelectorAll('.cur-rate-label').forEach(function (l) {
+            l.textContent = fixed ? 'Fixed Rate' : 'Current Rate';
+        });
+    }
+    document.querySelectorAll('.rate-entry-form, #rateEditForm').forEach(function (formEl) {
+        var sel = formEl.querySelector('select[name="rate_type"]');
+        if (sel) sel.addEventListener('change', function () { syncRateType(formEl); });
+        syncRateType(formEl);
+    });
+
     const rateModal = new bootstrap.Modal(document.getElementById('rateEditModal'));
     document.querySelectorAll('.edit-rate-btn').forEach(function (btn) {
         btn.addEventListener('click', function () {
             document.getElementById('rateEditForm').action = this.dataset.editUrl;
+            var editSub = document.getElementById('editSubCategory');
+            if (editSub) editSub.value = this.dataset.subCategory || '';
+            var editType = document.getElementById('editRateType');
+            if (editType) editType.value = this.dataset.rateType || 'AUTO';
             document.getElementById('editRoute').value = this.dataset.route;
             document.getElementById('editFuelProduct').value = this.dataset.fuelProduct;
             document.getElementById('editCurrentFuelPrice').value = this.dataset.currentFuelPrice;
@@ -750,6 +834,7 @@ document.addEventListener('DOMContentLoaded', function () {
             document.getElementById('editWeightTons').value = this.dataset.weightTons;
             document.getElementById('editVehicleType').value = this.dataset.vehicleType;
             document.getElementById('editEffectiveDate').value = this.dataset.effectiveDate;
+            syncRateType(document.getElementById('rateEditForm'));
             rateModal.show();
         });
     });

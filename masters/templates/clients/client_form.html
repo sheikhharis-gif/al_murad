@@ -65,7 +65,14 @@
                             <label class="form-check-label ms-2 fw-bold small">Active Status</label>
                         </div>
                     </div>
-                    <div class="col-md-3 offset-md-6 d-flex align-items-end">
+                    <div class="col-md-4 d-flex align-items-center">
+                        <div class="form-check form-switch fs-5">
+                            {{ form.has_sub_categories }}
+                            <label class="form-check-label ms-2 fw-bold small">Has Sub-Categories</label>
+                            <div class="form-text small mt-0">e.g. separate units on different rates (Assia / Revo)</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 offset-md-2 d-flex align-items-end">
                         <button type="submit" class="btn btn-primary w-100 fw-bold shadow-sm">
                             <i class="bi bi-save me-2"></i>{% if client %}Update Client{% else %}Save Client{% endif %}
                         </button>

@@ -5,7 +5,7 @@ from .models import Trip, refresh_trip_freight
 
 
 def _rate_key(rate):
-    return (rate.client_id, rate.route_id, rate.vehicle_type_id, rate.weight_tons)
+    return (rate.client_id, rate.route_id, rate.vehicle_type_id, rate.weight_tons, rate.sub_category_id)
 
 
 @receiver(pre_save, sender=ClientRate)

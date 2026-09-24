@@ -6,7 +6,7 @@ from django.db.models import Q
 from django.forms import inlineformset_factory
 from django.utils import timezone
 from .models import Job, Trip, JobExpense, JobFuelEntry
-from masters.models import Vehicle, VehicleType, Client, Route, Vendor, FuelProduct
+from masters.models import Vehicle, VehicleType, Client, ClientSubCategory, Route, Vendor, FuelProduct
 
 # -----------------------
 # JOB FORM (header only - date, vehicle, trip advance, remarks)
@@ -88,17 +88,30 @@ class JobForm(forms.ModelForm):
 # -----------------------
 # TRIP FORM (one leg of a Job)
 # -----------------------
+class SubCategorySelect(forms.Select):
+    """Sub-Category dropdown whose options remember which client they belong
+    to (data-client), so the page can show only the chosen client's."""
+
+    def create_option(self, name, value, label, selected, index, subindex=None, attrs=None):
+        option = super().create_option(name, value, label, selected, index, subindex, attrs)
+        instance = getattr(value, "instance", None)
+        if instance is not None:
+            option["attrs"]["data-client"] = instance.client_id
+        return option
+
+
 class TripForm(forms.ModelForm):
     class Meta:
         model = Trip
         fields = [
-            "trip_date", "client", "bilty_number", "weight", "route", "vehicle_type",
+            "trip_date", "client", "sub_category", "bilty_number", "weight", "route", "vehicle_type",
             "reached_at", "departed_at", "arrived_at", "delivered_at",
             "additional_charges", "remarks",
         ]
         widgets = {
             "trip_date": forms.DateInput(attrs={"class": "form-control form-control-sm", "type": "date"}),
             "client": forms.Select(attrs={"class": "form-select form-select-sm"}),
+            "sub_category": SubCategorySelect(attrs={"class": "form-select form-select-sm trip-subcategory"}),
             "bilty_number": forms.TextInput(attrs={"class": "form-control form-control-sm", "placeholder": "Bilty #"}),
             "weight": forms.NumberInput(attrs={"class": "form-control form-control-sm", "step": "0.01", "placeholder": "Weight (Tons)"}),
             "route": forms.Select(attrs={"class": "form-select form-select-sm"}),
@@ -131,6 +144,9 @@ class TripForm(forms.ModelForm):
         self.fields["client"].queryset = Client.objects.filter(
             Q(is_active=True) | Q(pk=self.instance.client_id)).order_by("name")
         self.fields["client"].empty_label = "--- Select Client ---"
+        self.fields["sub_category"].queryset = ClientSubCategory.objects.filter(
+            client__has_sub_categories=True).select_related("client").order_by("name")
+        self.fields["sub_category"].empty_label = "--- Sub-Category ---"
         self.fields["route"].queryset = Route.objects.all().order_by("route_code")
         self.fields["route"].empty_label = "--- Select Route ---"
         self.fields["vehicle_type"].queryset = VehicleType.objects.order_by("name")
@@ -153,6 +169,15 @@ class TripForm(forms.ModelForm):
             # on, and together they drive the trip's Status (At Loading ->
             # Departured -> Arrived -> Delivered).
             self.initial.setdefault("reached_at", now)
+
+    def clean(self):
+        cleaned = super().clean()
+        client, sub = cleaned.get("client"), cleaned.get("sub_category")
+        if sub and client and sub.client_id != client.pk:
+            self.add_error("sub_category", f"{sub.name} doesn't belong to {client.name}.")
+        elif client and not sub and client.has_sub_categories and client.sub_categories.exists():
+            self.add_error("sub_category", f"{client.name} has sub-categories ({', '.join(s.name for s in client.sub_categories.all())}) - please choose one.")
+        return cleaned
 
     # Pre-filled on new rows, so on their own they don't count as "the user
     # filled this row in" - otherwise an untouched blank row would fail

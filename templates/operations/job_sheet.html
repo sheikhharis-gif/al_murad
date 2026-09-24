@@ -150,6 +150,11 @@
                             <div class="col-md-3">
                                 <label class="form-label x-small fw-bold mb-1">Client</label>
                                 {{ tf.client }}
+                                <div class="subcat-wrap mt-1" style="display:none;">
+                                    <label class="form-label x-small fw-bold mb-1">Sub-Category</label>
+                                    {{ tf.sub_category }}
+                                </div>
+                                {% if tf.sub_category.errors %}<div class="text-danger small mt-1">{{ tf.sub_category.errors.0 }}</div>{% endif %}
                             </div>
                             <div class="col-md-1">
                                 <label class="form-label x-small fw-bold mb-1">Bilty #</label>
@@ -355,6 +360,31 @@
         // the fleet vehicle dropdown (the hidden is_rental checkbox just
         // carries the job's existing mode through on re-save, it's not
         // meant to be toggled here).
+        // Sub-Category: each trip row shows only the chosen client's
+        // sub-categories (e.g. Five Star -> ASSIA / REVO); hidden if it has none.
+        function syncSubCategory(block) {
+            var client = block.querySelector('select[name$="-client"]');
+            var sub = block.querySelector('select.trip-subcategory');
+            var wrap = block.querySelector('.subcat-wrap');
+            if (!client || !sub || !wrap) return;
+            var any = false;
+            Array.prototype.forEach.call(sub.options, function (opt) {
+                if (!opt.value) return;
+                var show = opt.getAttribute('data-client') === client.value;
+                opt.hidden = !show;
+                opt.disabled = !show;
+                if (show) any = true;
+            });
+            var current = sub.options[sub.selectedIndex];
+            if (current && current.value && current.disabled) sub.value = '';
+            wrap.style.display = any ? '' : 'none';
+            if (!any) sub.value = '';
+        }
+        document.querySelectorAll('.trip-block').forEach(syncSubCategory);
+        document.getElementById('trip-formset').addEventListener('change', function (e) {
+            if (e.target.matches('select[name$="-client"]')) syncSubCategory(e.target.closest('.trip-block'));
+        });
+
         var rentalFlag = document.getElementById('id_is_rental');
         if (rentalFlag && rentalFlag.checked) {
             document.getElementById('own-vehicle-block').classList.add('d-none');
@@ -425,6 +455,7 @@
 
                 container.appendChild(newRow);
                 totalForms.value = formNum + 1;
+                if (rowClass === 'trip-block') syncSubCategory(newRow);
                 if (window.enhanceDatepickers) window.enhanceDatepickers();
                 if (window.enhanceDatetimepickers) window.enhanceDatetimepickers();
                 if (window.enhanceDropdownSearchSelects) window.enhanceDropdownSearchSelects();

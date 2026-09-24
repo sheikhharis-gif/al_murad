@@ -25,15 +25,17 @@ from .models import Client, ClientRate, FuelProduct, FuelRateBatch, VendorFuelPr
 def _latest_rates(client, product, include_blank):
     """Latest rate per route + vehicle type + tonnage priced on `product`
     (plus, optionally, older entries saved with no fuel product)."""
-    rates = ClientRate.objects.filter(client=client).select_related("route", "vehicle_type", "fuel_product")
+    rates = ClientRate.objects.filter(client=client).select_related("route", "vehicle_type", "fuel_product", "sub_category")
     if include_blank:
         rates = rates.filter(Q(fuel_product=product) | Q(fuel_product__isnull=True))
     else:
         rates = rates.filter(fuel_product=product)
     latest = OrderedDict()
     for r in rates.order_by("-effective_date", "-id"):
-        latest.setdefault((r.route_id, r.vehicle_type_id, r.weight_tons), r)
-    return sorted(latest.values(), key=lambda r: (r.route.route_code, str(r.vehicle_type or ""), r.weight_tons or 0))
+        latest.setdefault((r.sub_category_id, r.route_id, r.vehicle_type_id, r.weight_tons), r)
+    # Fixed rates never move with fuel - leave them out of the revision
+    latest = OrderedDict((k, r) for k, r in latest.items() if r.rate_type != "FIXED")
+    return sorted(latest.values(), key=lambda r: (str(r.sub_category or ""), r.route.route_code, str(r.vehicle_type or ""), r.weight_tons or 0))
 
 
 def _revise(base, new_price):
@@ -81,7 +83,8 @@ def client_rate_apply_fuel(request, client_id):
                 continue
             base = row["base"]
             to_create.append(ClientRate(
-                client=client, route_id=base.route_id, vehicle_type_id=base.vehicle_type_id,
+                client=client, sub_category_id=base.sub_category_id, route_id=base.route_id,
+                vehicle_type_id=base.vehicle_type_id,
                 weight_tons=base.weight_tons, fuel_product=price.product,
                 effective_date=price.effective_date, **row["new"],
             ))
@@ -98,7 +101,7 @@ def client_rate_apply_fuel(request, client_id):
             ClientRate.objects.bulk_create(to_create)
         from operations.models import refresh_trip_freight
         for c in to_create:
-            refresh_trip_freight(c.client_id, c.route_id, c.vehicle_type_id, c.weight_tons)
+            refresh_trip_freight(c.client_id, c.route_id, c.vehicle_type_id, c.weight_tons, c.sub_category_id)
         skipped = len(rows) - len(to_create)
         if to_create:
             messages.success(request, f"Updated {len(to_create)} rate(s) to {price.product.name} "
@@ -127,7 +130,7 @@ def _blocking(rate):
     type / tonnage) - undoing it would pull the ground out from under that."""
     return ClientRate.objects.filter(
         client_id=rate.client_id, route_id=rate.route_id, vehicle_type_id=rate.vehicle_type_id,
-        weight_tons=rate.weight_tons,
+        weight_tons=rate.weight_tons, sub_category_id=rate.sub_category_id,
     ).filter(Q(effective_date__gt=rate.effective_date) | Q(effective_date=rate.effective_date, id__gt=rate.id)).exists()
 
 
