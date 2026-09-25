@@ -74,6 +74,11 @@ urlpatterns = [
     path("clients/types/", views.client_type_config, name="client_type_config"),
     path("clients/types/<int:type_id>/edit/", views.client_type_edit, name="client_type_edit"),
     path("clients/types/<int:type_id>/delete/", views.client_type_delete, name="client_type_delete"),
+    # COMPANIES (invoice "Service Recipient")
+    path("companies/", views.company_list, name="company_list"),
+    path("companies/add/", views.company_add, name="company_add"),
+    path("companies/edit/<int:company_id>/", views.company_edit, name="company_edit"),
+    path("companies/delete/<int:company_id>/", views.company_delete, name="company_delete"),
 
     # ================= EXPENSES =================
     path('', views.expense_sheet, name='expense_sheet'),          # /expenses/

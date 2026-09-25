@@ -475,11 +475,14 @@ def locations_master(request):
             lng = request.POST.get("longitude") or 0
             city_name = (request.POST.get("city_name") or "").strip()
             city_code = (request.POST.get("city_code") or "").strip()
+            province = request.POST.get("province") or ""
 
             if not city_name or not city_code:
                 messages.error(request, "City name and code are both required.")
             elif len(city_code) > 3:
                 messages.error(request, "City code cannot be more than 3 characters.")
+            elif province and province not in dict(City.PROVINCE_CHOICES):
+                messages.error(request, "Choose a valid province.")
             elif City.objects.filter(name__iexact=city_name).exists():
                 messages.error(request, f"City '{city_name.upper()}' is already registered.")
             elif City.objects.filter(code__iexact=city_code).exists():
@@ -490,7 +493,8 @@ def locations_master(request):
                     name=city_name,
                     code=city_code,
                     latitude=lat,
-                    longitude=lng
+                    longitude=lng,
+                    province=province,
                 )
                 messages.success(request, f"City '{city_name.upper()}' registered successfully.")
             return redirect("locations_master")
@@ -523,6 +527,7 @@ def locations_master(request):
     return render(request, "locations/locations.html", {
         "cities": cities,
         "routes": routes,
+        "city_provinces": City.PROVINCE_CHOICES,
     })
 
 
@@ -531,11 +536,14 @@ def city_edit(request, city_id):
     if request.method == "POST":
         city_name = (request.POST.get("city_name") or "").strip()
         city_code = (request.POST.get("city_code") or "").strip()
+        province = request.POST.get("province") or ""
 
         if not city_name or not city_code:
             messages.error(request, "City name and code are both required.")
         elif len(city_code) > 3:
             messages.error(request, "City code cannot be more than 3 characters.")
+        elif province and province not in dict(City.PROVINCE_CHOICES):
+            messages.error(request, "Choose a valid province.")
         elif City.objects.exclude(id=city.id).filter(name__iexact=city_name).exists():
             messages.error(request, f"City '{city_name.upper()}' is already registered.")
         elif City.objects.exclude(id=city.id).filter(code__iexact=city_code).exists():
@@ -543,6 +551,7 @@ def city_edit(request, city_id):
         else:
             city.name = city_name
             city.code = city_code
+            city.province = province
             city.save()
             messages.success(request, f"City '{city.name}' updated successfully.")
     return redirect("locations_master")
@@ -841,8 +850,8 @@ def pso_fuel_price_delete(request, effective_date):
     return redirect("fuel_rates")
 
 from django.shortcuts import render, redirect, get_object_or_404
-from .models import Client, ClientType, ClientRate, DedicatedRate, Expense
-from .forms import ClientForm, ClientTypeForm, ClientRateForm, DedicatedRateForm, ExpenseForm
+from .models import Client, ClientType, ClientRate, Company, DedicatedRate, Expense
+from .forms import ClientForm, ClientTypeForm, ClientRateForm, CompanyForm, DedicatedRateForm, ExpenseForm
 
 # ================= CLIENTS =================
 CLIENT_SORT_FIELDS = {
@@ -890,6 +899,38 @@ def client_delete(request, client_id):
         client.delete()
         return redirect("client_list")
     return redirect("client_list")
+
+
+# ================= COMPANIES (invoice "Service Recipient") =================
+def company_list(request):
+    return render(request, "companies/company_list.html", {"companies": Company.objects.all()})
+
+def company_add(request):
+    form = CompanyForm(request.POST or None)
+    if form.is_valid():
+        form.save()
+        return redirect("company_list")
+    return render(request, "companies/company_form.html", {"form": form})
+
+def company_edit(request, company_id):
+    company = get_object_or_404(Company, id=company_id)
+    if request.method == "POST":
+        form = CompanyForm(request.POST, instance=company)
+        if form.is_valid():
+            form.save()
+            return redirect("company_list")
+    else:
+        form = CompanyForm(instance=company)
+    return render(request, "companies/company_form.html", {"form": form, "company": company})
+
+def company_delete(request, company_id):
+    company = get_object_or_404(Company, id=company_id)
+    if request.method == "POST":
+        try:
+            company.delete()
+        except ProtectedError:
+            messages.error(request, f"Cannot delete '{company.name}' - it's used on an existing invoice.")
+    return redirect("company_list")
 
 
 # ================= CLIENT TYPE (admin-extensible registry) =================

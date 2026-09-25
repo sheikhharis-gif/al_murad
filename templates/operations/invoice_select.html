@@ -57,15 +57,62 @@
         <div class="card border-0 shadow-sm rounded-4 mb-4">
             <div class="card-header bg-white border-0 pt-3 px-4 d-flex justify-content-between align-items-center flex-wrap gap-2">
                 <div>
+                    <h6 class="fw-bold mb-0 text-primary">Tax</h6>
+                    <p class="text-muted small mb-0">Off by default. Full taxes each trip's full amount by its origin city's own province; Partial splits every trip 50/50 between Origin and Destination.</p>
+                </div>
+                <div class="form-check form-switch m-0">
+                    <input class="form-check-input" type="checkbox" role="switch" id="taxEnabled" name="tax_enabled">
+                    <label class="form-check-label fw-bold" for="taxEnabled">Tax On</label>
+                </div>
+            </div>
+            <div class="card-body px-4" id="taxDetails" style="display:none;">
+                <div class="btn-group mb-3" role="group">
+                    <input type="radio" class="btn-check" name="tax_mode" id="taxFull" value="FULL" checked>
+                    <label class="btn btn-outline-primary btn-sm fw-bold" for="taxFull">Full</label>
+                    <input type="radio" class="btn-check" name="tax_mode" id="taxPartial" value="PARTIAL">
+                    <label class="btn btn-outline-primary btn-sm fw-bold" for="taxPartial">Partial</label>
+                </div>
+                <div id="taxFullFields" class="row g-3">
+                    {% for code, label in tax_provinces %}
+                    <div class="col-md-3 col-sm-6">
+                        <label class="form-label small fw-semibold text-muted">{{ label }} %</label>
+                        <input type="number" name="tax_{{ code|lower }}" step="0.01" min="0" max="100" class="form-control form-control-sm" placeholder="0.00">
+                    </div>
+                    {% endfor %}
+                </div>
+                <div id="taxPartialFields" class="row g-3" style="display:none;">
+                    <div class="col-md-3 col-sm-6">
+                        <label class="form-label small fw-semibold text-muted">Origin %</label>
+                        <input type="number" name="tax_origin" step="0.01" min="0" max="100" class="form-control form-control-sm" placeholder="0.00">
+                    </div>
+                    <div class="col-md-3 col-sm-6">
+                        <label class="form-label small fw-semibold text-muted">Destination %</label>
+                        <input type="number" name="tax_destination" step="0.01" min="0" max="100" class="form-control form-control-sm" placeholder="0.00">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card border-0 shadow-sm rounded-4 mb-4">
+            <div class="card-header bg-white border-0 pt-3 px-4 d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <div>
                     <h6 class="fw-bold mb-0 text-primary">{{ client.name }}</h6>
                     <p class="text-muted small mb-0">{{ trip_rows|length }} trip(s) found. Untick any you don't want to invoice.</p>
                 </div>
-                <div class="d-flex align-items-center gap-3">
+                <div class="d-flex align-items-center gap-3 flex-wrap">
                     <div class="form-check m-0">
                         <input class="form-check-input" type="checkbox" id="selectAllTrips" checked>
                         <label class="form-check-label small fw-bold" for="selectAllTrips">Select All</label>
                     </div>
                     <span class="small fw-bold text-success" id="selectedSummary"></span>
+                    <div>
+                        <label class="form-label small fw-semibold text-muted mb-0 me-1">Service Recipient</label>
+                        <select name="company" class="form-select form-select-sm searchable-select" style="width:220px;" required>
+                            <option value="">--- Select Company ---</option>
+                            {% for co in companies %}<option value="{{ co.id }}">{{ co.name }}</option>{% endfor %}
+                        </select>
+                        <a href="{% url 'company_add' %}" class="small ms-1" target="_blank">+ Add</a>
+                    </div>
                     <button type="submit" class="btn btn-success btn-sm fw-bold px-3" {% if not trip_rows %}disabled{% endif %}>
                         <i class="bi bi-file-earmark-pdf me-1"></i>Generate Invoice
                     </button>
@@ -135,6 +182,25 @@ document.addEventListener('DOMContentLoaded', function () {
         box.addEventListener('change', sync);
         sync();
     });
+
+    // Tax card: whole details block only when Tax is on; Full vs Partial
+    // swaps which set of rate boxes is shown.
+    var taxEnabled = document.getElementById('taxEnabled');
+    var taxDetails = document.getElementById('taxDetails');
+    var taxFullFields = document.getElementById('taxFullFields');
+    var taxPartialFields = document.getElementById('taxPartialFields');
+    function syncTax() {
+        taxDetails.style.display = taxEnabled.checked ? '' : 'none';
+        var full = document.getElementById('taxFull').checked;
+        taxFullFields.style.display = full ? '' : 'none';
+        taxPartialFields.style.display = full ? 'none' : '';
+    }
+    if (taxEnabled) {
+        taxEnabled.addEventListener('change', syncTax);
+        document.getElementById('taxFull').addEventListener('change', syncTax);
+        document.getElementById('taxPartial').addEventListener('change', syncTax);
+        syncTax();
+    }
 });
 </script>
 {% endblock %}

@@ -4,7 +4,7 @@ from django.utils import timezone
 from django.forms import modelformset_factory
 from .models import (
     Vehicle, VehicleType, Wheeler, VehicleTyre, Staff, Vendor, SupplierType,
-    City, Route, Client, ClientType, Expense, ClientRate, ClientSubCategory, DedicatedRate, DriverSalary,
+    City, Route, Client, ClientType, Company, Expense, ClientRate, ClientSubCategory, DedicatedRate, DriverSalary,
     StaffAttendanceEntry, StaffAccountEntry, FuelProduct, VendorFuelPrice,
 )
 from django.forms import inlineformset_factory
@@ -476,6 +476,28 @@ class ClientForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["client_type"].empty_label = "--- Select Client Type ---"
+
+
+class CompanyForm(forms.ModelForm):
+    class Meta:
+        model = Company
+        fields = "__all__"
+
+        text_fields = ["name", "poc1_name", "poc1_phone", "poc2_name", "poc2_phone", "ntn", "stn"]
+        uppercase_fields = ["name", "poc1_name", "poc2_name", "ntn", "stn"]
+
+        widgets = {
+            field: forms.TextInput(attrs={"class": "form-control text-uppercase"}) for field in text_fields
+        }
+        for field in uppercase_fields:
+            widgets[field].attrs["data-uppercase"] = "1"
+        widgets["name"].attrs["autofocus"] = "autofocus"
+        widgets.update({
+            "poc1_email": forms.EmailInput(attrs={"class": "form-control text-uppercase", "data-uppercase": "1"}),
+            "poc2_email": forms.EmailInput(attrs={"class": "form-control text-uppercase", "data-uppercase": "1"}),
+            "address": forms.Textarea(attrs={"class": "form-control text-uppercase", "rows": 3, "data-uppercase": "1"}),
+            "is_active": forms.CheckboxInput(attrs={"class": "form-check-input"}),
+        })
 
 ################ EXPENSE & RATES ################
 from django import forms

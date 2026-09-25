@@ -380,3 +380,56 @@ class Invoice(models.Model):
     def __str__(self):
         return f"Invoice - Job #{self.job.job_number}"
 
+
+# -----------------------
+# GENERATED INVOICE (Reports > Generate Invoice) - a record of every invoice
+# PDF produced there, so Invoices Status can list them and its status can be
+# tracked. The PDF itself isn't stored - it's rebuilt on demand from the
+# trips/columns/tax settings captured here, which is exactly what produced
+# it originally.
+# -----------------------
+class GeneratedInvoice(models.Model):
+    STATUS_CHOICES = [
+        ("DRAFT", "Draft"),
+        ("SENT", "Sent"),
+        ("PAID", "Paid"),
+        ("CANCELLED", "Cancelled"),
+    ]
+    TAX_MODE_CHOICES = [("FULL", "Full"), ("PARTIAL", "Partial")]
+
+    invoice_no = models.CharField(max_length=20, unique=True, editable=False)
+    client = models.ForeignKey("masters.Client", on_delete=models.PROTECT, related_name="generated_invoices")
+    company = models.ForeignKey("masters.Company", on_delete=models.PROTECT, related_name="generated_invoices")
+    trips = models.ManyToManyField(Trip, related_name="generated_invoices")
+    columns = models.JSONField(default=list)
+
+    tax_enabled = models.BooleanField(default=False)
+    tax_mode = models.CharField(max_length=10, choices=TAX_MODE_CHOICES, blank=True)
+    tax_rates = models.JSONField(default=dict, blank=True)
+
+    subtotal = models.DecimalField(max_digits=14, decimal_places=2, default=0)
+    tax_amount = models.DecimalField(max_digits=14, decimal_places=2, default=0)
+    grand_total = models.DecimalField(max_digits=14, decimal_places=2, default=0)
+
+    status = models.CharField(max_length=12, choices=STATUS_CHOICES, default="DRAFT")
+    created_at = models.DateTimeField(auto_now_add=True)
+    created_by = models.ForeignKey("auth.User", on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+
+    class Meta:
+        ordering = ["-created_at", "-id"]
+
+    def save(self, *args, **kwargs):
+        if not self.invoice_no:
+            # Based on the highest existing number, not the row count, so a
+            # deleted invoice in the middle can never cause a collision.
+            max_num = 0
+            for no in GeneratedInvoice.objects.values_list("invoice_no", flat=True):
+                digits = no.rsplit("-", 1)[-1]
+                if digits.isdigit():
+                    max_num = max(max_num, int(digits))
+            self.invoice_no = f"INV-{max_num + 1:06d}"
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return self.invoice_no
+

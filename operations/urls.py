@@ -22,6 +22,9 @@ urlpatterns = [
     path("reports/mis/pdf/", mis.mis_pdf, name="mis_pdf"),
     path("reports/invoice/", invoice.invoice_select, name="invoice_select"),
     path("reports/invoice/pdf/", invoice.invoice_generate_pdf, name="invoice_generate_pdf"),
+    path("reports/invoice/status/", invoice.invoice_status, name="invoice_status"),
+    path("reports/invoice/status/<int:invoice_id>/update/", invoice.invoice_status_update, name="invoice_status_update"),
+    path("reports/invoice/<int:invoice_id>/download/", invoice.invoice_redownload, name="invoice_redownload"),
 
     # --- JOBS ---
     path("jobs/", views.job_list, name="job_list"),

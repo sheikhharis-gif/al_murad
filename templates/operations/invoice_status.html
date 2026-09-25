@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid py-4">
+
+    <div class="mb-4">
+        <h3 class="fw-bold text-dark mb-1"><i class="bi bi-list-check text-primary me-2"></i>Invoices Status</h3>
+        <p class="text-muted small mb-0">Every invoice generated from Generate Invoice, with its own status you can update as it moves along.</p>
+    </div>
+
+    <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0 small">
+                <thead class="bg-light text-muted text-uppercase">
+                    <tr>
+                        <th class="ps-3">Invoice #</th>
+                        <th>Date</th>
+                        <th>Client</th>
+                        <th>Service Recipient</th>
+                        <th class="text-center">Trips</th>
+                        <th class="text-end">Subtotal</th>
+                        <th class="text-end">Tax</th>
+                        <th class="text-end">Grand Total</th>
+                        <th>Status</th>
+                        <th class="text-end pe-3">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for inv in invoices %}
+                    <tr>
+                        <td class="ps-3 fw-bold">{{ inv.invoice_no }}</td>
+                        <td>{{ inv.created_at|date:"d-M-y" }}</td>
+                        <td>{{ inv.client.name }}</td>
+                        <td>{{ inv.company.name }}</td>
+                        <td class="text-center">{{ inv.trips.count }}</td>
+                        <td class="text-end">{{ inv.subtotal|floatformat:0 }}</td>
+                        <td class="text-end">{{ inv.tax_amount|floatformat:0 }}</td>
+                        <td class="text-end fw-bold">{{ inv.grand_total|floatformat:0 }}</td>
+                        <td>
+                            <form method="post" action="{% url 'invoice_status_update' inv.id %}" class="d-inline">
+                                {% csrf_token %}
+                                <select name="status" class="form-select form-select-sm status-select status-{{ inv.status|lower }}" onchange="this.form.submit()">
+                                    {% for code, label in status_choices %}
+                                    <option value="{{ code }}" {% if inv.status == code %}selected{% endif %}>{{ label }}</option>
+                                    {% endfor %}
+                                </select>
+                            </form>
+                        </td>
+                        <td class="text-end pe-3">
+                            <a href="{% url 'invoice_redownload' inv.id %}" class="btn btn-sm btn-outline-primary fw-bold" title="Download PDF">
+                                <i class="bi bi-download"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="10" class="text-center py-5 text-muted">No invoices generated yet.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<style>
+    .status-select { min-width: 120px; font-weight: 600; }
+    .status-draft { color: #64748b; }
+    .status-sent { color: #2563eb; }
+    .status-paid { color: #16a34a; }
+    .status-cancelled { color: #dc2626; }
+</style>
+{% endblock %}

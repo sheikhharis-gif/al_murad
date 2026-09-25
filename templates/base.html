@@ -222,10 +222,17 @@
                     </ul>
                 </li>
 
-                <li class="nav-item">
-                    <a href="{% url 'invoice_select' %}" class="nav-link {% if request.resolver_match.url_name == 'invoice_select' or request.resolver_match.url_name == 'invoice_generate_pdf' %}active{% endif %}">
+                <li class="nav-item dropdown">
+                    {% with url_name=request.resolver_match.url_name %}
+                    <a href="#" class="nav-link dropdown-toggle {% if url_name == 'invoice_select' or url_name == 'invoice_generate_pdf' or url_name == 'invoice_status' or url_name == 'invoice_status_update' or url_name == 'invoice_redownload' or url_name == 'company_list' or url_name == 'company_add' or url_name == 'company_edit' or url_name == 'company_delete' %}active{% endif %}" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                         <i class="bi bi-receipt"></i> Invoicing
                     </a>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="{% url 'invoice_status' %}"><i class="bi bi-list-check me-2"></i>Invoices Status</a></li>
+                        <li><a class="dropdown-item" href="{% url 'invoice_select' %}"><i class="bi bi-file-earmark-pdf me-2"></i>Generate Invoice</a></li>
+                        <li><a class="dropdown-item" href="{% url 'company_list' %}"><i class="bi bi-building-add me-2"></i>Add Company</a></li>
+                    </ul>
+                    {% endwith %}
                 </li>
                 {% endif %}
             </ul>

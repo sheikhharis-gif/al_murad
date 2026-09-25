@@ -485,6 +485,38 @@ class Client(models.Model):
         return self.name
 
 
+# ================= COMPANY (invoice "Service Recipient") =================
+# A separate billing-entity list from Client - who actually books the
+# freight (Client) isn't always the same legal entity an invoice is
+# addressed to (Service Recipient), so Generate Invoice picks from here.
+class Company(models.Model):
+    name = models.CharField("Company Name", max_length=150)
+    poc1_name = models.CharField("Point of Contact 1", max_length=100, blank=True)
+    poc1_phone = models.CharField("Phone / Mobile Number", max_length=20, blank=True)
+    poc1_email = models.EmailField("Email", blank=True)
+    poc2_name = models.CharField("Point of Contact 2", max_length=100, blank=True)
+    poc2_phone = models.CharField("Phone / Mobile Number", max_length=20, blank=True)
+    poc2_email = models.EmailField("Email", blank=True)
+    ntn = models.CharField("NTN #", max_length=20, blank=True)
+    stn = models.CharField("Tax Reg # (STN)", max_length=30, blank=True)
+    address = models.TextField(blank=True)
+    is_active = models.BooleanField(default=True)
+
+    def save(self, *args, **kwargs):
+        for field in ("name", "poc1_name", "poc1_email", "poc2_name", "poc2_email", "ntn", "stn", "address"):
+            value = getattr(self, field, None)
+            if value:
+                setattr(self, field, value.strip().upper())
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        ordering = ["name"]
+        verbose_name_plural = "Companies"
+
+
 # ================= CLIENT RATE =================
 # Fuel-price-indexed rate revision log, one row per revision. For the first
 # revision of a (client, route) pair, Current Fuel Price/Current Rate are
@@ -700,10 +732,21 @@ class Expense(models.Model):
 
 # ================= CITY =================
 class City(models.Model):
+    PROVINCE_CHOICES = [
+        ("SINDH", "Sindh"),
+        ("PUNJAB", "Punjab"),
+        ("BALOCHISTAN", "Balochistan"),
+        ("KPK", "Khyber Pakhtunkhwa"),
+    ]
+
     name = models.CharField(max_length=100)
     code = models.CharField(max_length=3, unique=True)
     latitude = models.DecimalField(max_digits=9, decimal_places=6)
     longitude = models.DecimalField(max_digits=9, decimal_places=6)
+    # Which of the 4 provincial tax rates a trip through this city falls
+    # under, for Generate Invoice's Full tax mode. Left blank for a city
+    # outside those 4 (e.g. Islamabad) - such trips get no province tax.
+    province = models.CharField(max_length=15, choices=PROVINCE_CHOICES, blank=True)
 
     def save(self, *args, **kwargs):
         # All city entries are stored in CAPITALS.

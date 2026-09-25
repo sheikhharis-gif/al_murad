@@ -39,6 +39,14 @@
                                 <label class="form-label small fw-bold">Code (max 3)</label>
                                 <input name="city_code" class="form-control text-uppercase" style="text-transform:uppercase;" placeholder="ISB" maxlength="3" required>
                             </div>
+                            <div class="col-md-12">
+                                <label class="form-label small fw-bold">Province</label>
+                                <select name="province" class="form-select">
+                                    <option value="">--- Not Set (e.g. Islamabad) ---</option>
+                                    {% for code, label in city_provinces %}<option value="{{ code }}">{{ label }}</option>{% endfor %}
+                                </select>
+                                <div class="form-text small mt-1">Used to work out province-wise tax on Generate Invoice.</div>
+                            </div>
                         </div>
 
                         <div id="searchStatus" class="small mt-2 min-height-20"></div>
@@ -60,6 +68,7 @@
                                 <tr class="text-muted small text-uppercase">
                                     <th>City Name</th>
                                     <th>Code</th>
+                                    <th>Province</th>
                                     <th class="text-end">Actions</th>
                                 </tr>
                             </thead>
@@ -68,6 +77,7 @@
                                 <tr class="city-row" data-name="{{ c.name|lower }}">
                                     <td class="fw-bold text-dark">{{ c.name }}</td>
                                     <td><span class="badge bg-secondary-subtle text-secondary px-3">{{ c.code }}</span></td>
+                                    <td>{{ c.get_province_display|default:"--" }}</td>
                                     <td class="text-end">
                                         <div class="btn-group btn-group-sm shadow-sm rounded-2 overflow-hidden bg-white border">
                                             <button type="button"
@@ -75,6 +85,7 @@
                                                 data-edit-url="{% url 'city_edit' c.id %}"
                                                 data-city-name="{{ c.name }}"
                                                 data-city-code="{{ c.code }}"
+                                                data-city-province="{{ c.province }}"
                                                 title="Edit City">
                                                 <i class="bi bi-pencil-square"></i>
                                             </button>
@@ -89,7 +100,7 @@
                                     </td>
                                 </tr>
                                 {% empty %}
-                                <tr><td colspan="3" class="text-center py-4 text-muted">No cities found.</td></tr>
+                                <tr><td colspan="4" class="text-center py-4 text-muted">No cities found.</td></tr>
                                 {% endfor %}
                             </tbody>
                         </table>
@@ -246,6 +257,13 @@
                         <label class="form-label small fw-bold">Code (max 3)</label>
                         <input type="text" name="city_code" id="editCityCode" class="form-control text-uppercase" style="text-transform:uppercase;" maxlength="3" required>
                     </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold">Province</label>
+                        <select name="province" id="editCityProvince" class="form-select">
+                            <option value="">--- Not Set (e.g. Islamabad) ---</option>
+                            {% for code, label in city_provinces %}<option value="{{ code }}">{{ label }}</option>{% endfor %}
+                        </select>
+                    </div>
                 </div>
                 <div class="modal-footer border-0 pt-0">
                     <button type="button" class="btn btn-light border" data-bs-dismiss="modal">Cancel</button>
@@ -320,6 +338,7 @@
                 document.getElementById('cityEditForm').action = this.dataset.editUrl;
                 document.getElementById('editCityName').value = this.dataset.cityName;
                 document.getElementById('editCityCode').value = this.dataset.cityCode;
+                document.getElementById('editCityProvince').value = this.dataset.cityProvince || '';
                 modal.show();
             });
         });
