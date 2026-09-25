@@ -4,8 +4,8 @@ from django.utils import timezone
 from django.forms import modelformset_factory
 from .models import (
     Vehicle, VehicleType, Wheeler, VehicleTyre, Staff, Vendor, SupplierType,
-    City, Route, Client, ClientType, Company, Expense, ClientRate, ClientSubCategory, DedicatedRate, DriverSalary,
-    StaffAttendanceEntry, StaffAccountEntry, FuelProduct, VendorFuelPrice,
+    City, Route, Client, ClientType, Company, TaxSettings, Expense, ClientRate, ClientSubCategory, DedicatedRate,
+    DriverSalary, StaffAttendanceEntry, StaffAccountEntry, FuelProduct, VendorFuelPrice,
 )
 from django.forms import inlineformset_factory
 from operations.models import Trip
@@ -498,6 +498,17 @@ class CompanyForm(forms.ModelForm):
             "address": forms.Textarea(attrs={"class": "form-control text-uppercase", "rows": 3, "data-uppercase": "1"}),
             "is_active": forms.CheckboxInput(attrs={"class": "form-check-input"}),
         })
+
+
+class TaxSettingsForm(forms.ModelForm):
+    class Meta:
+        model = TaxSettings
+        fields = ["sindh_percent", "punjab_percent", "balochistan_percent", "kpk_percent",
+                  "origin_percent", "destination_percent"]
+        widgets = {
+            field: forms.NumberInput(attrs={"class": "form-control", "step": "0.01", "min": "0", "max": "100"})
+            for field in fields
+        }
 
 ################ EXPENSE & RATES ################
 from django import forms

@@ -79,6 +79,8 @@ urlpatterns = [
     path("companies/add/", views.company_add, name="company_add"),
     path("companies/edit/<int:company_id>/", views.company_edit, name="company_edit"),
     path("companies/delete/<int:company_id>/", views.company_delete, name="company_delete"),
+    # TAX SETTINGS
+    path("tax/", views.tax_settings, name="tax_settings"),
 
     # ================= EXPENSES =================
     path('', views.expense_sheet, name='expense_sheet'),          # /expenses/

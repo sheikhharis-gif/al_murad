@@ -517,6 +517,31 @@ class Company(models.Model):
         verbose_name_plural = "Companies"
 
 
+# ================= TAX SETTINGS (Generate Invoice's Tax card) =================
+# Configured once here instead of typed on every invoice - Generate Invoice
+# just switches Tax On/Off and Full/Partial, and pulls these rates in.
+class TaxSettings(models.Model):
+    sindh_percent = models.DecimalField("Sindh %", max_digits=5, decimal_places=2, default=0)
+    punjab_percent = models.DecimalField("Punjab %", max_digits=5, decimal_places=2, default=0)
+    balochistan_percent = models.DecimalField("Balochistan %", max_digits=5, decimal_places=2, default=0)
+    kpk_percent = models.DecimalField("Khyber Pakhtunkhwa %", max_digits=5, decimal_places=2, default=0)
+    origin_percent = models.DecimalField("Origin %", max_digits=5, decimal_places=2, default=0)
+    destination_percent = models.DecimalField("Destination %", max_digits=5, decimal_places=2, default=0)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name_plural = "Tax Settings"
+
+    @classmethod
+    def current(cls):
+        # Always exactly one row (pk=1) - a settings singleton, not a log.
+        obj, _ = cls.objects.get_or_create(pk=1)
+        return obj
+
+    def __str__(self):
+        return "Tax Settings"
+
+
 # ================= CLIENT RATE =================
 # Fuel-price-indexed rate revision log, one row per revision. For the first
 # revision of a (client, route) pair, Current Fuel Price/Current Rate are

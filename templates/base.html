@@ -213,6 +213,12 @@
                     </a>
                 </li>
 
+                <li class="nav-item">
+                    <a href="{% url 'tax_settings' %}" class="nav-link {% if request.resolver_match.url_name == 'tax_settings' %}active{% endif %}">
+                        <i class="bi bi-percent"></i> Tax
+                    </a>
+                </li>
+
                 <li class="nav-item dropdown">
                     <a href="#" class="nav-link dropdown-toggle {% if request.resolver_match.url_name == 'mis_report' %}active{% endif %}" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                         <i class="bi bi-bar-chart-line-fill"></i> Reports

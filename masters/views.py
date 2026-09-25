@@ -850,8 +850,8 @@ def pso_fuel_price_delete(request, effective_date):
     return redirect("fuel_rates")
 
 from django.shortcuts import render, redirect, get_object_or_404
-from .models import Client, ClientType, ClientRate, Company, DedicatedRate, Expense
-from .forms import ClientForm, ClientTypeForm, ClientRateForm, CompanyForm, DedicatedRateForm, ExpenseForm
+from .models import Client, ClientType, ClientRate, Company, DedicatedRate, Expense, TaxSettings
+from .forms import ClientForm, ClientTypeForm, ClientRateForm, CompanyForm, DedicatedRateForm, ExpenseForm, TaxSettingsForm
 
 # ================= CLIENTS =================
 CLIENT_SORT_FIELDS = {
@@ -931,6 +931,20 @@ def company_delete(request, company_id):
         except ProtectedError:
             messages.error(request, f"Cannot delete '{company.name}' - it's used on an existing invoice.")
     return redirect("company_list")
+
+
+# ================= TAX SETTINGS (Generate Invoice's Tax card) =================
+def tax_settings(request):
+    settings_obj = TaxSettings.current()
+    if request.method == "POST":
+        form = TaxSettingsForm(request.POST, instance=settings_obj)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Tax rates updated.")
+            return redirect("tax_settings")
+    else:
+        form = TaxSettingsForm(instance=settings_obj)
+    return render(request, "tax/tax_settings.html", {"form": form})
 
 
 # ================= CLIENT TYPE (admin-extensible registry) =================

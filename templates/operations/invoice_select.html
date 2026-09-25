@@ -58,7 +58,10 @@
             <div class="card-header bg-white border-0 pt-3 px-4 d-flex justify-content-between align-items-center flex-wrap gap-2">
                 <div>
                     <h6 class="fw-bold mb-0 text-primary">Tax</h6>
-                    <p class="text-muted small mb-0">Off by default. Full taxes each trip's full amount by its origin city's own province; Partial splits every trip 50/50 between Origin and Destination.</p>
+                    <p class="text-muted small mb-0">
+                        Off by default. Full taxes each trip's full amount by its origin city's own province; Partial splits every trip 50/50 between Origin and Destination.
+                        Rates come from <a href="{% url 'tax_settings' %}" target="_blank">Tax</a> - not typed here.
+                    </p>
                 </div>
                 <div class="form-check form-switch m-0">
                     <input class="form-check-input" type="checkbox" role="switch" id="taxEnabled" name="tax_enabled">
@@ -72,23 +75,15 @@
                     <input type="radio" class="btn-check" name="tax_mode" id="taxPartial" value="PARTIAL">
                     <label class="btn btn-outline-primary btn-sm fw-bold" for="taxPartial">Partial</label>
                 </div>
-                <div id="taxFullFields" class="row g-3">
-                    {% for code, label in tax_provinces %}
-                    <div class="col-md-3 col-sm-6">
-                        <label class="form-label small fw-semibold text-muted">{{ label }} %</label>
-                        <input type="number" name="tax_{{ code|lower }}" step="0.01" min="0" max="100" class="form-control form-control-sm" placeholder="0.00">
-                    </div>
-                    {% endfor %}
+                <div id="taxFullFields" class="d-flex flex-wrap gap-4">
+                    <div><span class="text-muted small">Sindh</span> <span class="fw-bold">{{ tax_settings.sindh_percent }}%</span></div>
+                    <div><span class="text-muted small">Punjab</span> <span class="fw-bold">{{ tax_settings.punjab_percent }}%</span></div>
+                    <div><span class="text-muted small">Balochistan</span> <span class="fw-bold">{{ tax_settings.balochistan_percent }}%</span></div>
+                    <div><span class="text-muted small">Khyber Pakhtunkhwa</span> <span class="fw-bold">{{ tax_settings.kpk_percent }}%</span></div>
                 </div>
-                <div id="taxPartialFields" class="row g-3" style="display:none;">
-                    <div class="col-md-3 col-sm-6">
-                        <label class="form-label small fw-semibold text-muted">Origin %</label>
-                        <input type="number" name="tax_origin" step="0.01" min="0" max="100" class="form-control form-control-sm" placeholder="0.00">
-                    </div>
-                    <div class="col-md-3 col-sm-6">
-                        <label class="form-label small fw-semibold text-muted">Destination %</label>
-                        <input type="number" name="tax_destination" step="0.01" min="0" max="100" class="form-control form-control-sm" placeholder="0.00">
-                    </div>
+                <div id="taxPartialFields" class="d-flex flex-wrap gap-4" style="display:none;">
+                    <div><span class="text-muted small">Origin</span> <span class="fw-bold">{{ tax_settings.origin_percent }}%</span></div>
+                    <div><span class="text-muted small">Destination</span> <span class="fw-bold">{{ tax_settings.destination_percent }}%</span></div>
                 </div>
             </div>
         </div>

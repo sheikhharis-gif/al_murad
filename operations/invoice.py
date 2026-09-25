@@ -19,7 +19,7 @@ from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib.units import mm
 from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
-from masters.models import Client, Company
+from masters.models import Client, Company, TaxSettings
 from .models import GeneratedInvoice, Trip
 
 # (key, label, value-from-trip, is a money column that gets totalled)
@@ -100,20 +100,28 @@ def invoice_select(request):
         "columns": columns,
         "default_columns": DEFAULT_COLUMNS,
         "tax_provinces": TAX_PROVINCES,
+        "tax_settings": TaxSettings.current(),
     })
 
 
-def _tax_inputs_from_post(post):
-    """Pull the Tax card's fields out of a POST dict (shared by generate and
-    by whatever later re-reads a saved invoice's own tax_rates)."""
+def _tax_inputs(post):
+    """Generate Invoice's Tax card only switches On/Off and Full/Partial -
+    the actual % rates come from the Tax menu's saved TaxSettings, not typed
+    per invoice. A snapshot of whichever rates applied is still returned, so
+    it can be stored on the GeneratedInvoice and used again on redownload
+    even if the settings are later changed."""
     enabled = post.get("tax_enabled") == "on"
     mode = post.get("tax_mode") if post.get("tax_mode") in ("FULL", "PARTIAL") else ""
     if not enabled or not mode:
         return False, "", {}
+    settings_obj = TaxSettings.current()
     if mode == "FULL":
-        rates = {code: _d(post.get(f"tax_{code.lower()}")) for code, _ in TAX_PROVINCES}
+        rates = {
+            "SINDH": settings_obj.sindh_percent, "PUNJAB": settings_obj.punjab_percent,
+            "BALOCHISTAN": settings_obj.balochistan_percent, "KPK": settings_obj.kpk_percent,
+        }
     else:
-        rates = {"origin": _d(post.get("tax_origin")), "destination": _d(post.get("tax_destination"))}
+        rates = {"origin": settings_obj.origin_percent, "destination": settings_obj.destination_percent}
     return True, mode, {k: str(v) for k, v in rates.items()}
 
 
@@ -182,7 +190,7 @@ def invoice_generate_pdf(request):
     trips = list(Trip.objects.filter(pk__in=trip_ids, client=client).select_related(
         "route__origin", "route__destination", "vehicle", "sub_category", "stopover_city").order_by("trip_date", "id"))
 
-    tax_enabled, tax_mode, tax_rates = _tax_inputs_from_post(request.POST)
+    tax_enabled, tax_mode, tax_rates = _tax_inputs(request.POST)
     subtotal, tax_amount, breakdown = _compute_tax(trips, tax_enabled, tax_mode, tax_rates)
     grand_total = subtotal + tax_amount
 
