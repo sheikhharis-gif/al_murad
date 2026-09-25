@@ -58,7 +58,7 @@
             <div class="card-header bg-white border-0 pt-3 px-4 d-flex justify-content-between align-items-center flex-wrap gap-2">
                 <div>
                     <h6 class="fw-bold mb-0 text-primary">{{ client.name }}</h6>
-                    <p class="text-muted small mb-0">{{ trips|length }} trip(s) found. Untick any you don't want to invoice.</p>
+                    <p class="text-muted small mb-0">{{ trip_rows|length }} trip(s) found. Untick any you don't want to invoice.</p>
                 </div>
                 <div class="d-flex align-items-center gap-3">
                     <div class="form-check m-0">
@@ -66,7 +66,7 @@
                         <label class="form-check-label small fw-bold" for="selectAllTrips">Select All</label>
                     </div>
                     <span class="small fw-bold text-success" id="selectedSummary"></span>
-                    <button type="submit" class="btn btn-success btn-sm fw-bold px-3" {% if not trips %}disabled{% endif %}>
+                    <button type="submit" class="btn btn-success btn-sm fw-bold px-3" {% if not trip_rows %}disabled{% endif %}>
                         <i class="bi bi-file-earmark-pdf me-1"></i>Generate Invoice
                     </button>
                 </div>
@@ -76,29 +76,22 @@
                     <thead class="bg-light">
                         <tr class="text-muted text-uppercase">
                             <th style="width:2%"></th>
-                            <th>Trip #</th><th>Date</th><th>Bilty #</th><th>Route</th>
-                            <th class="text-end">Weight</th><th class="text-end">Trip Charges</th>
-                            <th class="text-end">Stopover</th><th class="text-end">Additional</th>
-                            <th class="text-end">Total Freight</th>
+                            {% for key, label, fn, money in columns %}
+                            <th data-col="{{ key }}" class="{% if money %}text-end{% endif %}">{{ label }}</th>
+                            {% endfor %}
                         </tr>
                     </thead>
                     <tbody>
-                        {% for t in trips %}
+                        {% for row in trip_rows %}
                         <tr>
-                            <td><input type="checkbox" class="form-check-input trip-check" name="trip_ids" value="{{ t.id }}"
-                                       data-total="{{ t.freight }}" checked></td>
-                            <td class="fw-bold">{{ t.trip_no }}</td>
-                            <td>{{ t.trip_date|date:"d-M-y" }}</td>
-                            <td>{{ t.bilty_number|default:"--" }}</td>
-                            <td>{{ t.route.route_code|upper }}</td>
-                            <td class="text-end">{{ t.weight|default:"--" }}</td>
-                            <td class="text-end">{{ t.trip_charges|floatformat:0 }}</td>
-                            <td class="text-end">{{ t.stopover_charges|default:"0" }}</td>
-                            <td class="text-end">{{ t.additional_charges|default:"0" }}</td>
-                            <td class="text-end fw-bold text-success">{{ t.freight|floatformat:0 }}</td>
+                            <td><input type="checkbox" class="form-check-input trip-check" name="trip_ids" value="{{ row.id }}"
+                                       data-total="{{ row.total }}" checked></td>
+                            {% for key, value, money in row.cells %}
+                            <td data-col="{{ key }}" class="{% if money %}text-end{% endif %}">{{ value }}</td>
+                            {% endfor %}
                         </tr>
                         {% empty %}
-                        <tr><td colspan="10" class="text-center py-4 text-muted">No trips found for this client / period.</td></tr>
+                        <tr><td colspan="{{ columns|length|add:1 }}" class="text-center py-4 text-muted">No trips found for this client / period.</td></tr>
                         {% endfor %}
                     </tbody>
                 </table>
@@ -129,6 +122,19 @@ document.addEventListener('DOMContentLoaded', function () {
     }
     checks.forEach(function (c) { c.addEventListener('change', updateSummary); });
     updateSummary();
+
+    // Ticking/unticking an Invoice Columns box adds/removes that column from
+    // the table below live, so what's checked is exactly what's on the PDF.
+    document.querySelectorAll('#invoiceForm input[name="columns"]').forEach(function (box) {
+        function sync() {
+            var show = box.checked;
+            document.querySelectorAll('[data-col="' + box.value + '"]').forEach(function (el) {
+                el.style.display = show ? '' : 'none';
+            });
+        }
+        box.addEventListener('change', sync);
+        sync();
+    });
 });
 </script>
 {% endblock %}

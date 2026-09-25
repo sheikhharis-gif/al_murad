@@ -219,8 +219,13 @@
                     </a>
                     <ul class="dropdown-menu">
                         <li><a class="dropdown-item" href="{% url 'mis_report' %}"><i class="bi bi-file-earmark-spreadsheet me-2"></i>Operational MIS Data</a></li>
-                        <li><a class="dropdown-item" href="{% url 'invoice_select' %}"><i class="bi bi-receipt me-2"></i>Generate Invoice</a></li>
                     </ul>
+                </li>
+
+                <li class="nav-item">
+                    <a href="{% url 'invoice_select' %}" class="nav-link {% if request.resolver_match.url_name == 'invoice_select' or request.resolver_match.url_name == 'invoice_generate_pdf' %}active{% endif %}">
+                        <i class="bi bi-receipt"></i> Invoicing
+                    </a>
                 </li>
                 {% endif %}
             </ul>

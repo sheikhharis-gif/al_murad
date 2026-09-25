@@ -63,15 +63,27 @@ def invoice_select(request):
         if end_date:
             trips = trips.filter(trip_date__lte=end_date)
         trips = list(trips.order_by("trip_date", "id"))
-        for t in trips:
-            t.trip_charges = t.freight - (t.additional_charges or 0) - (t.stopover_charges or 0)
+
+    columns = _client_columns(client) if client else []
+    trip_rows = []
+    for t in trips:
+        cells = []
+        for key, _, fn, money in columns:
+            value = fn(t)
+            if money:
+                cells.append((key, f"{_d(value):,.0f}", True))
+            elif hasattr(value, "strftime"):
+                cells.append((key, value.strftime("%d-%b-%y"), False))
+            else:
+                cells.append((key, str(value) if value not in (None, "") else "--", False))
+        trip_rows.append({"id": t.id, "total": t.freight, "cells": cells})
 
     return render(request, "operations/invoice_select.html", {
         "clients": Client.objects.order_by("name"),
         "client": client,
         "start_date": start_date, "end_date": end_date,
-        "trips": trips,
-        "columns": _client_columns(client) if client else [],
+        "trip_rows": trip_rows,
+        "columns": columns,
         "default_columns": DEFAULT_COLUMNS,
     })
 
