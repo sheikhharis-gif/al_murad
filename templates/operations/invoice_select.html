@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid py-4">
+
+    <div class="mb-4">
+        <h3 class="fw-bold text-dark mb-1"><i class="bi bi-receipt text-primary me-2"></i>Generate Invoice</h3>
+        <p class="text-muted small mb-0">Pick a client and period, tick the trips to bill and the columns the invoice should show, then download the PDF.</p>
+    </div>
+
+    <div class="card border-0 shadow-sm rounded-4 mb-4">
+        <div class="card-body p-4">
+            <form method="get" class="row g-3 align-items-end">
+                <div class="col-md-4 col-sm-6">
+                    <label class="form-label small fw-semibold text-muted">Client</label>
+                    <select name="client" class="form-select form-select-sm rounded-3 searchable-select" required>
+                        <option value="">--- Select Client ---</option>
+                        {% for c in clients %}<option value="{{ c.id }}" {% if client and client.id == c.id %}selected{% endif %}>{{ c.name }}</option>{% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2 col-sm-6">
+                    <label class="form-label small fw-semibold text-muted">Start Date</label>
+                    <input type="date" name="start_date" value="{{ start_date }}" class="form-control form-control-sm rounded-3">
+                </div>
+                <div class="col-md-2 col-sm-6">
+                    <label class="form-label small fw-semibold text-muted">End Date</label>
+                    <input type="date" name="end_date" value="{{ end_date }}" class="form-control form-control-sm rounded-3">
+                </div>
+                <div class="col-md-2 col-sm-6">
+                    <button type="submit" class="btn btn-primary btn-sm fw-bold w-100">Load Trips</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    {% if client %}
+    <form method="post" action="{% url 'invoice_generate_pdf' %}" id="invoiceForm">
+        {% csrf_token %}
+        <input type="hidden" name="client" value="{{ client.id }}">
+
+        <div class="card border-0 shadow-sm rounded-4 mb-4">
+            <div class="card-header bg-white border-0 pt-3 px-4">
+                <h6 class="fw-bold mb-0 text-primary">Invoice Columns</h6>
+                <p class="text-muted small mb-0">Only what's ticked appears on the PDF.</p>
+            </div>
+            <div class="card-body px-4 d-flex flex-wrap gap-3">
+                {% for key, label, fn, money in columns %}
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="columns" value="{{ key }}" id="col-{{ key }}"
+                           {% if key in default_columns %}checked{% endif %}>
+                    <label class="form-check-label small fw-semibold" for="col-{{ key }}">{{ label }}</label>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="card border-0 shadow-sm rounded-4 mb-4">
+            <div class="card-header bg-white border-0 pt-3 px-4 d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <div>
+                    <h6 class="fw-bold mb-0 text-primary">{{ client.name }}</h6>
+                    <p class="text-muted small mb-0">{{ trips|length }} trip(s) found. Untick any you don't want to invoice.</p>
+                </div>
+                <div class="d-flex align-items-center gap-3">
+                    <div class="form-check m-0">
+                        <input class="form-check-input" type="checkbox" id="selectAllTrips" checked>
+                        <label class="form-check-label small fw-bold" for="selectAllTrips">Select All</label>
+                    </div>
+                    <span class="small fw-bold text-success" id="selectedSummary"></span>
+                    <button type="submit" class="btn btn-success btn-sm fw-bold px-3" {% if not trips %}disabled{% endif %}>
+                        <i class="bi bi-file-earmark-pdf me-1"></i>Generate Invoice
+                    </button>
+                </div>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0 small">
+                    <thead class="bg-light">
+                        <tr class="text-muted text-uppercase">
+                            <th style="width:2%"></th>
+                            <th>Trip #</th><th>Date</th><th>Bilty #</th><th>Route</th>
+                            <th class="text-end">Weight</th><th class="text-end">Trip Charges</th>
+                            <th class="text-end">Stopover</th><th class="text-end">Additional</th>
+                            <th class="text-end">Total Freight</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for t in trips %}
+                        <tr>
+                            <td><input type="checkbox" class="form-check-input trip-check" name="trip_ids" value="{{ t.id }}"
+                                       data-total="{{ t.freight }}" checked></td>
+                            <td class="fw-bold">{{ t.trip_no }}</td>
+                            <td>{{ t.trip_date|date:"d-M-y" }}</td>
+                            <td>{{ t.bilty_number|default:"--" }}</td>
+                            <td>{{ t.route.route_code|upper }}</td>
+                            <td class="text-end">{{ t.weight|default:"--" }}</td>
+                            <td class="text-end">{{ t.trip_charges|floatformat:0 }}</td>
+                            <td class="text-end">{{ t.stopover_charges|default:"0" }}</td>
+                            <td class="text-end">{{ t.additional_charges|default:"0" }}</td>
+                            <td class="text-end fw-bold text-success">{{ t.freight|floatformat:0 }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="10" class="text-center py-4 text-muted">No trips found for this client / period.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </form>
+    {% endif %}
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var all = document.getElementById('selectAllTrips');
+    var checks = document.querySelectorAll('.trip-check');
+    var summary = document.getElementById('selectedSummary');
+
+    function updateSummary() {
+        var count = 0, total = 0;
+        checks.forEach(function (c) {
+            if (c.checked) { count += 1; total += parseFloat(c.dataset.total || 0); }
+        });
+        summary.textContent = count + ' selected • Rs ' + total.toLocaleString();
+    }
+    if (all) {
+        all.addEventListener('change', function () {
+            checks.forEach(function (c) { c.checked = all.checked; });
+            updateSummary();
+        });
+    }
+    checks.forEach(function (c) { c.addEventListener('change', updateSummary); });
+    updateSummary();
+});
+</script>
+{% endblock %}

@@ -1,5 +1,5 @@
 from django.urls import path
-from . import mis, views
+from . import invoice, mis, views
 
 urlpatterns = [
     path("", views.dashboard, name="dashboard"),
@@ -20,6 +20,8 @@ urlpatterns = [
     path("reports/mis/", mis.mis_report, name="mis_report"),
     path("reports/mis/excel/", mis.mis_excel, name="mis_excel"),
     path("reports/mis/pdf/", mis.mis_pdf, name="mis_pdf"),
+    path("reports/invoice/", invoice.invoice_select, name="invoice_select"),
+    path("reports/invoice/pdf/", invoice.invoice_generate_pdf, name="invoice_generate_pdf"),
 
     # --- JOBS ---
     path("jobs/", views.job_list, name="job_list"),
