@@ -87,7 +87,31 @@ body {
 
 .main-nav {
     gap: 2px;
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
+    row-gap: 4px;
+}
+
+/* At the desktop (xl) width the navbar stops collapsing into a hamburger
+   menu, but the full link list plus the search box and icons no longer fit
+   on one line once there are this many menu items - Bootstrap's own
+   navbar-expand-xl rules force that row to nowrap, which was squeezing the
+   trip-search box into an unreadable sliver instead of wrapping. Push the
+   whole link list onto its own full-width row below the brand/search row,
+   where individual links can then wrap onto a 2nd/3rd line as needed. */
+@media (min-width: 1200px) {
+    .app-navbar.navbar-expand-xl > .container-fluid {
+        flex-wrap: wrap;
+        row-gap: 0.5rem;
+    }
+
+    #mainNavbar.navbar-collapse {
+        order: 4 !important;
+        flex: 0 0 100%;
+        max-width: 100%;
+        margin-top: 0.35rem;
+        padding-top: 0.5rem;
+        border-top: 1px solid rgba(255, 255, 255, 0.08);
+    }
 }
 
 .main-nav .nav-link {
