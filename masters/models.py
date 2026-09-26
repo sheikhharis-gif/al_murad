@@ -544,6 +544,8 @@ class TaxSettings(models.Model):
     provider_ntn = models.CharField("NTN", max_length=30, default="F596261-2")
     provider_strn = models.CharField("STRN", max_length=30, default="S596261-2")
     invoice_prefix = models.CharField("Invoice # prefix", max_length=15, default="SFS-INV")
+    # Pre-fills Generate Invoice's "Sales Tax No." box (the invoice header's SALES TAX no.).
+    sales_tax_no = models.CharField("Sales Tax No.", max_length=40, blank=True)
     payment_terms_days = models.PositiveSmallIntegerField("Payment Terms (days)", default=30)
     invoice_notes = models.TextField("Default invoice notes", blank=True, default=DEFAULT_INVOICE_NOTES)
     updated_at = models.DateTimeField(auto_now=True)

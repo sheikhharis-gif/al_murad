@@ -88,6 +88,11 @@
                         <label class="form-label small fw-bold">Payment Terms (days)</label>
                         {{ form.payment_terms_days }}{{ form.payment_terms_days.errors }}
                     </div>
+                    <div class="col-md-4">
+                        <label class="form-label small fw-bold">Sales Tax No. (invoice header)</label>
+                        {{ form.sales_tax_no }}{{ form.sales_tax_no.errors }}
+                        <div class="form-text small">Shown as "SALES TAX no." in the top bar of every invoice. Pre-fills Generate Invoice; you can change it there per invoice.</div>
+                    </div>
                     <div class="col-12">
                         <label class="form-label small fw-bold">Default Notes</label>
                         {{ form.invoice_notes }}{{ form.invoice_notes.errors }}

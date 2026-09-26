@@ -506,7 +506,7 @@ class TaxSettingsForm(forms.ModelForm):
         percent_fields = ["sindh_percent", "punjab_percent", "ict_percent", "kpk_percent",
                           "balochistan_percent"]
         fields = percent_fields + ["provider_name", "provider_address", "provider_ntn", "provider_strn",
-                                   "invoice_prefix", "payment_terms_days", "invoice_notes"]
+                                   "invoice_prefix", "payment_terms_days", "invoice_notes", "sales_tax_no"]
         widgets = {
             field: forms.NumberInput(attrs={"class": "form-control", "step": "0.01", "min": "0", "max": "100"})
             for field in percent_fields
@@ -517,6 +517,7 @@ class TaxSettingsForm(forms.ModelForm):
             "provider_ntn": forms.TextInput(attrs={"class": "form-control"}),
             "provider_strn": forms.TextInput(attrs={"class": "form-control"}),
             "invoice_prefix": forms.TextInput(attrs={"class": "form-control"}),
+            "sales_tax_no": forms.TextInput(attrs={"class": "form-control", "maxlength": "40"}),
             "payment_terms_days": forms.NumberInput(attrs={"class": "form-control", "min": "0"}),
             "invoice_notes": forms.Textarea(attrs={"class": "form-control", "rows": 3}),
         })
