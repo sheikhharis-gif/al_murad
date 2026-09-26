@@ -12,12 +12,15 @@ import io
 import re
 from datetime import date, timedelta
 from decimal import Decimal, InvalidOperation
+from urllib.parse import urlencode
 from xml.sax.saxutils import escape
 from zoneinfo import ZoneInfo
 
+from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
@@ -289,7 +292,16 @@ def invoice_generate_pdf(request):
         return redirect("invoice_select")
 
     client = get_object_or_404(Client, pk=request.POST.get("client"))
-    company = get_object_or_404(Company, pk=request.POST.get("company"))
+    company_id = request.POST.get("company") or ""
+    company = Company.objects.filter(pk=company_id).first() if company_id.isdigit() else None
+    trip_ids = request.POST.getlist("trip_ids")
+    problem = ("Please choose a Service Recipient (add one under Invoicing > Add Company if the list is empty)."
+               if not company else "Please tick at least one trip." if not trip_ids else "")
+    if problem:
+        messages.error(request, problem)
+        back = {"client": client.pk, "start_date": request.POST.get("start_date") or "",
+                "end_date": request.POST.get("end_date") or ""}
+        return redirect(f"{reverse('invoice_select')}?{urlencode(back)}")
     by_key = {c[0]: c for c in _client_columns(client)}
     # The columns arrive in the order they were dragged into on the page.
     col_keys = []
@@ -300,7 +312,7 @@ def invoice_generate_pdf(request):
         col_keys = [k for k in DEFAULT_COLUMNS if k in by_key]
     cols = [by_key[k] for k in col_keys]
 
-    trips = list(Trip.objects.filter(pk__in=request.POST.getlist("trip_ids"), client=client)
+    trips = list(Trip.objects.filter(pk__in=trip_ids, client=client)
                  .select_related(*TRIP_RELATED).order_by("trip_date", "id"))
 
     tax_enabled, tax_mode, tax_rates = _tax_inputs(request.POST)

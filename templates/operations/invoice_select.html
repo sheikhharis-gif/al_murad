@@ -127,7 +127,7 @@
                     <span class="small fw-bold text-success" id="selectedSummary"></span>
                     <div>
                         <label class="form-label small fw-semibold text-muted mb-0 me-1">Service Recipient</label>
-                        <select name="company" class="form-select form-select-sm searchable-select" style="width:220px;" required>
+                        <select name="company" class="form-select form-select-sm searchable-select" style="width:220px;">
                             <option value="">--- Select Company ---</option>
                             {% for co in companies %}<option value="{{ co.id }}">{{ co.name }}</option>{% endfor %}
                         </select>
@@ -210,6 +210,30 @@ document.addEventListener('DOMContentLoaded', function () {
         box.addEventListener('change', sync);
         sync();
     });
+
+    // The Service Recipient dropdown is swapped for a search box, so the browser
+    // can't flag it itself (a hidden required field just blocks the submit with
+    // no message) - check it, and the trip ticks, here with a visible warning.
+    var invoiceForm = document.getElementById('invoiceForm');
+    if (invoiceForm) {
+        invoiceForm.addEventListener('submit', function (e) {
+            var company = invoiceForm.querySelector('select[name="company"]');
+            var problem = '';
+            if (!company.value) {
+                problem = company.options.length > 1
+                    ? 'Please choose a Service Recipient (type its name in the box and pick it from the list).'
+                    : 'There is no company yet - add one first under Invoicing > Add Company, then reload this page.';
+            } else if (!invoiceForm.querySelector('.trip-check:checked')) {
+                problem = 'Please tick at least one trip.';
+            }
+            if (problem) {
+                e.preventDefault();
+                alert(problem);
+                var box = company.previousElementSibling && company.previousElementSibling.previousElementSibling;
+                if (!company.value && box && box.tagName === 'INPUT') box.focus();
+            }
+        });
+    }
 
     // Drag a header onto another to move that column there. The Invoice
     // Columns ticks are re-ordered to match, so the order they're submitted
