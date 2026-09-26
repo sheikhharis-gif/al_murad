@@ -524,7 +524,7 @@ class TaxSettings(models.Model):
     sindh_percent = models.DecimalField("Sindh %", max_digits=5, decimal_places=2, default=0)
     punjab_percent = models.DecimalField("Punjab %", max_digits=5, decimal_places=2, default=0)
     ict_percent = models.DecimalField("ICT %", max_digits=5, decimal_places=2, default=0)
-    kpk_percent = models.DecimalField("Khyber Pakhtunkhwa %", max_digits=5, decimal_places=2, default=0)
+    kpk_percent = models.DecimalField("KPK (Khyber Pakhtoon Khuwa) %", max_digits=5, decimal_places=2, default=0)
     balochistan_percent = models.DecimalField("Balochistan %", max_digits=5, decimal_places=2, default=0)
 
     # Service Provider block printed on every Sales Tax Invoice, and its numbering.
@@ -770,8 +770,8 @@ class City(models.Model):
     PROVINCE_CHOICES = [
         ("SINDH", "Sindh"),
         ("PUNJAB", "Punjab"),
-        ("ICT", "Islamabad Capital Territory"),
-        ("KPK", "Khyber Pakhtunkhwa"),
+        ("ICT", "ICT (Islamabad Capital Territory)"),
+        ("KPK", "KPK (Khyber Pakhtoon Khuwa)"),
         ("BALOCHISTAN", "Balochistan"),
     ]
 

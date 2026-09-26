@@ -59,7 +59,7 @@ DEFAULT_COLUMNS = ["trip_no", "trip_date", "bilty_number", "route", "weight",
 # each carries on the invoice, in the order the invoice lists them.
 TAX_PROVINCES = [
     ("SINDH", "Sindh"), ("PUNJAB", "Punjab"), ("ICT", "ICT (Islamabad Capital Territory)"),
-    ("KPK", "KPK (Khyber Pakhtunkhwa)"), ("BALOCHISTAN", "Balochistan"),
+    ("KPK", "KPK (Khyber Pakhtoon Khuwa)"), ("BALOCHISTAN", "Balochistan"),
 ]
 
 BLUE = "1F4E79"
