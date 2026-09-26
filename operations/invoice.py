@@ -235,8 +235,11 @@ def amount_in_words(amount):
 
 
 def _billing_period(start, end):
+    # Kept short so it fits its cell on one line: 01-30 Sep 2026 / 26 Aug - 26 Sep 2026.
     if start.year == end.year and start.month == end.month:
         return f"{start:%d}–{end:%d %b %Y}"
+    if start.year == end.year:
+        return f"{start:%d %b} – {end:%d %b %Y}"
     return f"{start:%d %b %Y} – {end:%d %b %Y}"
 
 
@@ -459,7 +462,7 @@ def _build_pdf(data):
         [Paragraph(x, txt) for x in (f"{data['invoice_date']:%d %b %Y}", e(data["period"]),
                                      f"{data['payment_days']} Days", f"{data['due_date']:%d %b %Y}",
                                      f"<b>{e(data['invoice_no'])}</b>")],
-    ], colWidths=[34 * mm, 34 * mm, 34 * mm, 34 * mm, 44 * mm])
+    ], colWidths=[30 * mm, 46 * mm, 30 * mm, 30 * mm, 44 * mm])
     info.setStyle(TableStyle([
         ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#f3f4f6")), ("BOX", (0, 0), (-1, -1), 0.6, grid),
         ("LINEBELOW", (0, 0), (-1, 0), 0.4, grid), ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
