@@ -24,6 +24,7 @@ from django.urls import reverse
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
+from openpyxl.worksheet.properties import PageSetupProperties
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4, landscape
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
@@ -615,9 +616,10 @@ def _build_xlsx(data):
                       ("I4:J4", data["invoice_no"])):
         put(ws, rng, text, val, align=left, border=Border(bottom=thin))
 
-    put(ws, "A6:D6", "BILL TO / CUSTOMER", head_font, blue_fill, left)
-    put(ws, "E6:J6", "SERVICE PROVIDER", head_font, blue_fill, left)
-    for (c1, c2), p in ((("A", "D"), data["bill_to"]), (("E", "J"), data["provider"])):
+    # Two equal halves (5 columns each) so neither box looks bigger than the other.
+    put(ws, "A6:E6", "BILL TO / CUSTOMER", head_font, blue_fill, left)
+    put(ws, "F6:J6", "SERVICE PROVIDER", head_font, blue_fill, left)
+    for (c1, c2), p in ((("A", "E"), data["bill_to"]), (("F", "J"), data["provider"])):
         put(ws, f"{c1}7:{c2}7", p["name"], Font(name="Calibri", size=14), align=left, border=box)
         put(ws, f"{c1}8:{c2}9", p["address"], Font(name="Calibri", size=8), align=top_left, border=box)
         ids = "   ".join(x for x in (f"NTN: {p['ntn']}" if p["ntn"] else "", f"STRN: {p['strn']}" if p["strn"] else "") if x)
@@ -719,5 +721,15 @@ def _build_xlsx(data):
     td.freeze_panes = td.cell(row=hr + 1, column=1)
 
     out = io.BytesIO()
+    # Print / PDF-from-Excel: fit the width to one page and centre it, so nothing is
+    # cut off on the right and both sides have the same margin.
+    for sheet, orient in ((ws, "portrait"), (td, "landscape")):
+        sheet.sheet_properties.pageSetUpPr = PageSetupProperties(fitToPage=True)
+        sheet.page_setup.orientation = orient
+        sheet.page_setup.paperSize = sheet.PAPERSIZE_A4
+        sheet.page_setup.fitToWidth = 1
+        sheet.page_setup.fitToHeight = 0
+        sheet.print_options.horizontalCentered = True
+        sheet.page_margins.left = sheet.page_margins.right = 0.4
     wb.save(out)
     return out.getvalue()
