@@ -55,7 +55,7 @@ COLUMNS = [
     ("total_freight", "Total Freight", lambda t: t.freight, True),
     ("remarks", "Remarks", lambda t: t.remarks, False),
 ]
-DEFAULT_COLUMNS = ["trip_no", "trip_date", "bilty_number", "route", "weight",
+DEFAULT_COLUMNS = ["trip_no", "trip_date", "bilty_number", "vehicle", "vehicle_type", "route", "weight",
                     "trip_charges", "additional_charges", "total_freight"]
 
 # Full tax mode's jurisdictions (same keys as City.province) and the label
