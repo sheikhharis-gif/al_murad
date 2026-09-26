@@ -5,7 +5,7 @@
 
     <div class="mb-4">
         <h3 class="fw-bold text-dark mb-1"><i class="bi bi-receipt text-primary me-2"></i>Generate Invoice</h3>
-        <p class="text-muted small mb-0">Pick a client and period, tick the trips to bill and the columns the invoice should show, then download the PDF.</p>
+        <p class="text-muted small mb-0">Pick a client and period, tick the trips to bill and the Trip Details columns (drag headers to reorder), then download the Sales Tax Invoice as PDF or Excel.</p>
     </div>
 
     <div class="card border-0 shadow-sm rounded-4 mb-4">
@@ -37,15 +37,17 @@
     <form method="post" action="{% url 'invoice_generate_pdf' %}" id="invoiceForm">
         {% csrf_token %}
         <input type="hidden" name="client" value="{{ client.id }}">
+        <input type="hidden" name="start_date" value="{{ start_date }}">
+        <input type="hidden" name="end_date" value="{{ end_date }}">
 
         <div class="card border-0 shadow-sm rounded-4 mb-4">
             <div class="card-header bg-white border-0 pt-3 px-4">
                 <h6 class="fw-bold mb-0 text-primary">Invoice Columns</h6>
-                <p class="text-muted small mb-0">Only what's ticked appears on the PDF.</p>
+                <p class="text-muted small mb-0">Only what's ticked appears on the Trip Details page. Drag a column header in the table below to change the order.</p>
             </div>
-            <div class="card-body px-4 d-flex flex-wrap gap-3">
+            <div class="card-body px-4 d-flex flex-wrap gap-3" id="columnChecks">
                 {% for key, label, fn, money in columns %}
-                <div class="form-check">
+                <div class="form-check col-check" data-key="{{ key }}">
                     <input class="form-check-input" type="checkbox" name="columns" value="{{ key }}" id="col-{{ key }}"
                            {% if key in default_columns %}checked{% endif %}>
                     <label class="form-check-label small fw-semibold" for="col-{{ key }}">{{ label }}</label>
@@ -60,7 +62,7 @@
                     <h6 class="fw-bold mb-0 text-primary">Tax</h6>
                     <p class="text-muted small mb-0">
                         Off by default. Full taxes each trip's full amount by its origin city's own province; Partial splits every trip 50/50 between Origin and Destination.
-                        Rates come from <a href="{% url 'tax_settings' %}" target="_blank">Tax</a> - not typed here.
+                        The % boxes start from the <a href="{% url 'tax_settings' %}" target="_blank">Tax</a> menu - type over them to change this invoice only.
                     </p>
                 </div>
                 <div class="form-check form-switch m-0">
@@ -75,15 +77,37 @@
                     <input type="radio" class="btn-check" name="tax_mode" id="taxPartial" value="PARTIAL">
                     <label class="btn btn-outline-primary btn-sm fw-bold" for="taxPartial">Partial</label>
                 </div>
-                <div id="taxFullFields" class="d-flex flex-wrap gap-4">
-                    <div><span class="text-muted small">Sindh</span> <span class="fw-bold">{{ tax_settings.sindh_percent }}%</span></div>
-                    <div><span class="text-muted small">Punjab</span> <span class="fw-bold">{{ tax_settings.punjab_percent }}%</span></div>
-                    <div><span class="text-muted small">Balochistan</span> <span class="fw-bold">{{ tax_settings.balochistan_percent }}%</span></div>
-                    <div><span class="text-muted small">Khyber Pakhtunkhwa</span> <span class="fw-bold">{{ tax_settings.kpk_percent }}%</span></div>
+                <div id="taxFullFields" class="row g-3">
+                    <div class="col-lg col-md-4 col-sm-6">
+                        <label class="form-label small fw-semibold text-muted">Sindh %</label>
+                        <input type="number" name="tax_sindh" step="0.01" min="0" max="100" class="form-control form-control-sm" value="{{ tax_settings.sindh_percent }}">
+                    </div>
+                    <div class="col-lg col-md-4 col-sm-6">
+                        <label class="form-label small fw-semibold text-muted">Punjab %</label>
+                        <input type="number" name="tax_punjab" step="0.01" min="0" max="100" class="form-control form-control-sm" value="{{ tax_settings.punjab_percent }}">
+                    </div>
+                    <div class="col-lg col-md-4 col-sm-6">
+                        <label class="form-label small fw-semibold text-muted">ICT (Islamabad) %</label>
+                        <input type="number" name="tax_ict" step="0.01" min="0" max="100" class="form-control form-control-sm" value="{{ tax_settings.ict_percent }}">
+                    </div>
+                    <div class="col-lg col-md-4 col-sm-6">
+                        <label class="form-label small fw-semibold text-muted">KPK %</label>
+                        <input type="number" name="tax_kpk" step="0.01" min="0" max="100" class="form-control form-control-sm" value="{{ tax_settings.kpk_percent }}">
+                    </div>
+                    <div class="col-lg col-md-4 col-sm-6">
+                        <label class="form-label small fw-semibold text-muted">Balochistan %</label>
+                        <input type="number" name="tax_balochistan" step="0.01" min="0" max="100" class="form-control form-control-sm" value="{{ tax_settings.balochistan_percent }}">
+                    </div>
                 </div>
-                <div id="taxPartialFields" class="d-flex flex-wrap gap-4" style="display:none;">
-                    <div><span class="text-muted small">Origin</span> <span class="fw-bold">{{ tax_settings.origin_percent }}%</span></div>
-                    <div><span class="text-muted small">Destination</span> <span class="fw-bold">{{ tax_settings.destination_percent }}%</span></div>
+                <div id="taxPartialFields" class="row g-3" style="display:none;">
+                    <div class="col-md-3 col-sm-6">
+                        <label class="form-label small fw-semibold text-muted">Origin %</label>
+                        <input type="number" name="tax_origin" step="0.01" min="0" max="100" class="form-control form-control-sm" value="{{ tax_settings.origin_percent }}">
+                    </div>
+                    <div class="col-md-3 col-sm-6">
+                        <label class="form-label small fw-semibold text-muted">Destination %</label>
+                        <input type="number" name="tax_destination" step="0.01" min="0" max="100" class="form-control form-control-sm" value="{{ tax_settings.destination_percent }}">
+                    </div>
                 </div>
             </div>
         </div>
@@ -108,8 +132,16 @@
                         </select>
                         <a href="{% url 'company_add' %}" class="small ms-1" target="_blank">+ Add</a>
                     </div>
-                    <button type="submit" class="btn btn-success btn-sm fw-bold px-3" {% if not trip_rows %}disabled{% endif %}>
-                        <i class="bi bi-file-earmark-pdf me-1"></i>Generate Invoice
+                    <div>
+                        <label class="form-label small fw-semibold text-muted mb-0 me-1">Payment Terms (days)</label>
+                        <input type="number" name="payment_days" min="0" max="365" value="{{ tax_settings.payment_terms_days }}"
+                               class="form-control form-control-sm d-inline-block" style="width:80px;">
+                    </div>
+                    <button type="submit" name="format" value="pdf" class="btn btn-success btn-sm fw-bold px-3" {% if not trip_rows %}disabled{% endif %}>
+                        <i class="bi bi-file-earmark-pdf me-1"></i>Generate PDF
+                    </button>
+                    <button type="submit" name="format" value="xlsx" class="btn btn-outline-success btn-sm fw-bold px-3" {% if not trip_rows %}disabled{% endif %}>
+                        <i class="bi bi-file-earmark-excel me-1"></i>Download Excel
                     </button>
                 </div>
             </div>
@@ -119,7 +151,7 @@
                         <tr class="text-muted text-uppercase">
                             <th style="width:2%"></th>
                             {% for key, label, fn, money in columns %}
-                            <th data-col="{{ key }}" class="{% if money %}text-end{% endif %}">{{ label }}</th>
+                            <th data-col="{{ key }}" class="col-drag {% if money %}text-end{% endif %}" draggable="true" title="Drag to reorder">{{ label }}</th>
                             {% endfor %}
                         </tr>
                     </thead>
@@ -177,6 +209,53 @@ document.addEventListener('DOMContentLoaded', function () {
         box.addEventListener('change', sync);
         sync();
     });
+
+    // Drag a header onto another to move that column there. The Invoice
+    // Columns ticks are re-ordered to match, so the order they're submitted
+    // in (and therefore the order of the PDF / Excel) is the order on screen.
+    var headRow = document.querySelector('#invoiceForm thead tr');
+    if (headRow) {
+        var dragKey = null;
+        function placeNode(node, ref, before) { ref.parentNode.insertBefore(node, before ? ref : ref.nextSibling); }
+        function moveColumn(fromKey, toKey) {
+            var ths = Array.prototype.slice.call(headRow.querySelectorAll('th[data-col]'));
+            var fromIdx = ths.findIndex(function (t) { return t.dataset.col === fromKey; });
+            var toIdx = ths.findIndex(function (t) { return t.dataset.col === toKey; });
+            if (fromIdx < 0 || toIdx < 0) return;
+            var before = fromIdx > toIdx;
+            placeNode(ths[fromIdx], ths[toIdx], before);
+            document.querySelectorAll('#invoiceForm tbody tr').forEach(function (tr) {
+                var f = tr.querySelector('td[data-col="' + fromKey + '"]');
+                var t = tr.querySelector('td[data-col="' + toKey + '"]');
+                if (f && t) placeNode(f, t, before);
+            });
+            var chips = document.getElementById('columnChecks');
+            headRow.querySelectorAll('th[data-col]').forEach(function (th) {
+                var chip = chips.querySelector('.col-check[data-key="' + th.dataset.col + '"]');
+                if (chip) chips.appendChild(chip);
+            });
+        }
+        headRow.querySelectorAll('th[data-col]').forEach(function (th) {
+            th.style.cursor = 'grab';
+            th.addEventListener('dragstart', function (e) {
+                dragKey = th.dataset.col;
+                e.dataTransfer.effectAllowed = 'move';
+                e.dataTransfer.setData('text/plain', dragKey);
+                th.style.opacity = '0.4';
+            });
+            th.addEventListener('dragend', function () {
+                th.style.opacity = '';
+                headRow.querySelectorAll('th').forEach(function (x) { x.style.boxShadow = ''; });
+            });
+            th.addEventListener('dragover', function (e) { e.preventDefault(); th.style.boxShadow = 'inset 0 -3px 0 #2563eb'; });
+            th.addEventListener('dragleave', function () { th.style.boxShadow = ''; });
+            th.addEventListener('drop', function (e) {
+                e.preventDefault();
+                th.style.boxShadow = '';
+                if (dragKey && dragKey !== th.dataset.col) moveColumn(dragKey, th.dataset.col);
+            });
+        });
+    }
 
     // Tax card: whole details block only when Tax is on; Full vs Partial
     // swaps which set of rate boxes is shown.

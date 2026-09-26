@@ -47,8 +47,11 @@
                             </form>
                         </td>
                         <td class="text-end pe-3">
-                            <a href="{% url 'invoice_redownload' inv.id %}" class="btn btn-sm btn-outline-primary fw-bold" title="Download PDF">
-                                <i class="bi bi-download"></i>
+                            <a href="{% url 'invoice_redownload' inv.id %}?format=pdf" class="btn btn-sm btn-outline-danger fw-bold" title="Download PDF">
+                                <i class="bi bi-file-earmark-pdf"></i> PDF
+                            </a>
+                            <a href="{% url 'invoice_redownload' inv.id %}?format=xlsx" class="btn btn-sm btn-outline-success fw-bold" title="Download Excel">
+                                <i class="bi bi-file-earmark-excel"></i> Excel
                             </a>
                         </td>
                     </tr>

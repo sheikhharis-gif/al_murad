@@ -523,10 +523,22 @@ class Company(models.Model):
 class TaxSettings(models.Model):
     sindh_percent = models.DecimalField("Sindh %", max_digits=5, decimal_places=2, default=0)
     punjab_percent = models.DecimalField("Punjab %", max_digits=5, decimal_places=2, default=0)
-    balochistan_percent = models.DecimalField("Balochistan %", max_digits=5, decimal_places=2, default=0)
+    ict_percent = models.DecimalField("ICT %", max_digits=5, decimal_places=2, default=0)
     kpk_percent = models.DecimalField("Khyber Pakhtunkhwa %", max_digits=5, decimal_places=2, default=0)
+    balochistan_percent = models.DecimalField("Balochistan %", max_digits=5, decimal_places=2, default=0)
     origin_percent = models.DecimalField("Origin %", max_digits=5, decimal_places=2, default=0)
     destination_percent = models.DecimalField("Destination %", max_digits=5, decimal_places=2, default=0)
+
+    # Service Provider block printed on every Sales Tax Invoice, and its numbering.
+    provider_name = models.CharField("Service Provider Name", max_length=150, default="SWIFT FREIGHT SOLUTIONS")
+    provider_address = models.TextField(
+        "Service Provider Address",
+        default="PLOT SURVEY # 334, NEAR AMAN TECH BUILDING, OPPOSITE TO CBM COLLEGE, "
+                "KORANGI CREEK ROAD, KARACHI, SINDH, PAKISTAN")
+    provider_ntn = models.CharField("NTN", max_length=30, default="F596261-2")
+    provider_strn = models.CharField("STRN", max_length=30, default="S596261-2")
+    invoice_prefix = models.CharField("Invoice # prefix", max_length=15, default="SFS-INV")
+    payment_terms_days = models.PositiveSmallIntegerField("Payment Terms (days)", default=30)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
@@ -760,17 +772,17 @@ class City(models.Model):
     PROVINCE_CHOICES = [
         ("SINDH", "Sindh"),
         ("PUNJAB", "Punjab"),
-        ("BALOCHISTAN", "Balochistan"),
+        ("ICT", "Islamabad Capital Territory"),
         ("KPK", "Khyber Pakhtunkhwa"),
+        ("BALOCHISTAN", "Balochistan"),
     ]
 
     name = models.CharField(max_length=100)
     code = models.CharField(max_length=3, unique=True)
     latitude = models.DecimalField(max_digits=9, decimal_places=6)
     longitude = models.DecimalField(max_digits=9, decimal_places=6)
-    # Which of the 4 provincial tax rates a trip through this city falls
-    # under, for Generate Invoice's Full tax mode. Left blank for a city
-    # outside those 4 (e.g. Islamabad) - such trips get no province tax.
+    # Which of the 5 tax jurisdictions a trip starting in this city falls
+    # under, for Generate Invoice's Full tax mode. Left blank = no tax.
     province = models.CharField(max_length=15, choices=PROVINCE_CHOICES, blank=True)
 
     def save(self, *args, **kwargs):

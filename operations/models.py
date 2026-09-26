@@ -397,11 +397,14 @@ class GeneratedInvoice(models.Model):
     ]
     TAX_MODE_CHOICES = [("FULL", "Full"), ("PARTIAL", "Partial")]
 
-    invoice_no = models.CharField(max_length=20, unique=True, editable=False)
+    invoice_no = models.CharField(max_length=30, unique=True, editable=False)
     client = models.ForeignKey("masters.Client", on_delete=models.PROTECT, related_name="generated_invoices")
     company = models.ForeignKey("masters.Company", on_delete=models.PROTECT, related_name="generated_invoices")
     trips = models.ManyToManyField(Trip, related_name="generated_invoices")
     columns = models.JSONField(default=list)
+    period_start = models.DateField(null=True, blank=True)
+    period_end = models.DateField(null=True, blank=True)
+    payment_days = models.PositiveSmallIntegerField(default=30)
 
     tax_enabled = models.BooleanField(default=False)
     tax_mode = models.CharField(max_length=10, choices=TAX_MODE_CHOICES, blank=True)
@@ -420,14 +423,19 @@ class GeneratedInvoice(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.invoice_no:
-            # Based on the highest existing number, not the row count, so a
-            # deleted invoice in the middle can never cause a collision.
+            # e.g. SFS-INV-2026-09-001 - the running number restarts each
+            # month. Based on the highest existing number, not the row count,
+            # so a deleted invoice in the middle can never cause a collision.
+            from zoneinfo import ZoneInfo
+            from masters.models import TaxSettings
+            today = timezone.now().astimezone(ZoneInfo("Asia/Karachi"))
+            stem = f"{TaxSettings.current().invoice_prefix}-{today:%Y-%m}-"
             max_num = 0
-            for no in GeneratedInvoice.objects.values_list("invoice_no", flat=True):
-                digits = no.rsplit("-", 1)[-1]
-                if digits.isdigit():
-                    max_num = max(max_num, int(digits))
-            self.invoice_no = f"INV-{max_num + 1:06d}"
+            for no in GeneratedInvoice.objects.filter(invoice_no__startswith=stem).values_list("invoice_no", flat=True):
+                tail = no[len(stem):]
+                if tail.isdigit():
+                    max_num = max(max_num, int(tail))
+            self.invoice_no = f"{stem}{max_num + 1:03d}"
         super().save(*args, **kwargs)
 
     def __str__(self):

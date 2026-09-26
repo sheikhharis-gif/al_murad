@@ -42,7 +42,7 @@
                             <div class="col-md-12">
                                 <label class="form-label small fw-bold">Province</label>
                                 <select name="province" class="form-select">
-                                    <option value="">--- Not Set (e.g. Islamabad) ---</option>
+                                    <option value="">--- Not Set ---</option>
                                     {% for code, label in city_provinces %}<option value="{{ code }}">{{ label }}</option>{% endfor %}
                                 </select>
                                 <div class="form-text small mt-1">Used to work out province-wise tax on Generate Invoice.</div>
@@ -260,7 +260,7 @@
                     <div class="mb-3">
                         <label class="form-label small fw-bold">Province</label>
                         <select name="province" id="editCityProvince" class="form-select">
-                            <option value="">--- Not Set (e.g. Islamabad) ---</option>
+                            <option value="">--- Not Set ---</option>
                             {% for code, label in city_provinces %}<option value="{{ code }}">{{ label }}</option>{% endfor %}
                         </select>
                     </div>

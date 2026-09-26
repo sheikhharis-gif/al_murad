@@ -5,7 +5,7 @@
 
     <div class="mb-4">
         <h3 class="fw-bold text-dark mb-1"><i class="bi bi-percent text-primary me-2"></i>Tax</h3>
-        <p class="text-muted small mb-0">Set these once - Generate Invoice's Tax card just switches Full / Partial and On / Off, then pulls the rates from here.</p>
+        <p class="text-muted small mb-0">Set these once - Generate Invoice's Tax card starts from these rates (you can still type over them on a single invoice), and prints the Service Provider below on every invoice.</p>
     </div>
 
     <form method="post" novalidate>
@@ -35,12 +35,16 @@
                                 {{ form.punjab_percent }}{{ form.punjab_percent.errors }}
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label small fw-bold">Balochistan %</label>
-                                {{ form.balochistan_percent }}{{ form.balochistan_percent.errors }}
+                                <label class="form-label small fw-bold">ICT (Islamabad Capital Territory) %</label>
+                                {{ form.ict_percent }}{{ form.ict_percent.errors }}
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label small fw-bold">Khyber Pakhtunkhwa %</label>
+                                <label class="form-label small fw-bold">KPK (Khyber Pakhtunkhwa) %</label>
                                 {{ form.kpk_percent }}{{ form.kpk_percent.errors }}
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small fw-bold">Balochistan %</label>
+                                {{ form.balochistan_percent }}{{ form.balochistan_percent.errors }}
                             </div>
                         </div>
                     </div>
@@ -64,6 +68,41 @@
                                 {{ form.destination_percent }}{{ form.destination_percent.errors }}
                             </div>
                         </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card border-0 shadow-sm rounded-4 mt-4">
+            <div class="card-header bg-white border-0 pt-4 px-4">
+                <h5 class="fw-bold mb-0 text-dark">Service Provider &amp; Numbering</h5>
+                <p class="text-muted small mb-0">Printed on every Sales Tax Invoice (top right block, and the Invoice # prefix, e.g. SFS-INV-2026-09-001).</p>
+            </div>
+            <div class="card-body px-4">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label small fw-bold">Service Provider Name</label>
+                        {{ form.provider_name }}{{ form.provider_name.errors }}
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small fw-bold">NTN</label>
+                        {{ form.provider_ntn }}{{ form.provider_ntn.errors }}
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small fw-bold">STRN</label>
+                        {{ form.provider_strn }}{{ form.provider_strn.errors }}
+                    </div>
+                    <div class="col-md-8">
+                        <label class="form-label small fw-bold">Address</label>
+                        {{ form.provider_address }}{{ form.provider_address.errors }}
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label small fw-bold">Invoice # prefix</label>
+                        {{ form.invoice_prefix }}{{ form.invoice_prefix.errors }}
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label small fw-bold">Payment Terms (days)</label>
+                        {{ form.payment_terms_days }}{{ form.payment_terms_days.errors }}
                     </div>
                 </div>
             </div>
