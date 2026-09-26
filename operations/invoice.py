@@ -8,12 +8,10 @@ generated is logged as a GeneratedInvoice (client, company, trips, columns in
 order, tax settings, totals) so Invoices Status can list them, track a status
 on each, and rebuild the same invoice again on demand - the file itself is
 never stored."""
-import io
 import re
 from datetime import date, timedelta
 from decimal import Decimal, InvalidOperation
 from urllib.parse import urlencode
-from xml.sax.saxutils import escape
 from zoneinfo import ZoneInfo
 
 from django.contrib import messages
@@ -21,19 +19,9 @@ from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
-from openpyxl import Workbook
-from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
-from openpyxl.utils import get_column_letter
-from openpyxl.worksheet.properties import PageSetupProperties
-from reportlab.lib import colors
-from reportlab.lib.pagesizes import A4, landscape
-from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
-from reportlab.lib.units import mm
-from reportlab.platypus import (
-    BaseDocTemplate, Frame, NextPageTemplate, PageBreak, PageTemplate, Paragraph, Spacer, Table, TableStyle,
-)
 
 from masters.models import DEFAULT_INVOICE_NOTES, Client, Company, TaxSettings
+from . import invoice_pdf, invoice_xlsx
 from .models import GeneratedInvoice, Trip
 
 TRIP_RELATED = ("route__origin", "route__destination", "vehicle__vehicle_type", "vehicle_type",
@@ -276,7 +264,7 @@ def _invoice_data(invoice, trips, cols):
         "provider": {"name": cfg.provider_name, "address": cfg.provider_address,
                      "ntn": cfg.provider_ntn, "strn": cfg.provider_strn},
         "in_words": amount_in_words(subtotal + tax_amount),
-        "notes": [re.sub(r"^\d+[.)]\s*", "", line.strip())
+        "notes": [re.sub(r"^(\d+[.)]|[•*-])\s*", "", line.strip())
                   for line in (invoice.notes.strip() or DEFAULT_INVOICE_NOTES).splitlines() if line.strip()],
         "subtotal": subtotal, "tax_enabled": invoice.tax_enabled, "tax_mode": invoice.tax_mode,
         "tax_amount": tax_amount, "breakdown": breakdown, "grand_total": subtotal + tax_amount,
@@ -286,7 +274,7 @@ def _invoice_data(invoice, trips, cols):
 
 
 def _safe_filename(text):
-    return re.sub(r"[^A-Za-z0-9 ._()#-]", "", text).strip(" .") or "Invoice"
+    return re.sub(r"\s+", " ", re.sub(r"[^A-Za-z0-9 ._()#-]", "", text)).strip(" .") or "Invoice"
 
 
 def _respond(invoice, trips, cols, fmt):
@@ -294,11 +282,11 @@ def _respond(invoice, trips, cols, fmt):
     name = _safe_filename(f"Invoice {invoice.invoice_no} - {invoice.company.name}")
     if fmt == "xlsx":
         response = HttpResponse(
-            _build_xlsx(data),
+            invoice_xlsx.build(data),
             content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
         response["Content-Disposition"] = f'attachment; filename="{name}.xlsx"'
     else:
-        response = HttpResponse(_build_pdf(data), content_type="application/pdf")
+        response = HttpResponse(invoice_pdf.build(data), content_type="application/pdf")
         response["Content-Disposition"] = f'attachment; filename="{name}.pdf"'
     return response
 
@@ -398,338 +386,3 @@ def _cell_text(value, money):
     if isinstance(value, Decimal):
         return f"{value:.2f}"
     return str(value) if value not in (None, "") else ""
-
-
-# ----------------------------------------------------------------------- PDF
-def _build_pdf(data):
-    buffer = io.BytesIO()
-    doc = BaseDocTemplate(buffer, pagesize=A4, title=f"Invoice {data['invoice_no']}")
-    portrait = (A4[0] - 30 * mm, A4[1] - 30 * mm)
-    land = landscape(A4)
-    page1_w = portrait[0]
-    page2_w = land[0] - 20 * mm
-
-    def footer(canvas, doc_):
-        # Provider + invoice number on the left, page number on the right.
-        canvas.saveState()
-        canvas.setFont("Helvetica", 7.5)
-        canvas.setFillColor(colors.HexColor("#6b7280"))
-        width = canvas._pagesize[0]
-        canvas.drawString(12 * mm, 5 * mm, f"{data['provider']['name']}  |  Invoice {data['invoice_no']}")
-        canvas.drawRightString(width - 12 * mm, 5 * mm, f"Page {doc_.page}")
-        canvas.restoreState()
-
-    doc.addPageTemplates([
-        PageTemplate(id="P", pagesize=A4, onPage=footer, frames=[Frame(15 * mm, 15 * mm, *portrait, id="p")]),
-        PageTemplate(id="L", pagesize=land, onPage=footer,
-                     frames=[Frame(10 * mm, 10 * mm, page2_w, land[1] - 20 * mm, id="l")]),
-    ])
-
-    base = getSampleStyleSheet()["Normal"]
-    txt = ParagraphStyle("txt", parent=base, fontSize=8.5, leading=11)
-    small = ParagraphStyle("small", parent=base, fontSize=7.5, leading=9)
-    white = ParagraphStyle("white", parent=base, fontName="Helvetica-Bold", fontSize=9, textColor=colors.white)
-    white_r = ParagraphStyle("white_r", parent=white, alignment=2)
-    white_c = ParagraphStyle("white_c", parent=white, fontSize=7.5, leading=9, alignment=1)
-    title = ParagraphStyle("title", parent=white, fontSize=16, leading=20)
-    label = ParagraphStyle("label", parent=base, fontName="Helvetica-Bold", fontSize=8.5)
-    blue = colors.HexColor("#" + BLUE)
-    grid = colors.HexColor("#9ca3af")
-    e = escape
-
-    def bar(left, right, width):
-        # Every block on a page is exactly the frame's width, so the title bar,
-        # the info rows and the tables line up edge to edge.
-        t = Table([[Paragraph(left, title), Paragraph(right, white_r)]], colWidths=[width - 60 * mm, 60 * mm],
-                  rowHeights=[12 * mm])
-        t.setStyle(TableStyle([("BACKGROUND", (0, 0), (-1, -1), blue), ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-                               ("LEFTPADDING", (0, 0), (0, 0), 8), ("RIGHTPADDING", (1, 0), (1, 0), 8)]))
-        return t
-
-    def party(p):
-        lines = [f"<font size=13>{e(p['name'])}</font>"]
-        if p["address"]:
-            lines.append(f"<font size=7.5>{e(p['address'])}</font>")
-        ids = "  ".join(x for x in (f"NTN: {e(p['ntn'])}" if p["ntn"] else "",
-                                    f"STRN: {e(p['strn'])}" if p["strn"] else "") if x)
-        if ids:
-            lines.append(f"<i><font size=7.5>{ids}</font></i>")
-        return Paragraph("<br/>".join(lines), txt)
-
-    els = [bar("SALES TAX INVOICE", f"SALES TAX no. {e(data['sales_tax_no'])}".strip(), page1_w), Spacer(1, 4 * mm)]
-
-    info = Table([
-        [Paragraph(x, label) for x in ("Invoice Date", "Billing Period", "Payment Terms", "Due Date", "Invoice #")],
-        [Paragraph(x, txt) for x in (f"{data['invoice_date']:%d %b %Y}", e(data["period"]),
-                                     f"{data['payment_days']} Days", f"{data['due_date']:%d %b %Y}",
-                                     f"<b>{e(data['invoice_no'])}</b>")],
-    ], colWidths=[30 * mm, 46 * mm, 30 * mm, 30 * mm, 44 * mm])
-    info.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#f3f4f6")), ("BOX", (0, 0), (-1, -1), 0.6, grid),
-        ("LINEBELOW", (0, 0), (-1, 0), 0.4, grid), ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-        ("TOPPADDING", (0, 0), (-1, -1), 5), ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
-    ]))
-    els += [info, Spacer(1, 5 * mm)]
-
-    parties = Table([
-        [Paragraph("BILL TO / CUSTOMER", white), Paragraph("SERVICE PROVIDER", white)],
-        [party(data["bill_to"]), party(data["provider"])],
-    ], colWidths=[90 * mm, 90 * mm], rowHeights=[None, 32 * mm])
-    parties.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, 0), blue), ("BOX", (0, 1), (-1, 1), 0.6, grid),
-        ("LINEAFTER", (0, 1), (0, 1), 0.6, grid), ("VALIGN", (0, 0), (-1, -1), "TOP"),
-    ]))
-    els += [parties, Spacer(1, 5 * mm)]
-
-    desc = Table([
-        [Paragraph("DESCRIPTION OF SERVICES", white), Paragraph("AMOUNT (PKR)", white_r)],
-        [Paragraph("Transportation Services", txt), Paragraph(f"{data['subtotal']:,.0f}", ParagraphStyle("r", parent=txt, alignment=2))],
-    ], colWidths=[130 * mm, 50 * mm], rowHeights=[None, 12 * mm])
-    desc.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, 0), blue), ("BOX", (0, 1), (-1, 1), 0.6, grid),
-        ("LINEAFTER", (0, 1), (0, 1), 0.6, grid), ("VALIGN", (0, 1), (-1, 1), "MIDDLE"),
-    ]))
-    els += [desc, Spacer(1, 5 * mm)]
-
-    right = ParagraphStyle("right", parent=txt, alignment=2)
-    if data["tax_enabled"] and data["breakdown"]:
-        rows = [[Paragraph("TAX JURISDICTION", white_c),
-                 Paragraph("TAX RATE", white_c), Paragraph("TAXABLE AMOUNT (PKR)", white_c),
-                 Paragraph("TAX AMOUNT (PKR)", white_c)]]
-        for lbl, rate, base, amount in data["breakdown"]:
-            rows.append([Paragraph(e(lbl), txt), Paragraph(_pct(rate), right),
-                         Paragraph(f"{base:,.0f}" if base else "-", right),
-                         Paragraph(f"{amount:,.0f}" if amount else "-", right)])
-        tax = Table(rows, colWidths=[72 * mm, 32 * mm, 38 * mm, 38 * mm])
-        tax.setStyle(TableStyle([("BACKGROUND", (0, 0), (-1, 0), blue), ("GRID", (0, 0), (-1, -1), 0.4, grid),
-                                 ("VALIGN", (0, 0), (-1, -1), "MIDDLE")]))
-        els += [tax, Spacer(1, 5 * mm)]
-
-    total_label = "TOTAL INVOICE AMOUNT (INCL. SALES TAX)" if data["tax_enabled"] else "TOTAL INVOICE AMOUNT"
-    total = Table([[Paragraph(f"<b>{total_label}</b>", ParagraphStyle("tl", parent=txt, fontSize=10)),
-                    Paragraph(f"<b>{data['grand_total']:,.0f}</b>", ParagraphStyle("tr", parent=txt, fontSize=11, alignment=2))]],
-                  colWidths=[130 * mm, 50 * mm], rowHeights=[12 * mm])
-    total.setStyle(TableStyle([("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#eaf0f7")),
-                               ("LINEABOVE", (0, 0), (-1, 0), 1.2, blue), ("LINEBELOW", (0, 0), (-1, 0), 1.2, blue),
-                               ("VALIGN", (0, 0), (-1, -1), "MIDDLE")]))
-    notes = Table([[Paragraph("NOTES", white)]] +
-                  [[Paragraph(f"{n}. {e(line)}", txt)] for n, line in enumerate(data["notes"], start=1)],
-                  colWidths=[180 * mm])
-    notes.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, 0), blue), ("BOX", (0, 1), (-1, -1), 0.6, grid),
-        ("LINEBELOW", (0, 1), (-1, -2), 0.4, grid),
-        ("TOPPADDING", (0, 1), (-1, -1), 5), ("BOTTOMPADDING", (0, 1), (-1, -1), 5),
-    ]))
-    words = Paragraph(f"<i>{e(data['in_words'])}</i>", ParagraphStyle("words", parent=txt, alignment=1, fontSize=9.5))
-    els += [total, Spacer(1, 3 * mm), words, Spacer(1, 5 * mm), notes]
-
-    # ---- page 2: trip details (landscape)
-    els += [NextPageTemplate("L"), PageBreak(), bar("TRIP DETAILS", f"Invoice # {e(data['invoice_no'])}", page2_w),
-            Spacer(1, 4 * mm)]
-    meta = Table([
-        [Paragraph(x, label) for x in ("Invoice #", "Billing Period", "Customer", "Service Provider")],
-        [Paragraph(e(x), txt) for x in (data["invoice_no"], data["period"], data["bill_to"]["name"], data["provider"]["name"])],
-    ], colWidths=[page2_w / 4] * 4)
-    meta.setStyle(TableStyle([("BOX", (0, 0), (-1, -1), 0.6, grid), ("INNERGRID", (0, 0), (-1, -1), 0.4, grid),
-                              ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#f3f4f6")),
-                              ("TOPPADDING", (0, 0), (-1, -1), 5), ("BOTTOMPADDING", (0, 0), (-1, -1), 5)]))
-    els += [meta, Spacer(1, 4 * mm)]
-
-    head = [Paragraph("S.no", white_c)] + [Paragraph(e(h), white_c) for h in data["headers"]]
-    body = [head]
-    for n, row in enumerate(data["rows"], start=1):
-        cells = [Paragraph(str(n), ParagraphStyle("sn", parent=small, alignment=2))]
-        for value, money in zip(row, data["money"]):
-            text = _cell_text(value, money)
-            cells.append(Paragraph(e(text), ParagraphStyle("c", parent=small, alignment=2 if money or isinstance(value, Decimal) else 0)))
-        body.append(cells)
-    foot = [Paragraph("<b>TOTAL</b>", small)] + [""] * len(data["headers"])
-    for i in data["money_idx"]:
-        foot[i + 1] = Paragraph(f"<b>{_money2(data['totals'][i])}</b>", ParagraphStyle("f", parent=small, alignment=2))
-    body.append(foot)
-
-    widths = [10 * mm] + [(page2_w - 10 * mm) / max(len(data["headers"]), 1)] * len(data["headers"])
-    trips_table = Table(body, colWidths=widths, repeatRows=1)
-    trips_table.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, 0), blue), ("GRID", (0, 0), (-1, -1), 0.3, grid),
-        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-        ("BACKGROUND", (0, -1), (-1, -1), colors.HexColor("#eaf0f7")), ("LINEABOVE", (0, -1), (-1, -1), 1, blue), ("SPAN", (0, -1), (1, -1)),
-    ]))
-    els.append(trips_table)
-    doc.build(els)
-    return buffer.getvalue()
-
-
-# --------------------------------------------------------------------- Excel
-def _build_xlsx(data):
-    wb = Workbook()
-    ws = wb.active
-    ws.title = "Invoice"
-    thin = Side(style="thin", color="9CA3AF")
-    box = Border(left=thin, right=thin, top=thin, bottom=thin)
-    blue_fill = PatternFill("solid", fgColor=BLUE)
-    total_fill = PatternFill("solid", fgColor="EAF0F7")
-    head_font = Font(name="Calibri", bold=True, color="FFFFFF", size=10)
-
-    def put(sheet, rng, value=None, font=None, fill=None, align=None, border=None, fmt=None):
-        first = rng.split(":")[0]
-        if ":" in rng:
-            sheet.merge_cells(rng)
-        cells = sheet[rng] if ":" in rng else ((sheet[rng],),)
-        for row in cells:
-            for c in row:
-                if fill:
-                    c.fill = fill
-                if border:
-                    c.border = border
-        c = sheet[first]
-        c.value = value
-        if font:
-            c.font = font
-        if align:
-            c.alignment = align
-        if fmt:
-            c.number_format = fmt
-
-    left = Alignment(horizontal="left", vertical="center", wrap_text=True)
-    top_left = Alignment(horizontal="left", vertical="top", wrap_text=True)
-    right = Alignment(horizontal="right", vertical="center")
-    center = Alignment(horizontal="center", vertical="center", wrap_text=True)
-    lab = Font(name="Calibri", bold=True, size=10)
-    val = Font(name="Calibri", size=10)
-
-    for i in range(1, 11):
-        ws.column_dimensions[get_column_letter(i)].width = 14
-    ws.sheet_view.showGridLines = False
-
-    put(ws, "A1:H1", "SALES TAX INVOICE", Font(name="Calibri", bold=True, color="FFFFFF", size=16), blue_fill,
-        Alignment(vertical="center"))
-    put(ws, "I1:J1", f"SALES TAX no. {data['sales_tax_no']}".strip(), Font(name="Calibri", bold=True, color="FFFFFF", size=9),
-        blue_fill, Alignment(horizontal="center", vertical="center"))
-    ws.row_dimensions[1].height = 26
-
-    for rng, text in (("A3:B3", "Invoice Date"), ("C3:D3", "Billing Period"), ("E3:F3", "Payment Terms"),
-                      ("G3:H3", "Due Date"), ("I3:J3", "Invoice #")):
-        put(ws, rng, text, lab, align=left)
-    for rng, text in (("A4:B4", f"{data['invoice_date']:%d %b %Y}"), ("C4:D4", data["period"]),
-                      ("E4:F4", f"{data['payment_days']} Days"), ("G4:H4", f"{data['due_date']:%d %b %Y}"),
-                      ("I4:J4", data["invoice_no"])):
-        put(ws, rng, text, val, align=left, border=Border(bottom=thin))
-
-    # Two equal halves (5 columns each) so neither box looks bigger than the other.
-    put(ws, "A6:E6", "BILL TO / CUSTOMER", head_font, blue_fill, left)
-    put(ws, "F6:J6", "SERVICE PROVIDER", head_font, blue_fill, left)
-    for (c1, c2), p in ((("A", "E"), data["bill_to"]), (("F", "J"), data["provider"])):
-        put(ws, f"{c1}7:{c2}7", p["name"], Font(name="Calibri", size=14), align=left, border=box)
-        put(ws, f"{c1}8:{c2}9", p["address"], Font(name="Calibri", size=8), align=top_left, border=box)
-        ids = "   ".join(x for x in (f"NTN: {p['ntn']}" if p["ntn"] else "", f"STRN: {p['strn']}" if p["strn"] else "") if x)
-        put(ws, f"{c1}10:{c2}10", ids, Font(name="Calibri", size=8, italic=True), align=left, border=box)
-    ws.row_dimensions[7].height = 24
-    ws.row_dimensions[8].height = 18
-    ws.row_dimensions[9].height = 18
-
-    put(ws, "A13:H13", "DESCRIPTION OF SERVICES", head_font, blue_fill, left)
-    put(ws, "I13:J13", "AMOUNT (PKR)", head_font, blue_fill, center)
-    put(ws, "A14:H14", "Transportation Services", val, align=left, border=box)
-    put(ws, "I14:J14", float(data["subtotal"]), val, align=right, border=box, fmt="#,##0")
-    ws.row_dimensions[14].height = 30
-
-    r = 16
-    if data["tax_enabled"] and data["breakdown"]:
-        put(ws, f"A{r+1}:D{r+1}", "TAX JURISDICTION", head_font, blue_fill, center)
-        put(ws, f"E{r+1}:F{r+1}", "TAX RATE", head_font, blue_fill, center)
-        put(ws, f"G{r+1}:H{r+1}", "TAXABLE AMOUNT (PKR)", head_font, blue_fill, center)
-        put(ws, f"I{r+1}:J{r+1}", "TAX AMOUNT (PKR)", head_font, blue_fill, center)
-        r += 2
-        for lbl, rate, base, amount in data["breakdown"]:
-            put(ws, f"A{r}:D{r}", lbl, val, align=left, border=box)
-            put(ws, f"E{r}:F{r}", _pct(rate), val, align=right, border=box)
-            put(ws, f"G{r}:H{r}", float(base), val, align=right, border=box, fmt='#,##0;-#,##0;"-"')
-            put(ws, f"I{r}:J{r}", float(amount), val, align=right, border=box, fmt='#,##0;-#,##0;"-"')
-            r += 1
-        r += 1
-    r += 1
-    heavy = Border(top=Side(style="medium", color=BLUE), bottom=Side(style="medium", color=BLUE))
-    put(ws, f"A{r}:H{r}", "TOTAL INVOICE AMOUNT (INCL. SALES TAX)" if data["tax_enabled"] else "TOTAL INVOICE AMOUNT",
-        Font(name="Calibri", bold=True, size=11), total_fill, left, heavy)
-    put(ws, f"I{r}:J{r}", float(data["grand_total"]), Font(name="Calibri", bold=True, size=12), total_fill, right, heavy,
-        fmt="#,##0")
-    ws.row_dimensions[r].height = 30
-    put(ws, f"A{r+1}:J{r+1}", data["in_words"], Font(name="Calibri", italic=True, size=10), align=center)
-    ws.row_dimensions[r + 1].height = 26
-    put(ws, f"A{r+3}:J{r+3}", "NOTES", head_font, blue_fill, left)
-    for n, line in enumerate(data["notes"], start=1):
-        put(ws, f"A{r+3+n}:J{r+3+n}", f"{n}. {line}", val, align=left, border=box)
-        ws.row_dimensions[r + 3 + n].height = 20 if len(line) < 100 else 34
-
-    # ---- Trip Details
-    td = wb.create_sheet("Trip Details")
-    td.sheet_view.showGridLines = False
-    headers = ["S.no"] + data["headers"]
-    n = len(headers)
-    last = get_column_letter(n)
-    put(td, f"A1:{last}1", "TRIP DETAILS", Font(name="Calibri", bold=True, color="FFFFFF", size=16), blue_fill,
-        Alignment(vertical="center"))
-    td.row_dimensions[1].height = 26
-
-    meta = [("Invoice #", data["invoice_no"]), ("Billing Period", data["period"]),
-            ("Customer", data["bill_to"]["name"]), ("Service Provider", data["provider"]["name"])]
-    groups = min(4, n)
-    size, extra = divmod(n, groups)
-    start = 1
-    for gi in range(groups):
-        end = start + size + (1 if gi < extra else 0) - 1
-        a, b = get_column_letter(start), get_column_letter(end)
-        put(td, f"{a}3:{b}3", meta[gi][0], lab, PatternFill("solid", fgColor="F3F4F6"), left, box)
-        put(td, f"{a}4:{b}4", meta[gi][1], val, align=left, border=box)
-        start = end + 1
-
-    hr = 6
-    for i, h in enumerate(headers, start=1):
-        c = td.cell(row=hr, column=i, value=h)
-        c.font, c.fill, c.alignment, c.border = head_font, blue_fill, center, box
-    td.row_dimensions[hr].height = 32
-
-    money_fmt = '#,##0.00;-#,##0.00;"-"'
-    r = hr + 1
-    for sno, row in enumerate(data["rows"], start=1):
-        td.cell(row=r, column=1, value=sno).font = val
-        for i, (value, money) in enumerate(zip(row, data["money"]), start=2):
-            c = td.cell(row=r, column=i, value=float(value) if isinstance(value, Decimal) else (value if value != "" else None))
-            c.font, c.border = val, box
-            if money:
-                c.number_format = money_fmt
-            elif isinstance(value, Decimal):
-                c.number_format = "0.00"
-            elif hasattr(value, "strftime"):
-                c.number_format = "d-mmm-yy"
-                c.alignment = Alignment(horizontal="right")
-        td.cell(row=r, column=1).border = box
-        r += 1
-    put(td, f"A{r+1}", "TOTAL", Font(name="Calibri", bold=True, size=11), total_fill, left, heavy)
-    for i in range(2, n + 1):
-        c = td.cell(row=r + 1, column=i)
-        c.fill, c.border = total_fill, heavy
-        if (i - 2) in data["money_idx"]:
-            c.value = float(data["totals"][i - 2])
-            c.font = Font(name="Calibri", bold=True, size=11)
-            c.number_format = money_fmt
-    td.column_dimensions["A"].width = 7
-    for i, key in enumerate(["sno"] + data["keys"], start=1):
-        if i > 1:
-            td.column_dimensions[get_column_letter(i)].width = 30 if key == "remarks" else (12 if key in ("route", "trip_no") else 16)
-    td.freeze_panes = td.cell(row=hr + 1, column=1)
-
-    out = io.BytesIO()
-    # Print / PDF-from-Excel: fit the width to one page and centre it, so nothing is
-    # cut off on the right and both sides have the same margin.
-    for sheet, orient in ((ws, "portrait"), (td, "landscape")):
-        sheet.sheet_properties.pageSetUpPr = PageSetupProperties(fitToPage=True)
-        sheet.page_setup.orientation = orient
-        sheet.page_setup.paperSize = sheet.PAPERSIZE_A4
-        sheet.page_setup.fitToWidth = 1
-        sheet.page_setup.fitToHeight = 0
-        sheet.print_options.horizontalCentered = True
-        sheet.page_margins.left = sheet.page_margins.right = 0.4
-    wb.save(out)
-    return out.getvalue()

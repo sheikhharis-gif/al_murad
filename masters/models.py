@@ -519,9 +519,9 @@ class Company(models.Model):
 
 # Printed in every invoice's NOTES box unless the invoice's own notes are changed.
 DEFAULT_INVOICE_NOTES = (
-    "This is a computer-generated invoice and does not require a signature.\n"
+    "This is a system-generated invoice and does not require a signature.\n"
     "For detailed trip information, please refer to Page 2.\n"
-    "Any discrepancy must be reported within 3 days of receiving this invoice."
+    "Please notify us of any discrepancies within 3 days of receiving this invoice."
 )
 
 
