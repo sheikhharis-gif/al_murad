@@ -517,6 +517,14 @@ class Company(models.Model):
         verbose_name_plural = "Companies"
 
 
+# Printed in every invoice's NOTES box unless the invoice's own notes are changed.
+DEFAULT_INVOICE_NOTES = (
+    "This is a computer-generated invoice and does not require a signature.\n"
+    "For detailed trip information, please refer to Page 2.\n"
+    "Any discrepancy must be reported within 3 days of receiving this invoice."
+)
+
+
 # ================= TAX SETTINGS (Generate Invoice's Tax card) =================
 # Configured once here instead of typed on every invoice - Generate Invoice
 # just switches Tax On/Off and Full/Partial, and pulls these rates in.
@@ -537,7 +545,7 @@ class TaxSettings(models.Model):
     provider_strn = models.CharField("STRN", max_length=30, default="S596261-2")
     invoice_prefix = models.CharField("Invoice # prefix", max_length=15, default="SFS-INV")
     payment_terms_days = models.PositiveSmallIntegerField("Payment Terms (days)", default=30)
-    invoice_notes = models.TextField("Default invoice notes", blank=True)
+    invoice_notes = models.TextField("Default invoice notes", blank=True, default=DEFAULT_INVOICE_NOTES)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:

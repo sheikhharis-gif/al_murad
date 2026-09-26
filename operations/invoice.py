@@ -32,7 +32,7 @@ from reportlab.platypus import (
     BaseDocTemplate, Frame, NextPageTemplate, PageBreak, PageTemplate, Paragraph, Spacer, Table, TableStyle,
 )
 
-from masters.models import Client, Company, TaxSettings
+from masters.models import DEFAULT_INVOICE_NOTES, Client, Company, TaxSettings
 from .models import GeneratedInvoice, Trip
 
 TRIP_RELATED = ("route__origin", "route__destination", "vehicle__vehicle_type", "vehicle_type",
@@ -234,25 +234,25 @@ def _words_below_1000(n):
         parts.append(f"{_ONES[n // 100]} Hundred")
         n %= 100
     if n >= 20:
-        parts.append(_TENS[n // 10] + (f" {_ONES[n % 10]}" if n % 10 else ""))
+        parts.append(_TENS[n // 10] + (f"-{_ONES[n % 10]}" if n % 10 else ""))
     elif n:
         parts.append(_ONES[n])
     return " ".join(parts)
 
 
 def amount_in_words(amount):
-    """'Rupees Four Hundred Seventy Six Thousand Two Hundred Ninety Eight Only'
+    """'Four Hundred Seventy-Six Thousand Two Hundred Ninety-Eight Rupees Only.'
     for the whole-rupee amount printed on the invoice (thousand / million
     grouping, matching the digits shown next to it)."""
     n = int(_d(amount).quantize(Decimal("1"), rounding="ROUND_HALF_UP"))
     if n == 0:
-        return "Rupees Zero Only"
+        return "Zero Rupees Only."
     parts = []
     for size, name in ((10**9, "Billion"), (10**6, "Million"), (1000, "Thousand"), (1, "")):
         chunk, n = divmod(n, size)
         if chunk:
             parts.append(f"{_words_below_1000(chunk)} {name}".strip())
-    return "Rupees " + " ".join(parts) + " Only"
+    return " ".join(parts) + " Rupees Only."
 
 
 def _billing_period(start, end):
@@ -293,7 +293,8 @@ def _invoice_data(invoice, trips, cols):
         "provider": {"name": cfg.provider_name, "address": cfg.provider_address,
                      "ntn": cfg.provider_ntn, "strn": cfg.provider_strn},
         "in_words": amount_in_words(subtotal + tax_amount),
-        "notes": invoice.notes.strip() or f"Payment is due within {invoice.payment_days} days of the invoice date.",
+        "notes": [re.sub(r"^\d+[.)]\s*", "", line.strip())
+                  for line in (invoice.notes.strip() or DEFAULT_INVOICE_NOTES).splitlines() if line.strip()],
         "subtotal": subtotal, "tax_enabled": invoice.tax_enabled, "tax_mode": invoice.tax_mode,
         "tax_amount": tax_amount, "breakdown": breakdown, "grand_total": subtotal + tax_amount,
         "headers": [c[1] for c in cols], "money_idx": money_idx, "money": [c[3] for c in cols],
@@ -527,18 +528,16 @@ def _build_pdf(data):
     total.setStyle(TableStyle([("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#eaf0f7")),
                                ("LINEABOVE", (0, 0), (-1, 0), 1.2, blue), ("LINEBELOW", (0, 0), (-1, 0), 1.2, blue),
                                ("VALIGN", (0, 0), (-1, -1), "MIDDLE")]))
-    notes = Table([
-        [Paragraph("NOTES", white)],
-        [Paragraph(e(data["notes"]).replace("\n", "<br/>"), txt)],
-    ], colWidths=[180 * mm])
+    notes = Table([[Paragraph("NOTES", white)]] +
+                  [[Paragraph(f"{n}. {e(line)}", txt)] for n, line in enumerate(data["notes"], start=1)],
+                  colWidths=[180 * mm])
     notes.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, 0), blue), ("BOX", (0, 1), (-1, 1), 0.6, grid),
-        ("TOPPADDING", (0, 1), (-1, 1), 6), ("BOTTOMPADDING", (0, 1), (-1, 1), 8),
+        ("BACKGROUND", (0, 0), (-1, 0), blue), ("BOX", (0, 1), (-1, -1), 0.6, grid),
+        ("LINEBELOW", (0, 1), (-1, -2), 0.4, grid),
+        ("TOPPADDING", (0, 1), (-1, -1), 5), ("BOTTOMPADDING", (0, 1), (-1, -1), 5),
     ]))
-    words = Table([[Paragraph(f"<b>Amount in words:</b> {e(data['in_words'])}", txt)]], colWidths=[180 * mm])
-    words.setStyle(TableStyle([("BOX", (0, 0), (-1, -1), 0.6, grid), ("TOPPADDING", (0, 0), (-1, -1), 6),
-                               ("BOTTOMPADDING", (0, 0), (-1, -1), 6)]))
-    els += [total, Spacer(1, 2 * mm), words, Spacer(1, 5 * mm), notes]
+    words = Paragraph(f"<i>{e(data['in_words'])}</i>", ParagraphStyle("words", parent=txt, alignment=1, fontSize=9.5))
+    els += [total, Spacer(1, 3 * mm), words, Spacer(1, 5 * mm), notes]
 
     # ---- page 2: trip details (landscape)
     els += [NextPageTemplate("L"), PageBreak(), bar("TRIP DETAILS", f"Invoice # {e(data['invoice_no'])}", page2_w),
@@ -671,12 +670,12 @@ def _build_xlsx(data):
     put(ws, f"I{r}:J{r}", float(data["grand_total"]), Font(name="Calibri", bold=True, size=12), total_fill, right, heavy,
         fmt="#,##0")
     ws.row_dimensions[r].height = 30
-    put(ws, f"A{r+1}:J{r+1}", f"Amount in words: {data['in_words']}", Font(name="Calibri", bold=True, size=10),
-        align=left, border=box)
-    ws.row_dimensions[r + 1].height = 24
+    put(ws, f"A{r+1}:J{r+1}", data["in_words"], Font(name="Calibri", italic=True, size=10), align=center)
+    ws.row_dimensions[r + 1].height = 26
     put(ws, f"A{r+3}:J{r+3}", "NOTES", head_font, blue_fill, left)
-    put(ws, f"A{r+4}:J{r+4}", data["notes"], val, align=top_left, border=box)
-    ws.row_dimensions[r + 4].height = max(45, 15 * (data["notes"].count("\n") + 1 + len(data["notes"]) // 110))
+    for n, line in enumerate(data["notes"], start=1):
+        put(ws, f"A{r+3+n}:J{r+3+n}", f"{n}. {line}", val, align=left, border=box)
+        ws.row_dimensions[r + 3 + n].height = 20 if len(line) < 100 else 34
 
     # ---- Trip Details
     td = wb.create_sheet("Trip Details")
