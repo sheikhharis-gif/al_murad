@@ -159,11 +159,6 @@ def _tax_inputs(post):
         return min(max(_d(raw), Decimal(0)), Decimal(100))
 
     rates = {code: rate(f"tax_{code.lower()}", getattr(cfg, f"{code.lower()}_percent")) for code, _ in TAX_PROVINCES}
-    if mode == "PARTIAL" and ((post.get("tax_origin") or "").strip() or (post.get("tax_destination") or "").strip()):
-        # Origin % / Destination % typed (a blank one counts as 0): one flat rate for
-        # every trip's origin half / destination half instead of per-province.
-        rates["origin"] = rate("tax_origin", 0)
-        rates["destination"] = rate("tax_destination", 0)
     return True, mode, {k: str(v) for k, v in rates.items()}
 
 
@@ -175,28 +170,12 @@ def _compute_tax(trips, tax_enabled, tax_mode, tax_rates):
     jurisdiction rate. Partial: each trip is split 50/50 - the origin half at
     the origin city's jurisdiction rate, the destination half at the
     destination city's - worked out trip by trip, so one invoice can mix
-    routes (e.g. ICT and Punjab). A city with no province set pays no tax.
-    Partial with Origin % / Destination % typed on the invoice uses those two
-    flat rates for every trip instead of the per-province ones."""
+    routes (e.g. ICT and Punjab). A city with no province set pays no tax."""
     subtotal = sum((_d(t.freight) for t in trips), Decimal(0))
     if not tax_enabled:
         return subtotal, Decimal(0), []
 
     rates = {k: _d(v) for k, v in tax_rates.items()}
-    if tax_mode == "PARTIAL" and ("origin" in rates or "destination" in rates):
-        origin_base = dest_base = Decimal(0)
-        for t in trips:
-            origin_half = (_d(t.freight) / 2).quantize(Decimal("0.01"))
-            origin_base += origin_half
-            dest_base += _d(t.freight) - origin_half
-        origin_rate, dest_rate = rates.get("origin", Decimal(0)), rates.get("destination", Decimal(0))
-        origin_tax = (origin_base * origin_rate / 100).quantize(Decimal("0.01"))
-        dest_tax = (dest_base * dest_rate / 100).quantize(Decimal("0.01"))
-        return subtotal, origin_tax + dest_tax, [
-            ("Origin", origin_rate, origin_base, origin_tax),
-            ("Destination", dest_rate, dest_base, dest_tax),
-        ]
-
     base_by_code = {code: Decimal(0) for code, _ in TAX_PROVINCES}
     unmapped = Decimal(0)
     for t in trips:
