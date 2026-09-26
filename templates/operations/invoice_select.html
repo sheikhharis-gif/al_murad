@@ -144,6 +144,11 @@
                         <a href="{% url 'company_add' %}" class="small ms-1" target="_blank">+ Add</a>
                     </div>
                     <div>
+                        <label class="form-label small fw-semibold text-muted mb-0 me-1">Sales Tax No.</label>
+                        <input type="text" name="sales_tax_no" maxlength="40" placeholder="(blank)"
+                               class="form-control form-control-sm d-inline-block" style="width:150px;">
+                    </div>
+                    <div>
                         <label class="form-label small fw-semibold text-muted mb-0 me-1">Payment Terms (days)</label>
                         <input type="number" name="payment_days" min="0" max="365" value="{{ tax_settings.payment_terms_days }}"
                                class="form-control form-control-sm d-inline-block" style="width:80px;">

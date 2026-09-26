@@ -287,6 +287,7 @@ def _invoice_data(invoice, trips, cols):
         "invoice_date": inv_date,
         "due_date": inv_date + timedelta(days=invoice.payment_days),
         "payment_days": invoice.payment_days,
+        "sales_tax_no": invoice.sales_tax_no,
         "period": _billing_period(start, end),
         "bill_to": {"name": company.name, "address": company.address, "ntn": company.ntn, "strn": company.stn},
         "provider": {"name": cfg.provider_name, "address": cfg.provider_address,
@@ -361,6 +362,7 @@ def invoice_generate_pdf(request):
         period_start=_parse_date(request.POST.get("start_date")),
         period_end=_parse_date(request.POST.get("end_date")), payment_days=payment_days,
         notes=(request.POST.get("notes") or "").strip(),
+        sales_tax_no=(request.POST.get("sales_tax_no") or "").strip()[:40],
         tax_enabled=tax_enabled, tax_mode=tax_mode, tax_rates=tax_rates,
         subtotal=subtotal, tax_amount=tax_amount, grand_total=subtotal + tax_amount,
         created_by=request.user if request.user.is_authenticated else None,
@@ -469,7 +471,7 @@ def _build_pdf(data):
             lines.append(f"<i><font size=7.5>{ids}</font></i>")
         return Paragraph("<br/>".join(lines), txt)
 
-    els = [bar("SALES TAX INVOICE", f"SALES TAX no. {e(data['provider']['strn'])}", page1_w), Spacer(1, 4 * mm)]
+    els = [bar("SALES TAX INVOICE", f"SALES TAX no. {e(data['sales_tax_no'])}".strip(), page1_w), Spacer(1, 4 * mm)]
 
     info = Table([
         [Paragraph(x, label) for x in ("Invoice Date", "Billing Period", "Payment Terms", "Due Date", "Invoice #")],
@@ -619,7 +621,7 @@ def _build_xlsx(data):
 
     put(ws, "A1:H1", "SALES TAX INVOICE", Font(name="Calibri", bold=True, color="FFFFFF", size=16), blue_fill,
         Alignment(vertical="center"))
-    put(ws, "I1:J1", f"SALES TAX no. {data['provider']['strn']}", Font(name="Calibri", bold=True, color="FFFFFF", size=9),
+    put(ws, "I1:J1", f"SALES TAX no. {data['sales_tax_no']}".strip(), Font(name="Calibri", bold=True, color="FFFFFF", size=9),
         blue_fill, Alignment(horizontal="center", vertical="center"))
     ws.row_dimensions[1].height = 26
 
