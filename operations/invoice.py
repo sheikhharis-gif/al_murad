@@ -223,6 +223,38 @@ def _compute_tax(trips, tax_enabled, tax_mode, tax_rates):
     return subtotal, tax_amount, breakdown
 
 
+_ONES = ["", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten", "Eleven", "Twelve",
+         "Thirteen", "Fourteen", "Fifteen", "Sixteen", "Seventeen", "Eighteen", "Nineteen"]
+_TENS = ["", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"]
+
+
+def _words_below_1000(n):
+    parts = []
+    if n >= 100:
+        parts.append(f"{_ONES[n // 100]} Hundred")
+        n %= 100
+    if n >= 20:
+        parts.append(_TENS[n // 10] + (f" {_ONES[n % 10]}" if n % 10 else ""))
+    elif n:
+        parts.append(_ONES[n])
+    return " ".join(parts)
+
+
+def amount_in_words(amount):
+    """'Rupees Four Hundred Seventy Six Thousand Two Hundred Ninety Eight Only'
+    for the whole-rupee amount printed on the invoice (thousand / million
+    grouping, matching the digits shown next to it)."""
+    n = int(_d(amount).quantize(Decimal("1"), rounding="ROUND_HALF_UP"))
+    if n == 0:
+        return "Rupees Zero Only"
+    parts = []
+    for size, name in ((10**9, "Billion"), (10**6, "Million"), (1000, "Thousand"), (1, "")):
+        chunk, n = divmod(n, size)
+        if chunk:
+            parts.append(f"{_words_below_1000(chunk)} {name}".strip())
+    return "Rupees " + " ".join(parts) + " Only"
+
+
 def _billing_period(start, end):
     if start.year == end.year and start.month == end.month:
         return f"{start:%d}–{end:%d %b %Y}"
@@ -259,6 +291,8 @@ def _invoice_data(invoice, trips, cols):
         "bill_to": {"name": company.name, "address": company.address, "ntn": company.ntn, "strn": company.stn},
         "provider": {"name": cfg.provider_name, "address": cfg.provider_address,
                      "ntn": cfg.provider_ntn, "strn": cfg.provider_strn},
+        "in_words": amount_in_words(subtotal + tax_amount),
+        "notes": invoice.notes.strip() or f"Payment is due within {invoice.payment_days} days of the invoice date.",
         "subtotal": subtotal, "tax_enabled": invoice.tax_enabled, "tax_mode": invoice.tax_mode,
         "tax_amount": tax_amount, "breakdown": breakdown, "grand_total": subtotal + tax_amount,
         "headers": [c[1] for c in cols], "money_idx": money_idx, "money": [c[3] for c in cols],
@@ -326,6 +360,7 @@ def invoice_generate_pdf(request):
         client=client, company=company, columns=col_keys,
         period_start=_parse_date(request.POST.get("start_date")),
         period_end=_parse_date(request.POST.get("end_date")), payment_days=payment_days,
+        notes=(request.POST.get("notes") or "").strip(),
         tax_enabled=tax_enabled, tax_mode=tax_mode, tax_rates=tax_rates,
         subtotal=subtotal, tax_amount=tax_amount, grand_total=subtotal + tax_amount,
         created_by=request.user if request.user.is_authenticated else None,
@@ -384,9 +419,23 @@ def _build_pdf(data):
     doc = BaseDocTemplate(buffer, pagesize=A4, title=f"Invoice {data['invoice_no']}")
     portrait = (A4[0] - 30 * mm, A4[1] - 30 * mm)
     land = landscape(A4)
+    page1_w = portrait[0]
+    page2_w = land[0] - 20 * mm
+
+    def footer(canvas, doc_):
+        # Provider + invoice number on the left, page number on the right.
+        canvas.saveState()
+        canvas.setFont("Helvetica", 7.5)
+        canvas.setFillColor(colors.HexColor("#6b7280"))
+        width = canvas._pagesize[0]
+        canvas.drawString(12 * mm, 5 * mm, f"{data['provider']['name']}  |  Invoice {data['invoice_no']}")
+        canvas.drawRightString(width - 12 * mm, 5 * mm, f"Page {doc_.page}")
+        canvas.restoreState()
+
     doc.addPageTemplates([
-        PageTemplate(id="P", pagesize=A4, frames=[Frame(15 * mm, 15 * mm, *portrait, id="p")]),
-        PageTemplate(id="L", pagesize=land, frames=[Frame(10 * mm, 10 * mm, land[0] - 20 * mm, land[1] - 20 * mm, id="l")]),
+        PageTemplate(id="P", pagesize=A4, onPage=footer, frames=[Frame(15 * mm, 15 * mm, *portrait, id="p")]),
+        PageTemplate(id="L", pagesize=land, onPage=footer,
+                     frames=[Frame(10 * mm, 10 * mm, page2_w, land[1] - 20 * mm, id="l")]),
     ])
 
     base = getSampleStyleSheet()["Normal"]
@@ -401,9 +450,13 @@ def _build_pdf(data):
     grid = colors.HexColor("#9ca3af")
     e = escape
 
-    def bar(left, right=""):
-        t = Table([[Paragraph(left, title), Paragraph(right, white_r)]], colWidths=[None, 50 * mm])
-        t.setStyle(TableStyle([("BACKGROUND", (0, 0), (-1, -1), blue), ("VALIGN", (0, 0), (-1, -1), "MIDDLE")]))
+    def bar(left, right, width):
+        # Every block on a page is exactly the frame's width, so the title bar,
+        # the info rows and the tables line up edge to edge.
+        t = Table([[Paragraph(left, title), Paragraph(right, white_r)]], colWidths=[width - 60 * mm, 60 * mm],
+                  rowHeights=[12 * mm])
+        t.setStyle(TableStyle([("BACKGROUND", (0, 0), (-1, -1), blue), ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                               ("LEFTPADDING", (0, 0), (0, 0), 8), ("RIGHTPADDING", (1, 0), (1, 0), 8)]))
         return t
 
     def party(p):
@@ -416,7 +469,7 @@ def _build_pdf(data):
             lines.append(f"<i><font size=7.5>{ids}</font></i>")
         return Paragraph("<br/>".join(lines), txt)
 
-    els = [bar("SALES TAX INVOICE", f"SALES TAX no. {e(data['provider']['strn'])}"), Spacer(1, 4 * mm)]
+    els = [bar("SALES TAX INVOICE", f"SALES TAX no. {e(data['provider']['strn'])}", page1_w), Spacer(1, 4 * mm)]
 
     info = Table([
         [Paragraph(x, label) for x in ("Invoice Date", "Billing Period", "Payment Terms", "Due Date", "Invoice #")],
@@ -424,7 +477,11 @@ def _build_pdf(data):
                                      f"{data['payment_days']} Days", f"{data['due_date']:%d %b %Y}",
                                      f"<b>{e(data['invoice_no'])}</b>")],
     ], colWidths=[34 * mm, 34 * mm, 34 * mm, 34 * mm, 44 * mm])
-    info.setStyle(TableStyle([("LINEBELOW", (0, 1), (-1, 1), 0.6, grid), ("VALIGN", (0, 0), (-1, -1), "TOP")]))
+    info.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#f3f4f6")), ("BOX", (0, 0), (-1, -1), 0.6, grid),
+        ("LINEBELOW", (0, 0), (-1, 0), 0.4, grid), ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("TOPPADDING", (0, 0), (-1, -1), 5), ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+    ]))
     els += [info, Spacer(1, 5 * mm)]
 
     parties = Table([
@@ -468,16 +525,29 @@ def _build_pdf(data):
     total.setStyle(TableStyle([("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#eaf0f7")),
                                ("LINEABOVE", (0, 0), (-1, 0), 1.2, blue), ("LINEBELOW", (0, 0), (-1, 0), 1.2, blue),
                                ("VALIGN", (0, 0), (-1, -1), "MIDDLE")]))
-    els += [total, Spacer(1, 22 * mm), Paragraph("____________________<br/>Authorized Signature", txt)]
+    notes = Table([
+        [Paragraph("NOTES", white)],
+        [Paragraph(e(data["notes"]).replace("\n", "<br/>"), txt)],
+    ], colWidths=[180 * mm])
+    notes.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), blue), ("BOX", (0, 1), (-1, 1), 0.6, grid),
+        ("TOPPADDING", (0, 1), (-1, 1), 6), ("BOTTOMPADDING", (0, 1), (-1, 1), 8),
+    ]))
+    words = Table([[Paragraph(f"<b>Amount in words:</b> {e(data['in_words'])}", txt)]], colWidths=[180 * mm])
+    words.setStyle(TableStyle([("BOX", (0, 0), (-1, -1), 0.6, grid), ("TOPPADDING", (0, 0), (-1, -1), 6),
+                               ("BOTTOMPADDING", (0, 0), (-1, -1), 6)]))
+    els += [total, Spacer(1, 2 * mm), words, Spacer(1, 5 * mm), notes]
 
     # ---- page 2: trip details (landscape)
-    els += [NextPageTemplate("L"), PageBreak(), bar("TRIP DETAILS"), Spacer(1, 4 * mm)]
+    els += [NextPageTemplate("L"), PageBreak(), bar("TRIP DETAILS", f"Invoice # {e(data['invoice_no'])}", page2_w),
+            Spacer(1, 4 * mm)]
     meta = Table([
         [Paragraph(x, label) for x in ("Invoice #", "Billing Period", "Customer", "Service Provider")],
         [Paragraph(e(x), txt) for x in (data["invoice_no"], data["period"], data["bill_to"]["name"], data["provider"]["name"])],
-    ], colWidths=[70 * mm] * 4)
-    meta.setStyle(TableStyle([("BOX", (0, 0), (-1, -1), 0.5, grid), ("INNERGRID", (0, 0), (-1, -1), 0.5, grid),
-                              ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#f3f4f6"))]))
+    ], colWidths=[page2_w / 4] * 4)
+    meta.setStyle(TableStyle([("BOX", (0, 0), (-1, -1), 0.6, grid), ("INNERGRID", (0, 0), (-1, -1), 0.4, grid),
+                              ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#f3f4f6")),
+                              ("TOPPADDING", (0, 0), (-1, -1), 5), ("BOTTOMPADDING", (0, 0), (-1, -1), 5)]))
     els += [meta, Spacer(1, 4 * mm)]
 
     head = [Paragraph("S.no", white_c)] + [Paragraph(e(h), white_c) for h in data["headers"]]
@@ -493,8 +563,7 @@ def _build_pdf(data):
         foot[i + 1] = Paragraph(f"<b>{_money2(data['totals'][i])}</b>", ParagraphStyle("f", parent=small, alignment=2))
     body.append(foot)
 
-    usable = land[0] - 20 * mm
-    widths = [10 * mm] + [(usable - 10 * mm) / max(len(data["headers"]), 1)] * len(data["headers"])
+    widths = [10 * mm] + [(page2_w - 10 * mm) / max(len(data["headers"]), 1)] * len(data["headers"])
     trips_table = Table(body, colWidths=widths, repeatRows=1)
     trips_table.setStyle(TableStyle([
         ("BACKGROUND", (0, 0), (-1, 0), blue), ("GRID", (0, 0), (-1, -1), 0.3, grid),
@@ -600,8 +669,12 @@ def _build_xlsx(data):
     put(ws, f"I{r}:J{r}", float(data["grand_total"]), Font(name="Calibri", bold=True, size=12), total_fill, right, heavy,
         fmt="#,##0")
     ws.row_dimensions[r].height = 30
-    put(ws, f"A{r+4}:C{r+4}", "____________________", val)
-    put(ws, f"A{r+5}:C{r+5}", "Authorized Signature", val)
+    put(ws, f"A{r+1}:J{r+1}", f"Amount in words: {data['in_words']}", Font(name="Calibri", bold=True, size=10),
+        align=left, border=box)
+    ws.row_dimensions[r + 1].height = 24
+    put(ws, f"A{r+3}:J{r+3}", "NOTES", head_font, blue_fill, left)
+    put(ws, f"A{r+4}:J{r+4}", data["notes"], val, align=top_left, border=box)
+    ws.row_dimensions[r + 4].height = max(45, 15 * (data["notes"].count("\n") + 1 + len(data["notes"]) // 110))
 
     # ---- Trip Details
     td = wb.create_sheet("Trip Details")

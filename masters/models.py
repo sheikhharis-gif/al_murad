@@ -537,6 +537,7 @@ class TaxSettings(models.Model):
     provider_strn = models.CharField("STRN", max_length=30, default="S596261-2")
     invoice_prefix = models.CharField("Invoice # prefix", max_length=15, default="SFS-INV")
     payment_terms_days = models.PositiveSmallIntegerField("Payment Terms (days)", default=30)
+    invoice_notes = models.TextField("Default invoice notes", blank=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:

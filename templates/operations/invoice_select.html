@@ -114,6 +114,16 @@
         </div>
 
         <div class="card border-0 shadow-sm rounded-4 mb-4">
+            <div class="card-header bg-white border-0 pt-3 px-4">
+                <h6 class="fw-bold mb-0 text-primary">Notes</h6>
+                <p class="text-muted small mb-0">Printed in the NOTES box at the bottom of the invoice. Starts from the default set on the <a href="{% url 'tax_settings' %}" target="_blank">Tax</a> menu - edit it for this invoice if needed.</p>
+            </div>
+            <div class="card-body px-4">
+                <textarea name="notes" rows="3" class="form-control form-control-sm" placeholder="e.g. bank details, payment instructions...">{{ tax_settings.invoice_notes }}</textarea>
+            </div>
+        </div>
+
+        <div class="card border-0 shadow-sm rounded-4 mb-4">
             <div class="card-header bg-white border-0 pt-3 px-4 d-flex justify-content-between align-items-center flex-wrap gap-2">
                 <div>
                     <h6 class="fw-bold mb-0 text-primary">{{ client.name }}</h6>

@@ -405,6 +405,7 @@ class GeneratedInvoice(models.Model):
     period_start = models.DateField(null=True, blank=True)
     period_end = models.DateField(null=True, blank=True)
     payment_days = models.PositiveSmallIntegerField(default=30)
+    notes = models.TextField(blank=True)
 
     tax_enabled = models.BooleanField(default=False)
     tax_mode = models.CharField(max_length=10, choices=TAX_MODE_CHOICES, blank=True)

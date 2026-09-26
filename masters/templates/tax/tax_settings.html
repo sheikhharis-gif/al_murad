@@ -88,6 +88,11 @@
                         <label class="form-label small fw-bold">Payment Terms (days)</label>
                         {{ form.payment_terms_days }}{{ form.payment_terms_days.errors }}
                     </div>
+                    <div class="col-12">
+                        <label class="form-label small fw-bold">Default Notes</label>
+                        {{ form.invoice_notes }}{{ form.invoice_notes.errors }}
+                        <div class="form-text small">Printed in the NOTES box of every invoice (bank details, payment instructions...). You can still edit it on each invoice.</div>
+                    </div>
                 </div>
             </div>
         </div>
