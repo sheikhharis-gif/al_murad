@@ -362,7 +362,8 @@ def invoice_generate_pdf(request):
         client=client, company=company, columns=col_keys,
         period_start=_parse_date(request.POST.get("start_date")),
         period_end=_parse_date(request.POST.get("end_date")), payment_days=payment_days,
-        notes=(request.POST.get("notes") or "").strip(),
+        notes=(TaxSettings.current().invoice_notes if request.POST.get("notes_auto") == "on"
+               else request.POST.get("notes") or "").strip(),
         sales_tax_no=(request.POST.get("sales_tax_no") or "").strip()[:40],
         tax_enabled=tax_enabled, tax_mode=tax_mode, tax_rates=tax_rates,
         subtotal=subtotal, tax_amount=tax_amount, grand_total=subtotal + tax_amount,

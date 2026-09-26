@@ -114,12 +114,18 @@
         </div>
 
         <div class="card border-0 shadow-sm rounded-4 mb-4">
-            <div class="card-header bg-white border-0 pt-3 px-4">
-                <h6 class="fw-bold mb-0 text-primary">Notes</h6>
-                <p class="text-muted small mb-0">Printed in the NOTES box at the bottom of the invoice. Starts from the default set on the <a href="{% url 'tax_settings' %}" target="_blank">Tax</a> menu - edit it for this invoice if needed.</p>
+            <div class="card-header bg-white border-0 pt-3 px-4 d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <div>
+                    <h6 class="fw-bold mb-0 text-primary">Notes</h6>
+                    <p class="text-muted small mb-0">Printed in the NOTES box at the bottom of the invoice. Auto uses the default set on the <a href="{% url 'tax_settings' %}" target="_blank">Tax</a> menu; switch Auto off to write different notes for this invoice.</p>
+                </div>
+                <div class="form-check form-switch m-0">
+                    <input class="form-check-input" type="checkbox" role="switch" id="notesAuto" name="notes_auto" checked>
+                    <label class="form-check-label fw-bold" for="notesAuto">Auto</label>
+                </div>
             </div>
             <div class="card-body px-4">
-                <textarea name="notes" rows="3" class="form-control form-control-sm" placeholder="e.g. bank details, payment instructions...">{{ tax_settings.invoice_notes }}</textarea>
+                <textarea name="notes" id="notesText" rows="3" class="form-control form-control-sm" disabled placeholder="e.g. bank details, payment instructions...">{{ tax_settings.invoice_notes }}</textarea>
             </div>
         </div>
 
@@ -248,6 +254,16 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (!company.value && box && box.tagName === 'INPUT') box.focus();
             }
         });
+    }
+
+    // Notes: Auto (default) shows the Tax-menu default read-only and the server
+    // uses it; switching Auto off unlocks the box for this invoice only.
+    var notesAuto = document.getElementById('notesAuto');
+    var notesText = document.getElementById('notesText');
+    if (notesAuto) {
+        function syncNotes() { notesText.disabled = notesAuto.checked; }
+        notesAuto.addEventListener('change', syncNotes);
+        syncNotes();
     }
 
     // Drag a header onto another to move that column there. The Invoice
