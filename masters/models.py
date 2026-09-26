@@ -526,8 +526,6 @@ class TaxSettings(models.Model):
     ict_percent = models.DecimalField("ICT %", max_digits=5, decimal_places=2, default=0)
     kpk_percent = models.DecimalField("Khyber Pakhtunkhwa %", max_digits=5, decimal_places=2, default=0)
     balochistan_percent = models.DecimalField("Balochistan %", max_digits=5, decimal_places=2, default=0)
-    origin_percent = models.DecimalField("Origin %", max_digits=5, decimal_places=2, default=0)
-    destination_percent = models.DecimalField("Destination %", max_digits=5, decimal_places=2, default=0)
 
     # Service Provider block printed on every Sales Tax Invoice, and its numbering.
     provider_name = models.CharField("Service Provider Name", max_length=150, default="SWIFT FREIGHT SOLUTIONS")

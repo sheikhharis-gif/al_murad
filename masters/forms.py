@@ -504,7 +504,7 @@ class TaxSettingsForm(forms.ModelForm):
     class Meta:
         model = TaxSettings
         percent_fields = ["sindh_percent", "punjab_percent", "ict_percent", "kpk_percent",
-                          "balochistan_percent", "origin_percent", "destination_percent"]
+                          "balochistan_percent"]
         fields = percent_fields + ["provider_name", "provider_address", "provider_ntn", "provider_strn",
                                    "invoice_prefix", "payment_terms_days"]
         widgets = {

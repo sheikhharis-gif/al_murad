@@ -137,11 +137,12 @@ def invoice_select(request):
 
 
 def _tax_inputs(post):
-    """Tax card fields: On/Off, Full/Partial and the rate boxes. The boxes
-    come pre-filled from the Tax menu but are editable per invoice, so what's
-    typed here wins; a blank box falls back to the saved default. Whichever
-    rates applied are returned as a snapshot to store on the invoice, so a
-    redownload never changes if the Tax menu is edited later."""
+    """Tax card fields: On/Off, Full/Partial and the 5 jurisdiction rate
+    boxes (used by both modes). The boxes come pre-filled from the Tax menu
+    but are editable per invoice, so what's typed here wins; a blank box falls
+    back to the saved default. The rates that applied are returned as a
+    snapshot to store on the invoice, so a redownload never changes if the Tax
+    menu is edited later."""
     enabled = post.get("tax_enabled") == "on"
     mode = post.get("tax_mode") if post.get("tax_mode") in ("FULL", "PARTIAL") else ""
     if not enabled or not mode:
@@ -154,11 +155,7 @@ def _tax_inputs(post):
             return _d(default)
         return min(max(_d(raw), Decimal(0)), Decimal(100))
 
-    if mode == "FULL":
-        rates = {code: rate(f"tax_{code.lower()}", getattr(cfg, f"{code.lower()}_percent")) for code, _ in TAX_PROVINCES}
-    else:
-        rates = {"origin": rate("tax_origin", cfg.origin_percent),
-                 "destination": rate("tax_destination", cfg.destination_percent)}
+    rates = {code: rate(f"tax_{code.lower()}", getattr(cfg, f"{code.lower()}_percent")) for code, _ in TAX_PROVINCES}
     return True, mode, {k: str(v) for k, v in rates.items()}
 
 
@@ -166,42 +163,40 @@ def _compute_tax(trips, tax_enabled, tax_mode, tax_rates):
     """Returns (subtotal, tax_amount, breakdown) where breakdown is a list of
     (label, rate%, taxable base, tax amount) rows for the invoice's tax table.
 
-    Full: each trip's whole amount is taxed at its ROUTE'S ORIGIN CITY's own
-    jurisdiction rate (a trip whose origin city has no province set pays no
-    tax). Partial: every trip is split 50/50, taxed at a flat Origin% /
-    Destination% regardless of province."""
+    Full: each trip's whole amount is taxed at its route's ORIGIN city's
+    jurisdiction rate. Partial: each trip is split 50/50 - the origin half at
+    the origin city's jurisdiction rate, the destination half at the
+    destination city's - worked out trip by trip, so one invoice can mix
+    routes (e.g. ICT and Punjab). A city with no province set pays no tax."""
     subtotal = sum((_d(t.freight) for t in trips), Decimal(0))
     if not tax_enabled:
         return subtotal, Decimal(0), []
 
     rates = {k: _d(v) for k, v in tax_rates.items()}
-    if tax_mode == "FULL":
-        base_by_code = {code: Decimal(0) for code, _ in TAX_PROVINCES}
-        unmapped = Decimal(0)
-        for t in trips:
-            province = t.route.origin.province if t.route_id else ""
+    base_by_code = {code: Decimal(0) for code, _ in TAX_PROVINCES}
+    unmapped = Decimal(0)
+    for t in trips:
+        amount = _d(t.freight)
+        if tax_mode == "FULL":
+            parts = [(t.route.origin.province, amount)]
+        else:
+            origin_half = (amount / 2).quantize(Decimal("0.01"))
+            parts = [(t.route.origin.province, origin_half), (t.route.destination.province, amount - origin_half)]
+        for province, part in parts:
             if province in base_by_code:
-                base_by_code[province] += _d(t.freight)
+                base_by_code[province] += part
             else:
-                unmapped += _d(t.freight)
-        breakdown, tax_amount = [], Decimal(0)
-        for code, label in TAX_PROVINCES:
-            base, rate = base_by_code[code], rates.get(code, Decimal(0))
-            amount = (base * rate / 100).quantize(Decimal("0.01"))
-            tax_amount += amount
-            breakdown.append((label, rate, base, amount))
-        if unmapped:
-            breakdown.append(("No Province Set", Decimal(0), unmapped, Decimal(0)))
-        return subtotal, tax_amount, breakdown
+                unmapped += part
 
-    origin_rate, dest_rate = rates.get("origin", Decimal(0)), rates.get("destination", Decimal(0))
-    half_base = (subtotal / 2).quantize(Decimal("0.01"))
-    origin_tax = (half_base * origin_rate / 100).quantize(Decimal("0.01"))
-    dest_tax = (half_base * dest_rate / 100).quantize(Decimal("0.01"))
-    return subtotal, origin_tax + dest_tax, [
-        ("Origin", origin_rate, half_base, origin_tax),
-        ("Destination", dest_rate, half_base, dest_tax),
-    ]
+    breakdown, tax_amount = [], Decimal(0)
+    for code, label in TAX_PROVINCES:
+        base, rate = base_by_code[code], rates.get(code, Decimal(0))
+        amount = (base * rate / 100).quantize(Decimal("0.01"))
+        tax_amount += amount
+        breakdown.append((label, rate, base, amount))
+    if unmapped:
+        breakdown.append(("No Province Set", Decimal(0), unmapped, Decimal(0)))
+    return subtotal, tax_amount, breakdown
 
 
 def _billing_period(start, end):
@@ -421,7 +416,7 @@ def _build_pdf(data):
 
     right = ParagraphStyle("right", parent=txt, alignment=2)
     if data["tax_enabled"] and data["breakdown"]:
-        rows = [[Paragraph("TAX JURISDICTION" if data["tax_mode"] == "FULL" else "TAX (SPLIT 50/50)", white_c),
+        rows = [[Paragraph("TAX JURISDICTION", white_c),
                  Paragraph("TAX RATE", white_c), Paragraph("TAXABLE AMOUNT (PKR)", white_c),
                  Paragraph("TAX AMOUNT (PKR)", white_c)]]
         for lbl, rate, base, amount in data["breakdown"]:
@@ -553,7 +548,7 @@ def _build_xlsx(data):
 
     r = 16
     if data["tax_enabled"] and data["breakdown"]:
-        put(ws, f"A{r+1}:D{r+1}", "TAX JURISDICTION" if data["tax_mode"] == "FULL" else "TAX (SPLIT 50/50)", head_font, blue_fill, center)
+        put(ws, f"A{r+1}:D{r+1}", "TAX JURISDICTION", head_font, blue_fill, center)
         put(ws, f"E{r+1}:F{r+1}", "TAX RATE", head_font, blue_fill, center)
         put(ws, f"G{r+1}:H{r+1}", "TAXABLE AMOUNT (PKR)", head_font, blue_fill, center)
         put(ws, f"I{r+1}:J{r+1}", "TAX AMOUNT (PKR)", head_font, blue_fill, center)

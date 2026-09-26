@@ -18,31 +18,35 @@
         {% endif %}
 
         <div class="row g-4">
-            <div class="col-lg-6">
+            <div class="col-12">
                 <div class="card border-0 shadow-sm rounded-4 h-100">
                     <div class="card-header bg-white border-0 pt-4 px-4">
-                        <h5 class="fw-bold mb-0 text-primary">Full Tax Rates</h5>
-                        <p class="text-muted small mb-0">A trip's whole amount is taxed at its route's origin city's own province rate.</p>
+                        <h5 class="fw-bold mb-0 text-primary">Tax Rates by Province</h5>
+                        <p class="text-muted small mb-0">
+                            <b>Full:</b> a trip's whole amount is taxed at its origin city's province rate.
+                            <b>Partial:</b> half at the origin city's province rate, half at the destination city's - trip by trip, using these same rates.
+                            Each city's province is set on Cities &amp; Routes.
+                        </p>
                     </div>
                     <div class="card-body px-4">
                         <div class="row g-3">
-                            <div class="col-md-6">
+                            <div class="col-lg col-md-4 col-sm-6">
                                 <label class="form-label small fw-bold">Sindh %</label>
                                 {{ form.sindh_percent }}{{ form.sindh_percent.errors }}
                             </div>
-                            <div class="col-md-6">
+                            <div class="col-lg col-md-4 col-sm-6">
                                 <label class="form-label small fw-bold">Punjab %</label>
                                 {{ form.punjab_percent }}{{ form.punjab_percent.errors }}
                             </div>
-                            <div class="col-md-6">
+                            <div class="col-lg col-md-4 col-sm-6">
                                 <label class="form-label small fw-bold">ICT (Islamabad Capital Territory) %</label>
                                 {{ form.ict_percent }}{{ form.ict_percent.errors }}
                             </div>
-                            <div class="col-md-6">
+                            <div class="col-lg col-md-4 col-sm-6">
                                 <label class="form-label small fw-bold">KPK (Khyber Pakhtunkhwa) %</label>
                                 {{ form.kpk_percent }}{{ form.kpk_percent.errors }}
                             </div>
-                            <div class="col-md-6">
+                            <div class="col-lg col-md-4 col-sm-6">
                                 <label class="form-label small fw-bold">Balochistan %</label>
                                 {{ form.balochistan_percent }}{{ form.balochistan_percent.errors }}
                             </div>
@@ -51,26 +55,6 @@
                 </div>
             </div>
 
-            <div class="col-lg-6">
-                <div class="card border-0 shadow-sm rounded-4 h-100">
-                    <div class="card-header bg-white border-0 pt-4 px-4">
-                        <h5 class="fw-bold mb-0 text-warning-emphasis">Partial Tax Rates</h5>
-                        <p class="text-muted small mb-0">Every trip is split 50/50 - the origin half is taxed at Origin %, the destination half at Destination %.</p>
-                    </div>
-                    <div class="card-body px-4">
-                        <div class="row g-3">
-                            <div class="col-md-6">
-                                <label class="form-label small fw-bold">Origin %</label>
-                                {{ form.origin_percent }}{{ form.origin_percent.errors }}
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label small fw-bold">Destination %</label>
-                                {{ form.destination_percent }}{{ form.destination_percent.errors }}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
         </div>
 
         <div class="card border-0 shadow-sm rounded-4 mt-4">

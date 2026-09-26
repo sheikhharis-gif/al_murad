@@ -61,7 +61,7 @@
                 <div>
                     <h6 class="fw-bold mb-0 text-primary">Tax</h6>
                     <p class="text-muted small mb-0">
-                        Off by default. Full taxes each trip's full amount by its origin city's own province; Partial splits every trip 50/50 between Origin and Destination.
+                        Off by default. Full taxes each trip's whole amount at its origin city's province rate; Partial splits every trip 50/50 - origin half at the origin city's province rate, destination half at the destination city's - trip by trip.
                         The % boxes start from the <a href="{% url 'tax_settings' %}" target="_blank">Tax</a> menu - type over them to change this invoice only.
                     </p>
                 </div>
@@ -77,7 +77,7 @@
                     <input type="radio" class="btn-check" name="tax_mode" id="taxPartial" value="PARTIAL">
                     <label class="btn btn-outline-primary btn-sm fw-bold" for="taxPartial">Partial</label>
                 </div>
-                <div id="taxFullFields" class="row g-3">
+                <div class="row g-3">
                     <div class="col-lg col-md-4 col-sm-6">
                         <label class="form-label small fw-semibold text-muted">Sindh %</label>
                         <input type="number" name="tax_sindh" step="0.01" min="0" max="100" class="form-control form-control-sm" value="{{ tax_settings.sindh_percent }}">
@@ -97,16 +97,6 @@
                     <div class="col-lg col-md-4 col-sm-6">
                         <label class="form-label small fw-semibold text-muted">Balochistan %</label>
                         <input type="number" name="tax_balochistan" step="0.01" min="0" max="100" class="form-control form-control-sm" value="{{ tax_settings.balochistan_percent }}">
-                    </div>
-                </div>
-                <div id="taxPartialFields" class="row g-3" style="display:none;">
-                    <div class="col-md-3 col-sm-6">
-                        <label class="form-label small fw-semibold text-muted">Origin %</label>
-                        <input type="number" name="tax_origin" step="0.01" min="0" max="100" class="form-control form-control-sm" value="{{ tax_settings.origin_percent }}">
-                    </div>
-                    <div class="col-md-3 col-sm-6">
-                        <label class="form-label small fw-semibold text-muted">Destination %</label>
-                        <input type="number" name="tax_destination" step="0.01" min="0" max="100" class="form-control form-control-sm" value="{{ tax_settings.destination_percent }}">
                     </div>
                 </div>
             </div>
@@ -257,22 +247,12 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    // Tax card: whole details block only when Tax is on; Full vs Partial
-    // swaps which set of rate boxes is shown.
+    // Tax card: the Full/Partial choice and the rate boxes only show when Tax is on.
     var taxEnabled = document.getElementById('taxEnabled');
     var taxDetails = document.getElementById('taxDetails');
-    var taxFullFields = document.getElementById('taxFullFields');
-    var taxPartialFields = document.getElementById('taxPartialFields');
-    function syncTax() {
-        taxDetails.style.display = taxEnabled.checked ? '' : 'none';
-        var full = document.getElementById('taxFull').checked;
-        taxFullFields.style.display = full ? '' : 'none';
-        taxPartialFields.style.display = full ? 'none' : '';
-    }
     if (taxEnabled) {
+        function syncTax() { taxDetails.style.display = taxEnabled.checked ? '' : 'none'; }
         taxEnabled.addEventListener('change', syncTax);
-        document.getElementById('taxFull').addEventListener('change', syncTax);
-        document.getElementById('taxPartial').addEventListener('change', syncTax);
         syncTax();
     }
 });
