@@ -136,10 +136,9 @@
                             <select name="provider" class="form-select form-select-sm dropdown-search-select"
                                     data-match="contains" data-theme="light"
                                     data-placeholder="{{ tax_settings.provider_name }} (default) - type to search..."
-                                    data-empty-text="No matching client / company">
+                                    data-empty-text="No matching company">
                                 <option value="">--- Default: {{ tax_settings.provider_name }} ---</option>
-                                {% for c in all_clients %}<option value="client:{{ c.id }}">{{ c.name }}</option>{% endfor %}
-                                {% for co in companies %}<option value="company:{{ co.id }}">{{ co.name }} (Company)</option>{% endfor %}
+                                {% for co in companies %}<option value="{{ co.id }}">{{ co.name }}</option>{% endfor %}
                             </select>
                         </div>
                         <a href="{% url 'company_add' %}" class="small ms-1" target="_blank">+ Add Company</a>
