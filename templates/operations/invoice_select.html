@@ -133,7 +133,7 @@
                     <div>
                         <label class="form-label small fw-semibold text-muted mb-0 me-1">Service Recipient</label>
                         <select name="company" class="form-select form-select-sm searchable-select" style="width:220px;">
-                            <option value="">--- Select Company ---</option>
+                            <option value="">--- Same as client ({{ client.name }}) ---</option>
                             {% for co in companies %}<option value="{{ co.id }}">{{ co.name }}</option>{% endfor %}
                         </select>
                         <a href="{% url 'company_add' %}" class="small ms-1" target="_blank">+ Add</a>
@@ -221,26 +221,14 @@ document.addEventListener('DOMContentLoaded', function () {
         sync();
     });
 
-    // The Service Recipient dropdown is swapped for a search box, so the browser
-    // can't flag it itself (a hidden required field just blocks the submit with
-    // no message) - check it, and the trip ticks, here with a visible warning.
+    // Warn (visibly) if no trip is ticked. Service Recipient is optional: left
+    // blank, the customer on the invoice is the client itself.
     var invoiceForm = document.getElementById('invoiceForm');
     if (invoiceForm) {
         invoiceForm.addEventListener('submit', function (e) {
-            var company = invoiceForm.querySelector('select[name="company"]');
-            var problem = '';
-            if (!company.value) {
-                problem = company.options.length > 1
-                    ? 'Please choose a Service Recipient (type its name in the box and pick it from the list).'
-                    : 'There is no company yet - add one first under Invoicing > Add Company, then reload this page.';
-            } else if (!invoiceForm.querySelector('.trip-check:checked')) {
-                problem = 'Please tick at least one trip.';
-            }
-            if (problem) {
+            if (!invoiceForm.querySelector('.trip-check:checked')) {
                 e.preventDefault();
-                alert(problem);
-                var box = company.previousElementSibling && company.previousElementSibling.previousElementSibling;
-                if (!company.value && box && box.tagName === 'INPUT') box.focus();
+                alert('Please tick at least one trip.');
             }
         });
     }

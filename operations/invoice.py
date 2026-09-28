@@ -252,7 +252,7 @@ def _invoice_data(invoice, trips, cols):
             row.append(value)
         rows.append(row)
 
-    company = invoice.company
+    party = invoice.company or invoice.client  # Bill To: the chosen company, else the client itself
     return {
         "invoice_no": invoice.invoice_no,
         "invoice_date": inv_date,
@@ -260,7 +260,7 @@ def _invoice_data(invoice, trips, cols):
         "payment_days": invoice.payment_days,
         "sales_tax_no": invoice.sales_tax_no,
         "period": _billing_period(start, end),
-        "bill_to": {"name": company.name, "address": company.address, "ntn": company.ntn, "strn": company.stn},
+        "bill_to": {"name": party.name, "address": party.address, "ntn": party.ntn, "strn": party.stn},
         "provider": {"name": cfg.provider_name, "address": cfg.provider_address,
                      "ntn": cfg.provider_ntn, "strn": cfg.provider_strn},
         "in_words": amount_in_words(subtotal + tax_amount),
@@ -279,7 +279,7 @@ def _safe_filename(text):
 
 def _respond(invoice, trips, cols, fmt):
     data = _invoice_data(invoice, trips, cols)
-    name = _safe_filename(f"Invoice {invoice.invoice_no} - {invoice.company.name}")
+    name = _safe_filename(f"Invoice {invoice.invoice_no} - {(invoice.company or invoice.client).name}")
     if fmt == "xlsx":
         response = HttpResponse(
             invoice_xlsx.build(data),
@@ -302,8 +302,8 @@ def invoice_generate_pdf(request):
     company_id = request.POST.get("company") or ""
     company = Company.objects.filter(pk=company_id).first() if company_id.isdigit() else None
     trip_ids = request.POST.getlist("trip_ids")
-    problem = ("Please choose a Service Recipient (add one under Invoicing > Add Company if the list is empty)."
-               if not company else "Please tick at least one trip." if not trip_ids else "")
+    problem = ("That Service Recipient no longer exists - pick another, or leave it as the client."
+               if company_id and not company else "Please tick at least one trip." if not trip_ids else "")
     if problem:
         messages.error(request, problem)
         back = {"client": client.pk, "start_date": request.POST.get("start_date") or "",

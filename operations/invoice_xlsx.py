@@ -119,15 +119,45 @@ def _page(ws, orientation, last_row, last_col):
     ws.print_area = f"A1:{get_column_letter(last_col)}{last_row}"
 
 
-# Column widths in the templates, by position (S.no first); a wide text column overrides.
+# Column widths in the templates, by position (S.no first).
 TRIPS_SUMMARY_WIDTHS = [14, 15, 16, 15, 16, 15, 12, 15, 16, 16.89, 18.33, 15]
 NON_TAX_WIDTHS = [14, 15, 16, 15, 16, 15, 13.66, 15, 16, 16.89]
 _MIN_WIDTH = {"remarks": 30, "stopover_city": 16, "sub_category": 15}
+# Which columns get the spare sheet columns first when few columns are ticked.
+_WIDE_FIRST = {"remarks": 3, "route": 2, "sub_category": 2, "stopover_city": 2, "vehicle_type": 2, "trip_date": 2}
 
 
-def _width(widths, i, key):
-    base = widths[i - 1] if i <= len(widths) else 16
-    return max(base, _MIN_WIDTH.get(key, 0))
+def _sheet_widths(ws, widths, n_cols, spans, keys):
+    for i in range(1, n_cols + 1):
+        ws.column_dimensions[get_column_letter(i)].width = widths[i - 1] if i <= len(widths) else 16
+    for (a, b), key in zip(spans, keys):  # a wide text column that has its own sheet column
+        if a == b and key in _MIN_WIDTH:
+            col = ws.column_dimensions[get_column_letter(a)]
+            col.width = max(col.width or 0, _MIN_WIDTH[key])
+
+
+def _spans(keys, n_cols):
+    """[(first, last), ...] sheet columns for each table column (S.no first) so
+    the table always fills the full width of the page: with fewer columns than
+    the sheet has, the spare sheet columns are shared out (S.no stays narrow)."""
+    n = len(keys)
+    widths = [1] * n
+    spare = n_cols - n
+    order = sorted(range(1, n), key=lambda i: (-_WIDE_FIRST.get(keys[i], 1), i))
+    for j in range(max(spare, 0)):
+        if not order:
+            break
+        widths[order[j % len(order)]] += 1
+    spans, col = [], 1
+    for w in widths:
+        spans.append((col, col + w - 1))
+        col += w
+    return spans
+
+
+def _rng(row, span):
+    a, b = span
+    return f"{get_column_letter(a)}{row}:{get_column_letter(b)}{row}" if b > a else f"{get_column_letter(a)}{row}"
 
 
 def _col_format(key, money):
@@ -140,14 +170,14 @@ def _col_format(key, money):
     return None
 
 
-def _table(ws, data, header_row, height_rows=None, wrap_header=True):
+def _table(ws, data, header_row, spans, height_rows=None, wrap_header=True):
     """Header + body of the trips table (S.no first) starting at header_row.
     Returns (first_data_row, last_data_row)."""
     headers = ["S.no"] + data["headers"]
     keys = ["sno"] + data["keys"]
     money = [False] + data["money"]
     for i, h in enumerate(headers, start=1):
-        _put(ws, f"{get_column_letter(i)}{header_row}", h, _font(10, True, color=WHITE), _fill(BLUE),
+        _put(ws, _rng(header_row, spans[i - 1]), h, _font(10, True, color=WHITE), _fill(BLUE),
              (A_HEAD_R if wrap_header else A_RIGHT) if money[i - 1] else (A_HEAD if wrap_header else A_LEFT), **_box())
     r = header_row + 1
     for n, row in enumerate(data["rows"], start=1):
@@ -157,38 +187,39 @@ def _table(ws, data, header_row, height_rows=None, wrap_header=True):
                 value = float(value)
             elif value == "":
                 value = None
-            _put(ws, f"{get_column_letter(i)}{r}", value, _font(10), None, A_CELL,
-                     nf=_col_format(key, is_money), **_box())
+            _put(ws, _rng(r, spans[i - 1]), value, _font(10), None, A_CELL, nf=_col_format(key, is_money), **_box())
         if height_rows:
             ws.row_dimensions[r].height = height_rows
         r += 1
     return header_row + 1, r - 1
 
 
-def _total_row(ws, data, row, first_data, last_data, n_cols):
+def _total_row(ws, data, row, first_data, last_data, spans):
     """TOTAL bar: label merged over the columns before the first money column,
     a SUM under each money column."""
     money = [False] + data["money"]
-    first_money = next((i for i, m in enumerate(money, start=1) if m), n_cols + 1)
     edge = dict(left=THIN, right=THIN, top=MEDIUM, bottom=MEDIUM)
-    label_to = max(first_money - 1, 1)
+    first_money = next((i for i, m in enumerate(money) if m), None)
+    label_to = spans[first_money][0] - 1 if first_money else spans[0][1]
     _put(ws, f"A{row}:{get_column_letter(label_to)}{row}" if label_to > 1 else f"A{row}", "TOTAL",
          _font(11, True), _fill(LIGHT), A_V, **edge)
-    for i in range(label_to + 1, n_cols + 1):
-        col = get_column_letter(i)
-        if money[i - 1]:
-            _put(ws, f"{col}{row}", f"=SUM({col}{first_data}:{col}{last_data})", _font(11, True), _fill(LIGHT), A_V,
+    for i, span in enumerate(spans):
+        if span[0] <= label_to:
+            continue
+        col = get_column_letter(span[0])
+        if money[i]:
+            _put(ws, _rng(row, span), f"=SUM({col}{first_data}:{col}{last_data})", _font(11, True), _fill(LIGHT), A_V,
                  nf="#,##0.00", **edge)
         else:
-            _put(ws, f"{col}{row}", None, None, _fill(LIGHT), None, top=MEDIUM, bottom=MEDIUM)
+            _put(ws, _rng(row, span), None, None, _fill(LIGHT), None, top=MEDIUM, bottom=MEDIUM)
     ws.row_dimensions[row].height = 19.95
 
 
-def _freight_ref(data, sheet_prefix, total_row):
+def _freight_ref(data, sheet_prefix, total_row, spans):
     """Formula pointing at the Total Freight sum, or the plain amount if that
     column isn't on the invoice."""
     if "total_freight" in data["keys"]:
-        col = get_column_letter(data["keys"].index("total_freight") + 2)
+        col = get_column_letter(spans[data["keys"].index("total_freight") + 1][0])
         return f"={sheet_prefix}{col}{total_row}"
     return float(data["subtotal"])
 
@@ -217,27 +248,28 @@ def _tax_workbook(data):
     ws.title = "Invoice"
     ts = wb.create_sheet("Trips Summary")
 
-    # ===== Trips Summary (page 2)
+    # ===== Trips Summary (page 2) - the template's 12 columns; wider if more are ticked
     headers = ["S.no"] + data["headers"]
-    n_cols = len(headers)
-    last = get_column_letter(n_cols)
+    keys = ["sno"] + data["keys"]
+    W = max(12, len(headers))
+    spans = _spans(keys, W)
+    last = get_column_letter(W)
     _put(ts, f"A1:{last}1", "TRIPS SUMMARY", _font(18, True, color=WHITE), _fill(BLUE), A_LEFT)
     ts.row_dimensions[1].height = 30
     meta = [("Invoice #", data["invoice_no"]), ("Billing Period", data["period"]),
             ("Customer", data["bill_to"]["name"]), ("Service Provider", data["provider"]["name"])]
-    _info_row(ts, 3, meta, n_cols, _font(10, True), _font(10), boxed=True)
+    _info_row(ts, 3, meta, W, _font(10, True), _font(10), boxed=True)
     ts.row_dimensions[3].height = ts.row_dimensions[4].height = 19.95
     ts.row_dimensions[6].height = 30
-    first_data, last_data = _table(ts, data, 6)
+    first_data, last_data = _table(ts, data, 6, spans)
     spacer = last_data + 1
     ts.row_dimensions[spacer].height = 17.4
     total_row = spacer + 1
-    _total_row(ts, data, total_row, first_data, last_data, n_cols)
+    _total_row(ts, data, total_row, first_data, last_data, spans)
     footer_row = total_row + 2
     _put(ts, f"A{footer_row}:{last}{footer_row}", "Page 2 of 2", _font(8, italic=True, color=FOOT), None, Alignment(horizontal="center"))
-    for i, key in enumerate(["sno"] + data["keys"], start=1):
-        ts.column_dimensions[get_column_letter(i)].width = _width(TRIPS_SUMMARY_WIDTHS, i, key)
-    _page(ts, "landscape", footer_row, n_cols)
+    _sheet_widths(ts, TRIPS_SUMMARY_WIDTHS, W, spans, keys)
+    _page(ts, "landscape", footer_row, W)
 
     # ===== Invoice (page 1) - 10 columns of 17
     for i in range(1, 11):
@@ -259,7 +291,7 @@ def _tax_workbook(data):
     _put(ws, "A13:H13", "DESCRIPTION OF SERVICES", _font(9, True, color=WHITE), _fill(BLUE), A_V, **_box())
     _put(ws, "I13:J13", "AMOUNT (PKR)", _font(9, True, color=WHITE), _fill(BLUE), A_RIGHT, **_box())
     _put(ws, "A14:H15", "Transportation Services", _font(10), None, A_LEFT, **_box())
-    _put(ws, "I14:J15", _freight_ref(data, "'Trips Summary'!", total_row), _font(10), None, A_RIGHT, nf=ACCOUNTING0, **_box())
+    _put(ws, "I14:J15", _freight_ref(data, "'Trips Summary'!", total_row, spans), _font(10), None, A_RIGHT, nf=ACCOUNTING0, **_box())
 
     _put(ws, "A17:D17", "TAX JURISDICTION", _font(8, True, color=WHITE), _fill(BLUE), A_HEAD, **_box())
     _put(ws, "E17:F17", "TAX RATE", _font(8, True, color=WHITE), _fill(BLUE), Alignment(horizontal="center", vertical="center", wrap_text=True), **_box())
@@ -308,8 +340,8 @@ def _nontax_workbook(data):
     n_cols = max(len(headers), 10)
     L = get_column_letter
     half = n_cols // 2
-    for i in range(1, n_cols + 1):
-        ws.column_dimensions[L(i)].width = _width(NON_TAX_WIDTHS, i, keys[i - 1] if i <= len(keys) else "")
+    spans = _spans(keys, n_cols)
+    _sheet_widths(ws, NON_TAX_WIDTHS, n_cols, spans, keys)
 
     b, p = data["bill_to"], data["provider"]
     _put(ws, f"A1:{L(half)}1", "BILL TO / CUSTOMER", _font(14, True, color=WHITE), _fill(BLUE), A_V, **_box())
@@ -321,16 +353,15 @@ def _nontax_workbook(data):
                       ("Payment Terms", f"{data['payment_days']} Days"), ("Due Date", f"{data['due_date']:%d %b %Y}"),
                       ("Invoice #", data["invoice_no"])], n_cols, _font(9, True), _font(10), boxed=False)
     _put(ws, f"A12:{L(n_cols)}12", "TRIPS SUMMARY", _font(16, True, color=WHITE), _fill(BLUE), A_LEFT)
-    first_data, last_data = _table(ws, data, 14, height_rows=19.95, wrap_header=False)
+    first_data, last_data = _table(ws, data, 14, spans, height_rows=19.95, wrap_header=False)
     total_row = last_data + 2
-    _total_row(ws, data, total_row, first_data, last_data, len(headers))
-    # the template's table is exactly the sheet width; pad the bar if the table is narrower
+    _total_row(ws, data, total_row, first_data, last_data, spans)
     inv_row = total_row + 2
     edge = dict(left=THIN, right=THIN, top=MEDIUM, bottom=MEDIUM)
     amount_cols = 2
     _put(ws, f"A{inv_row}:{L(n_cols - amount_cols)}{inv_row}", "TOTAL INVOICE AMOUNT", _font(12, True), _fill(LIGHT), A_LEFT, **edge)
     _put(ws, f"{L(n_cols - amount_cols + 1)}{inv_row}:{L(n_cols)}{inv_row}",
-         _freight_ref(data, "", total_row), _font(13, True, color=BLUE), _fill(LIGHT), A_RIGHT, nf=ACCOUNTING0, **edge)
+         _freight_ref(data, "", total_row, spans), _font(13, True, color=BLUE), _fill(LIGHT), A_RIGHT, nf=ACCOUNTING0, **edge)
     words_row = inv_row + 2
     _put(ws, f"A{words_row}:B{words_row}", "AMOUNT IN WORDS", _font(9, True), None, None, bottom=THIN)
     _put(ws, f"C{words_row}:{L(n_cols)}{words_row}", data["in_words"], _font(10, italic=True), None, None, bottom=THIN)

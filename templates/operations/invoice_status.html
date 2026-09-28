@@ -31,7 +31,7 @@
                         <td class="ps-3 fw-bold">{{ inv.invoice_no }}</td>
                         <td>{{ inv.created_at|date:"d-M-y" }}</td>
                         <td>{{ inv.client.name }}</td>
-                        <td>{{ inv.company.name }}</td>
+                        <td>{{ inv.company.name|default:inv.client.name }}</td>
                         <td class="text-center">{{ inv.trips.count }}</td>
                         <td class="text-end">{{ inv.subtotal|floatformat:0 }}</td>
                         <td class="text-end">{{ inv.tax_amount|floatformat:0 }}</td>
