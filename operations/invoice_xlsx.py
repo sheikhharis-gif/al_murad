@@ -92,18 +92,6 @@ def _pct(rate):
     return float(rate / 100), ("0%" if rate == rate.to_integral_value() else "0.00%")
 
 
-def _split(n_cols, groups):
-    """[(first, last), ...] 1-based column ranges splitting n_cols into `groups` runs."""
-    groups = min(groups, n_cols)
-    size, extra = divmod(n_cols, groups)
-    out, start = [], 1
-    for i in range(groups):
-        end = start + size + (1 if i < extra else 0) - 1
-        out.append((start, end))
-        start = end + 1
-    return out
-
-
 def _page(ws, orientation, last_row, last_col):
     ws.sheet_view.showGridLines = False
     ws.sheet_format.defaultRowHeight = 16.8
@@ -119,40 +107,45 @@ def _page(ws, orientation, last_row, last_col):
     ws.print_area = f"A1:{get_column_letter(last_col)}{last_row}"
 
 
-# Column widths in the templates, by position (S.no first).
-TRIPS_SUMMARY_WIDTHS = [14, 15, 16, 15, 16, 15, 12, 15, 16, 16.89, 18.33, 15]
-NON_TAX_WIDTHS = [14, 15, 16, 15, 16, 15, 13.66, 15, 16, 16.89]
-_MIN_WIDTH = {"remarks": 30, "stopover_city": 16, "sub_category": 15}
-# Which columns get the spare sheet columns first when few columns are ticked.
-_WIDE_FIRST = {"remarks": 3, "route": 2, "sub_category": 2, "stopover_city": 2, "vehicle_type": 2, "trip_date": 2}
+# The templates' total sheet widths: a table with few columns is stretched to this so it
+# still fills the page; one with many just gets a wider sheet (printing scales it to fit).
+TRIPS_SUMMARY_WIDTH = 183.22
+NON_TAX_WIDTH = 152.55
+# Width (characters) of each column, enough for its header and values.
+_COL_CHARS = {"trip_no": 12, "trip_date": 13, "bilty_number": 14, "vehicle": 14, "vehicle_type": 16, "sub_category": 16,
+              "route": 14, "weight": 17, "stopover_city": 17, "stopover_charges": 20, "trip_charges": 16,
+              "additional_charges": 23, "total_freight": 17, "remarks": 30}
+_SNO_CHARS = 14
 
 
-def _sheet_widths(ws, widths, n_cols, spans, keys):
-    for i in range(1, n_cols + 1):
-        ws.column_dimensions[get_column_letter(i)].width = widths[i - 1] if i <= len(widths) else 16
-    for (a, b), key in zip(spans, keys):  # a wide text column that has its own sheet column
-        if a == b and key in _MIN_WIDTH:
-            col = ws.column_dimensions[get_column_letter(a)]
-            col.width = max(col.width or 0, _MIN_WIDTH[key])
+def _grid(ws, keys, target):
+    """Set every table column's own fixed width (S.no first), stretched
+    proportionally if the sheet would otherwise be narrower than `target`.
+    Returns the width list."""
+    prefs = [_COL_CHARS.get(k, 16) for k in keys[1:]]
+    scale = max((target - _SNO_CHARS) / sum(prefs), 1) if prefs else 1
+    widths = [_SNO_CHARS] + [round(w * scale, 2) for w in prefs]
+    for i, w in enumerate(widths, start=1):
+        ws.column_dimensions[get_column_letter(i)].width = w
+    return widths
 
 
-def _spans(keys, n_cols):
-    """[(first, last), ...] sheet columns for each table column (S.no first) so
-    the table always fills the full width of the page: with fewer columns than
-    the sheet has, the spare sheet columns are shared out (S.no stays narrow)."""
-    n = len(keys)
-    widths = [1] * n
-    spare = n_cols - n
-    order = sorted(range(1, n), key=lambda i: (-_WIDE_FIRST.get(keys[i], 1), i))
-    for j in range(max(spare, 0)):
-        if not order:
-            break
-        widths[order[j % len(order)]] += 1
-    spans, col = [], 1
-    for w in widths:
-        spans.append((col, col + w - 1))
-        col += w
-    return spans
+def _split_width(widths, groups):
+    """[(first, last), ...] contiguous columns cutting the sheet into `groups`
+    pieces of about equal WIDTH (not equal column count)."""
+    n, total = len(widths), sum(widths)
+    groups = min(groups, n)
+    out, start, acc = [], 1, 0.0
+    for g in range(1, groups + 1):
+        end = start
+        acc_end = acc + widths[start - 1]
+        goal = total * g / groups
+        while end < n - (groups - g) and abs(acc_end + widths[end] - goal) < abs(acc_end - goal):
+            acc_end += widths[end]
+            end += 1
+        out.append((start, end))
+        start, acc = end + 1, acc_end
+    return out
 
 
 def _rng(row, span):
@@ -224,10 +217,10 @@ def _freight_ref(data, sheet_prefix, total_row, spans):
     return float(data["subtotal"])
 
 
-def _info_row(ws, labels_row, pairs, n_cols, label_font, value_font, boxed):
-    """The Invoice Date / Billing Period / ... strip, spread over n_cols."""
-    for (a, b), (label, value) in zip(_split(n_cols, len(pairs)), pairs):
-        ra, rb = f"{get_column_letter(a)}", f"{get_column_letter(b)}"
+def _info_row(ws, labels_row, pairs, widths, label_font, value_font, boxed):
+    """The Invoice Date / Billing Period / ... strip, spread over the sheet width."""
+    for (a, b), (label, value) in zip(_split_width(widths, len(pairs)), pairs):
+        ra, rb = get_column_letter(a), get_column_letter(b)
         rng = (lambda row: f"{ra}{row}:{rb}{row}" if b > a else f"{ra}{row}")
         if boxed:
             _put(ws, rng(labels_row), label, label_font, _fill(LIGHT), A_V, **_box())
@@ -251,14 +244,15 @@ def _tax_workbook(data):
     # ===== Trips Summary (page 2) - the template's 12 columns; wider if more are ticked
     headers = ["S.no"] + data["headers"]
     keys = ["sno"] + data["keys"]
-    W = max(12, len(headers))
-    spans = _spans(keys, W)
+    W = len(headers)
+    spans = [(i, i) for i in range(1, W + 1)]
+    widths = _grid(ts, keys, TRIPS_SUMMARY_WIDTH)
     last = get_column_letter(W)
     _put(ts, f"A1:{last}1", "TRIPS SUMMARY", _font(18, True, color=WHITE), _fill(BLUE), A_LEFT)
     ts.row_dimensions[1].height = 30
     meta = [("Invoice #", data["invoice_no"]), ("Billing Period", data["period"]),
             ("Customer", data["bill_to"]["name"]), ("Service Provider", data["provider"]["name"])]
-    _info_row(ts, 3, meta, W, _font(10, True), _font(10), boxed=True)
+    _info_row(ts, 3, meta, widths, _font(10, True), _font(10), boxed=True)
     ts.row_dimensions[3].height = ts.row_dimensions[4].height = 19.95
     ts.row_dimensions[6].height = 30
     first_data, last_data = _table(ts, data, 6, spans)
@@ -268,7 +262,6 @@ def _tax_workbook(data):
     _total_row(ts, data, total_row, first_data, last_data, spans)
     footer_row = total_row + 2
     _put(ts, f"A{footer_row}:{last}{footer_row}", "Page 2 of 2", _font(8, italic=True, color=FOOT), None, Alignment(horizontal="center"))
-    _sheet_widths(ts, TRIPS_SUMMARY_WIDTHS, W, spans, keys)
     _page(ts, "landscape", footer_row, W)
 
     # ===== Invoice (page 1) - 10 columns of 17
@@ -279,7 +272,7 @@ def _tax_workbook(data):
     _put(ws, "J1", data["sales_tax_no"] or None, _font(9, True, color=WHITE), _fill(BLUE), Alignment(horizontal="left", vertical="center"))
     _info_row(ws, 3, [("Invoice Date", f"{data['invoice_date']:%d %b %Y}"), ("Billing Period", data["period"]),
                       ("Payment Terms", f"{data['payment_days']} Days"), ("Due Date", f"{data['due_date']:%d %b %Y}"),
-                      ("Invoice #", data["invoice_no"])], 10, _font(9, True), _font(10), boxed=False)
+                      ("Invoice #", data["invoice_no"])], [17] * 10, _font(9, True), _font(10), boxed=False)
 
     _put(ws, "A6:E6", "BILL TO / CUSTOMER", _font(10, True, color=WHITE), _fill(BLUE), A_V, **_box())
     _put(ws, "F6:J6", "SERVICE PROVIDER", _font(10, True, color=WHITE), _fill(BLUE), A_V, **_box())
@@ -337,11 +330,14 @@ def _nontax_workbook(data):
     ws.title = "NON-TAX INVOICE"
     headers = ["S.no"] + data["headers"]
     keys = ["sno"] + data["keys"]
-    n_cols = max(len(headers), 10)
+    n_cols = max(len(headers), 4)
     L = get_column_letter
-    half = n_cols // 2
-    spans = _spans(keys, n_cols)
-    _sheet_widths(ws, NON_TAX_WIDTHS, n_cols, spans, keys)
+    spans = [(i, i) for i in range(1, len(headers) + 1)]
+    widths = _grid(ws, keys, NON_TAX_WIDTH)
+    widths += [16] * (n_cols - len(widths))
+    for i in range(len(headers) + 1, n_cols + 1):
+        ws.column_dimensions[L(i)].width = 16
+    half = _split_width(widths, 2)[0][1]  # Bill To / Service Provider: two halves of equal width
 
     b, p = data["bill_to"], data["provider"]
     _put(ws, f"A1:{L(half)}1", "BILL TO / CUSTOMER", _font(14, True, color=WHITE), _fill(BLUE), A_V, **_box())
@@ -351,7 +347,7 @@ def _nontax_workbook(data):
     _put(ws, f"{L(half + 1)}2:{L(n_cols)}7", _party(p["name"], p["address"], p["ntn"], p["strn"], 18), _font(9), None, top, **_box())
     _info_row(ws, 9, [("Invoice Date", f"{data['invoice_date']:%d %b %Y}"), ("Billing Period", data["period"]),
                       ("Payment Terms", f"{data['payment_days']} Days"), ("Due Date", f"{data['due_date']:%d %b %Y}"),
-                      ("Invoice #", data["invoice_no"])], n_cols, _font(9, True), _font(10), boxed=False)
+                      ("Invoice #", data["invoice_no"])], widths, _font(9, True), _font(10), boxed=False)
     _put(ws, f"A12:{L(n_cols)}12", "TRIPS SUMMARY", _font(16, True, color=WHITE), _fill(BLUE), A_LEFT)
     first_data, last_data = _table(ws, data, 14, spans, height_rows=19.95, wrap_header=False)
     total_row = last_data + 2
