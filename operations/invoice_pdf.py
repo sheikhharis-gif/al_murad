@@ -121,12 +121,27 @@ def _notes(lines, width):
     return t
 
 
+# Preferred width (mm) of each trips-table column, enough for its header and values at 8 pt;
+# S.no is a fixed 11 mm. Spare page width is shared out in proportion; if the ticked columns
+# want more than the page has, everything shrinks and the table drops to 7 pt.
+_COL_MM = {"trip_no": 17, "trip_date": 21, "bilty_number": 20, "vehicle": 22, "vehicle_type": 22, "sub_category": 24,
+           "route": 20, "weight": 21, "stopover_city": 26, "stopover_charges": 27, "trip_charges": 24,
+           "additional_charges": 28, "total_freight": 26, "remarks": 40}
+
+
 def _trips_table(data, width):
     money = [False] + data["money"]
-    head = [Paragraph("S.no", WHITE_B(8))] + [Paragraph(e(h), WHITE_B(8, 2 if m else 0)) for h, m in zip(data["headers"], money[1:])]
+    pref = [_COL_MM.get(k, 24) * mm for k in data["keys"]]
+    total_pref = 11 * mm + sum(pref)
+    small = total_pref > width
+    fs = 7 if small else 8
+    scale = (width - 11 * mm) / sum(pref)  # <1 shrinks, >1 spreads the spare width
+    widths = [11 * mm] + [w * scale for w in pref]
+
+    head = [Paragraph("S.no", WHITE_B(fs))] + [Paragraph(e(h), WHITE_B(fs, 2 if m else 0)) for h, m in zip(data["headers"], money[1:])]
     body = [head]
     for n, row in enumerate(data["rows"], start=1):
-        cells = [Paragraph(str(n), _st(8))]
+        cells = [Paragraph(str(n), _st(fs))]
         for value, m in zip(row, money[1:]):
             if m:
                 text, align = (f"{value:,.2f}" if value else "-"), 2
@@ -136,20 +151,21 @@ def _trips_table(data, width):
                 text, align = f"{value:,.2f}", 0
             else:
                 text, align = ("" if value in (None, "") else str(value)), 0
-            cells.append(Paragraph(e(text), _st(8, align=align)))
+            cells.append(Paragraph(e(text), _st(fs, align=align)))
         body.append(cells)
     n_cols = len(head)
     first_money = next((i for i, m in enumerate(money) if m), n_cols)
-    foot = [Paragraph("TOTAL", _st(9, True))] + [""] * (n_cols - 1)
+    foot = [Paragraph("TOTAL", _st(fs + 1, True))] + [""] * (n_cols - 1)
     for i in data["money_idx"]:
-        foot[i + 1] = Paragraph(f"{data['totals'][i]:,.2f}", _st(9, True, align=2))
+        foot[i + 1] = Paragraph(f"{data['totals'][i]:,.2f}", _st(fs + 1, True, align=2))
     body.append(foot)
-    widths = [11 * mm] + [(width - 11 * mm) / max(n_cols - 1, 1)] * (n_cols - 1)
+    pad = 2 if small else 6
     t = Table(body, colWidths=widths, repeatRows=1)
     t.setStyle(TableStyle([
         ("BACKGROUND", (0, 0), (-1, 0), BLUE), ("GRID", (0, 0), (-1, -2), 0.4, GREY), ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
         ("BACKGROUND", (0, -1), (-1, -1), LIGHT), ("LINEABOVE", (0, -1), (-1, -1), 1.4, BLUE), ("LINEBELOW", (0, -1), (-1, -1), 1.4, BLUE),
         ("SPAN", (0, -1), (max(first_money - 1, 0), -1)), ("TOPPADDING", (0, 0), (-1, -1), 3), ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+        ("LEFTPADDING", (0, 0), (-1, -1), pad), ("RIGHTPADDING", (0, 0), (-1, -1), pad),
     ]))
     return t
 
