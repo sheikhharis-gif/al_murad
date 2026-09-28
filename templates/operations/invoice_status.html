@@ -9,6 +9,28 @@
     </div>
 
     <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+        <div class="card-header bg-white border-0 py-3 px-4 d-flex flex-wrap justify-content-between align-items-center gap-2 border-bottom">
+            <h5 class="fw-bold mb-0 text-dark">Invoices</h5>
+            <div class="d-flex flex-wrap gap-2 align-items-center">
+                <form method="get" class="d-flex gap-2 align-items-center" id="sortForm">
+                    <label class="small text-muted fw-semibold mb-0">Sort by</label>
+                    <select name="sort_by" class="form-select form-select-sm" onchange="document.getElementById('sortForm').submit()">
+                        {% for field, label in sort_fields.items %}
+                            <option value="{{ field }}" {% if sort_by == field %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                    <select name="order" class="form-select form-select-sm" onchange="document.getElementById('sortForm').submit()">
+                        <option value="asc" {% if order == "asc" %}selected{% endif %}>Ascending</option>
+                        <option value="desc" {% if order == "desc" %}selected{% endif %}>Descending</option>
+                    </select>
+                </form>
+                <div class="input-group w-auto">
+                    <span class="input-group-text bg-light border-0"><i class="bi bi-search"></i></span>
+                    <input type="text" id="invoiceSearch" class="form-control bg-light border-0 small" style="min-width:260px;"
+                           placeholder="Search invoice #, client, service provider, status..." autocomplete="off">
+                </div>
+            </div>
+        </div>
         <div class="table-responsive">
             <table class="table table-hover align-middle mb-0 small">
                 <thead class="bg-light text-muted text-uppercase">
@@ -25,7 +47,7 @@
                         <th class="text-end pe-3">Action</th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody id="invoiceTableBody">
                     {% for inv in invoices %}
                     <tr>
                         <td class="ps-3 fw-bold">{{ inv.invoice_no }}</td>
@@ -58,11 +80,31 @@
                     {% empty %}
                     <tr><td colspan="10" class="text-center py-5 text-muted">No invoices generated yet.</td></tr>
                     {% endfor %}
+                    <tr id="invoiceNoMatch" style="display:none;"><td colspan="10" class="text-center py-4 text-muted">No matching invoice.</td></tr>
                 </tbody>
             </table>
         </div>
     </div>
 </div>
+
+<script>
+    // Live search: type any part of an invoice #, client, service provider or status.
+    document.getElementById('invoiceSearch').addEventListener('input', function () {
+        var q = this.value.trim().toLowerCase();
+        var shown = 0;
+        document.querySelectorAll('#invoiceTableBody tr:not(#invoiceNoMatch)').forEach(function (row) {
+            if (row.cells.length < 3) return;   // the "No invoices generated yet" row
+            var text = row.innerText.toLowerCase();
+            // the Status cell is a <select>: include its chosen option's text too
+            var sel = row.querySelector('select');
+            if (sel) text += ' ' + sel.options[sel.selectedIndex].text.toLowerCase();
+            var match = !q || text.indexOf(q) > -1;
+            row.style.display = match ? '' : 'none';
+            if (match) shown += 1;
+        });
+        document.getElementById('invoiceNoMatch').style.display = (q && !shown) ? '' : 'none';
+    });
+</script>
 
 <style>
     .status-select { min-width: 120px; font-weight: 600; }

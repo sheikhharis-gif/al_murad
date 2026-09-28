@@ -429,19 +429,25 @@ class GeneratedInvoice(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.invoice_no:
-            # e.g. SFS-INV-2026-09-001 - the running number restarts each
-            # month. Based on the highest existing number, not the row count,
-            # so a deleted invoice in the middle can never cause a collision.
+            # e.g. AMA-INV-2026-09-001: the prefix is the first letters of the first three words
+            # of the Service Provider company (AL MURAD AFRIDI ENTERPRISES -> AMA); with no company
+            # picked it is the Tax menu's Invoice # prefix. The running number is ONE sequence shared
+            # by every prefix and restarts each month. It follows the highest existing number, not
+            # the row count, so a deleted invoice in the middle can never cause a collision.
+            import re
             from zoneinfo import ZoneInfo
             from masters.models import TaxSettings
             today = timezone.now().astimezone(ZoneInfo("Asia/Karachi"))
-            stem = f"{TaxSettings.current().invoice_prefix}-{today:%Y-%m}-"
+            initials = "".join(w[0] for w in re.findall(r"[A-Za-z0-9]+", self.provider_company.name)[:3]).upper() \
+                if self.provider_company else ""
+            prefix = f"{initials}-INV" if initials else TaxSettings.current().invoice_prefix
+            month = f"-{today:%Y-%m}-"
             max_num = 0
-            for no in GeneratedInvoice.objects.filter(invoice_no__startswith=stem).values_list("invoice_no", flat=True):
-                tail = no[len(stem):]
+            for no in GeneratedInvoice.objects.filter(invoice_no__contains=month).values_list("invoice_no", flat=True):
+                tail = no.rsplit("-", 1)[-1]
                 if tail.isdigit():
                     max_num = max(max_num, int(tail))
-            self.invoice_no = f"{stem}{max_num + 1:03d}"
+            self.invoice_no = f"{prefix}{month}{max_num + 1:03d}"
         super().save(*args, **kwargs)
 
     @property

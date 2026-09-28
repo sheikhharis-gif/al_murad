@@ -47,6 +47,10 @@ COLUMNS = [
 DEFAULT_COLUMNS = ["trip_no", "trip_date", "bilty_number", "vehicle", "vehicle_type", "route", "weight",
                     "trip_charges", "additional_charges", "total_freight"]
 
+# Invoices Status: what its Sort by box offers.
+INVOICE_SORT_FIELDS = {"created_at": "Date", "invoice_no": "Invoice #", "client__name": "Client",
+                       "grand_total": "Grand Total", "status": "Status"}
+
 # Full tax mode's jurisdictions (same keys as City.province) and the label
 # each carries on the invoice, in the order the invoice lists them.
 TAX_PROVINCES = [
@@ -358,10 +362,18 @@ def invoice_redownload(request, invoice_id):
 
 @login_required
 def invoice_status(request):
-    invoices = GeneratedInvoice.objects.select_related("client", "provider_company").order_by("-created_at")
+    sort_by = request.GET.get("sort_by")
+    if sort_by not in INVOICE_SORT_FIELDS:
+        sort_by = "created_at"
+    order = "asc" if request.GET.get("order") == "asc" else "desc"
+    # "Invoice #" sorts by running number (= creation order), not alphabetically by company prefix
+    field = "id" if sort_by == "invoice_no" else sort_by
+    invoices = GeneratedInvoice.objects.select_related("client", "provider_company").order_by(
+        f"{'' if order == 'asc' else '-'}{field}", "-id")
     return render(request, "operations/invoice_status.html", {
         "invoices": invoices,
         "status_choices": GeneratedInvoice.STATUS_CHOICES,
+        "sort_fields": INVOICE_SORT_FIELDS, "sort_by": sort_by, "order": order,
     })
 
 
