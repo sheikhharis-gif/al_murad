@@ -399,12 +399,12 @@ class GeneratedInvoice(models.Model):
 
     invoice_no = models.CharField(max_length=30, unique=True, editable=False)
     client = models.ForeignKey("masters.Client", on_delete=models.PROTECT, related_name="generated_invoices")
-    # Optional override of who the invoice is addressed to: a Company, or another Client.
-    # Both blank means it is addressed to the invoice's own client.
-    company = models.ForeignKey("masters.Company", on_delete=models.PROTECT, null=True, blank=True,
-                                related_name="generated_invoices")
-    recipient_client = models.ForeignKey("masters.Client", on_delete=models.PROTECT, null=True, blank=True,
-                                         related_name="received_invoices")
+    # The invoice is always billed to `client`. The Service Provider printed on it is the Company
+    # or Client picked on Generate Invoice; both blank means the default set on the Tax menu.
+    provider_company = models.ForeignKey("masters.Company", on_delete=models.PROTECT, null=True, blank=True,
+                                         related_name="generated_invoices")
+    provider_client = models.ForeignKey("masters.Client", on_delete=models.PROTECT, null=True, blank=True,
+                                        related_name="received_invoices")
     trips = models.ManyToManyField(Trip, related_name="generated_invoices")
     columns = models.JSONField(default=list)
     period_start = models.DateField(null=True, blank=True)
@@ -445,6 +445,12 @@ class GeneratedInvoice(models.Model):
                     max_num = max(max_num, int(tail))
             self.invoice_no = f"{stem}{max_num + 1:03d}"
         super().save(*args, **kwargs)
+
+    @property
+    def provider_name(self):
+        from masters.models import TaxSettings
+        chosen = self.provider_company or self.provider_client
+        return chosen.name if chosen else TaxSettings.current().provider_name
 
     def __str__(self):
         return self.invoice_no

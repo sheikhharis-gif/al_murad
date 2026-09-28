@@ -4,7 +4,7 @@ Pick a client's trips over a date range, tick which ones to bill, choose (and
 drag into order) the columns the Trip Details page should carry, optionally
 work out sales tax, and download the Sales Tax Invoice as a PDF or an Excel
 file - page 1 the invoice itself, page 2 the trip details. Every one
-generated is logged as a GeneratedInvoice (client, company, trips, columns in
+generated is logged as a GeneratedInvoice (client, service provider, trips, columns in
 order, tax settings, totals) so Invoices Status can list them, track a status
 on each, and rebuild the same invoice again on demand - the file itself is
 never stored."""
@@ -253,7 +253,10 @@ def _invoice_data(invoice, trips, cols):
             row.append(value)
         rows.append(row)
 
-    party = invoice.company or invoice.recipient_client or invoice.client  # Bill To
+    client = invoice.client  # Bill To / Customer is always the client the trips belong to
+    chosen = invoice.provider_company or invoice.provider_client  # Service Provider picked on the page
+    provider = ({"name": chosen.name, "address": chosen.address, "ntn": chosen.ntn, "strn": chosen.stn} if chosen else
+                {"name": cfg.provider_name, "address": cfg.provider_address, "ntn": cfg.provider_ntn, "strn": cfg.provider_strn})
     return {
         "invoice_no": invoice.invoice_no,
         "invoice_date": inv_date,
@@ -261,9 +264,8 @@ def _invoice_data(invoice, trips, cols):
         "payment_days": invoice.payment_days,
         "sales_tax_no": invoice.sales_tax_no,
         "period": _billing_period(start, end),
-        "bill_to": {"name": party.name, "address": party.address, "ntn": party.ntn, "strn": party.stn},
-        "provider": {"name": cfg.provider_name, "address": cfg.provider_address,
-                     "ntn": cfg.provider_ntn, "strn": cfg.provider_strn},
+        "bill_to": {"name": client.name, "address": client.address, "ntn": client.ntn, "strn": client.stn},
+        "provider": provider,
         "in_words": amount_in_words(subtotal + tax_amount),
         "notes": [re.sub(r"^(\d+[.)]|[•*-])\s*", "", line.strip())
                   for line in (invoice.notes.strip() or DEFAULT_INVOICE_NOTES).splitlines() if line.strip()],
@@ -280,7 +282,7 @@ def _safe_filename(text):
 
 def _respond(invoice, trips, cols, fmt):
     data = _invoice_data(invoice, trips, cols)
-    name = _safe_filename(f"Invoice {invoice.invoice_no} - {(invoice.company or invoice.recipient_client or invoice.client).name}")
+    name = _safe_filename(f"Invoice {invoice.invoice_no} - {invoice.client.name}")
     if fmt == "xlsx":
         response = HttpResponse(
             invoice_xlsx.build(data),
@@ -302,13 +304,13 @@ def invoice_generate_pdf(request):
     client = get_object_or_404(Client, pk=request.POST.get("client"))
     # The dropdown lists every client and every company: "client:<id>" / "company:<id>", or blank
     # (= the invoice's own client).
-    choice = request.POST.get("company") or ""
+    choice = request.POST.get("provider") or ""
     kind, _, pk = choice.partition(":")
-    company = Company.objects.filter(pk=pk).first() if kind == "company" and pk.isdigit() else None
-    recipient_client = Client.objects.filter(pk=pk).first() if kind == "client" and pk.isdigit() else None
+    provider_company = Company.objects.filter(pk=pk).first() if kind == "company" and pk.isdigit() else None
+    provider_client = Client.objects.filter(pk=pk).first() if kind == "client" and pk.isdigit() else None
     trip_ids = request.POST.getlist("trip_ids")
-    problem = ("That Service Provider no longer exists - pick another, or leave it as the client."
-               if choice and not (company or recipient_client) else "Please tick at least one trip." if not trip_ids else "")
+    problem = ("That Service Provider no longer exists - pick another, or leave it blank for the default."
+               if choice and not (provider_company or provider_client) else "Please tick at least one trip." if not trip_ids else "")
     if problem:
         messages.error(request, problem)
         back = {"client": client.pk, "start_date": request.POST.get("start_date") or "",
@@ -335,7 +337,7 @@ def invoice_generate_pdf(request):
         payment_days = TaxSettings.current().payment_terms_days
 
     invoice = GeneratedInvoice.objects.create(
-        client=client, company=company, recipient_client=recipient_client, columns=col_keys,
+        client=client, provider_company=provider_company, provider_client=provider_client, columns=col_keys,
         period_start=_parse_date(request.POST.get("start_date")),
         period_end=_parse_date(request.POST.get("end_date")), payment_days=payment_days,
         notes=(TaxSettings.current().invoice_notes if request.POST.get("notes_auto") == "on"
@@ -351,7 +353,7 @@ def invoice_generate_pdf(request):
 
 @login_required
 def invoice_redownload(request, invoice_id):
-    invoice = get_object_or_404(GeneratedInvoice.objects.select_related("client", "company", "recipient_client"), pk=invoice_id)
+    invoice = get_object_or_404(GeneratedInvoice.objects.select_related("client", "provider_company", "provider_client"), pk=invoice_id)
     trips = list(invoice.trips.select_related(*TRIP_RELATED).order_by("trip_date", "id"))
     by_key = {c[0]: c for c in _client_columns(invoice.client)}
     cols = [by_key[k] for k in invoice.columns if k in by_key]
@@ -360,7 +362,7 @@ def invoice_redownload(request, invoice_id):
 
 @login_required
 def invoice_status(request):
-    invoices = GeneratedInvoice.objects.select_related("client", "company", "recipient_client").order_by("-created_at")
+    invoices = GeneratedInvoice.objects.select_related("client", "provider_company", "provider_client").order_by("-created_at")
     return render(request, "operations/invoice_status.html", {
         "invoices": invoices,
         "status_choices": GeneratedInvoice.STATUS_CHOICES,

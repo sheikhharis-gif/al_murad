@@ -133,11 +133,11 @@
                     <div>
                         <label class="form-label small fw-semibold text-muted mb-0 me-1">Service Provider</label>
                         <div class="d-inline-block align-middle" style="width:280px;">
-                            <select name="company" class="form-select form-select-sm dropdown-search-select"
+                            <select name="provider" class="form-select form-select-sm dropdown-search-select"
                                     data-match="contains" data-theme="light"
-                                    data-placeholder="Same as {{ client.name }} - type to search..."
+                                    data-placeholder="{{ tax_settings.provider_name }} (default) - type to search..."
                                     data-empty-text="No matching client / company">
-                                <option value="">--- Same as client ({{ client.name }}) ---</option>
+                                <option value="">--- Default: {{ tax_settings.provider_name }} ---</option>
                                 {% for c in all_clients %}<option value="client:{{ c.id }}">{{ c.name }}</option>{% endfor %}
                                 {% for co in companies %}<option value="company:{{ co.id }}">{{ co.name }} (Company)</option>{% endfor %}
                             </select>
@@ -233,7 +233,8 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     // Warn (visibly) if no trip is ticked. Service Provider is optional: left
-    // blank, the customer on the invoice is the client itself.
+    // blank, the invoice uses the default provider set on the Tax menu. The
+    // customer (Bill To) is always the client chosen at the top.
     var invoiceForm = document.getElementById('invoiceForm');
     if (invoiceForm) {
         invoiceForm.addEventListener('submit', function (e) {
