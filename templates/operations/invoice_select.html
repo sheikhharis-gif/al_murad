@@ -10,10 +10,12 @@
 
     <div class="card border-0 shadow-sm rounded-4 mb-4">
         <div class="card-body p-4">
-            <form method="get" class="row g-3 align-items-end">
+            <form method="get" class="row g-3 align-items-end" id="loadForm">
                 <div class="col-md-4 col-sm-6">
                     <label class="form-label small fw-semibold text-muted">Client</label>
-                    <select name="client" class="form-select form-select-sm rounded-3 searchable-select" required>
+                    <select name="client" class="form-select form-select-sm dropdown-search-select"
+                            data-match="contains" data-theme="light" data-placeholder="Type client name to search..."
+                            data-empty-text="No matching client">
                         <option value="">--- Select Client ---</option>
                         {% for c in clients %}<option value="{{ c.id }}" {% if client and client.id == c.id %}selected{% endif %}>{{ c.name }}</option>{% endfor %}
                     </select>
@@ -198,6 +200,7 @@ document.addEventListener('DOMContentLoaded', function () {
     var summary = document.getElementById('selectedSummary');
 
     function updateSummary() {
+        if (!summary) return;   // no client loaded yet -> no trips block on the page
         var count = 0, total = 0;
         checks.forEach(function (c) {
             if (c.checked) { count += 1; total += parseFloat(c.dataset.total || 0); }
@@ -224,6 +227,16 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         box.addEventListener('change', sync);
         sync();
+    });
+
+    // Load Trips needs a client. The Client box is a live-search dropdown (its real <select> is
+    // hidden), so check it here with a visible warning instead of a silent browser block.
+    var loadForm = document.getElementById('loadForm');
+    loadForm.addEventListener('submit', function (e) {
+        if (!loadForm.querySelector('select[name="client"]').value) {
+            e.preventDefault();
+            alert('Please choose a client (type its name and pick it from the list).');
+        }
     });
 
     // Enter inside the search box just picks the match - it must not submit (download) the invoice.
