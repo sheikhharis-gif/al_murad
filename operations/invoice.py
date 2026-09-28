@@ -16,6 +16,8 @@ from zoneinfo import ZoneInfo
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.db.models import CharField, Value
+from django.db.models.functions import Coalesce
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -49,7 +51,7 @@ DEFAULT_COLUMNS = ["trip_no", "trip_date", "bilty_number", "vehicle", "vehicle_t
 
 # Invoices Status: what its Sort by box offers.
 INVOICE_SORT_FIELDS = {"created_at": "Date", "invoice_no": "Invoice #", "client__name": "Client",
-                       "grand_total": "Grand Total", "status": "Status"}
+                       "provider": "Service Provider", "status": "Status", "grand_total": "Grand Total"}
 
 # Full tax mode's jurisdictions (same keys as City.province) and the label
 # each carries on the invoice, in the order the invoice lists them.
@@ -362,19 +364,47 @@ def invoice_redownload(request, invoice_id):
 
 @login_required
 def invoice_status(request):
+    invoices, sort_by, order, q = _invoice_list(request)
+    return render(request, "operations/invoice_status.html", {
+        "invoices": invoices, "q": q,
+        "status_choices": GeneratedInvoice.STATUS_CHOICES,
+        "sort_fields": INVOICE_SORT_FIELDS, "sort_by": sort_by, "order": order,
+    })
+
+
+def _invoice_list(request):
+    """The Invoices Status list for the request's Sort by / Ascending-Descending / search text."""
     sort_by = request.GET.get("sort_by")
     if sort_by not in INVOICE_SORT_FIELDS:
         sort_by = "created_at"
     order = "asc" if request.GET.get("order") == "asc" else "desc"
-    # "Invoice #" sorts by running number (= creation order), not alphabetically by company prefix
-    field = "id" if sort_by == "invoice_no" else sort_by
-    invoices = GeneratedInvoice.objects.select_related("client", "provider_company").order_by(
-        f"{'' if order == 'asc' else '-'}{field}", "-id")
-    return render(request, "operations/invoice_status.html", {
-        "invoices": invoices,
-        "status_choices": GeneratedInvoice.STATUS_CHOICES,
-        "sort_fields": INVOICE_SORT_FIELDS, "sort_by": sort_by, "order": order,
-    })
+    # "Invoice #" sorts by running number (= creation order), not alphabetically by company prefix;
+    # "Service Provider" by the name shown, which for a blank provider is the Tax menu's default.
+    field = {"invoice_no": "id", "provider": "provider_sort"}.get(sort_by, sort_by)
+    default_provider = Value(TaxSettings.current().provider_name, output_field=CharField())
+    invoices = list(
+        GeneratedInvoice.objects.select_related("client", "provider_company")
+        .annotate(provider_sort=Coalesce("provider_company__name", default_provider))
+        .order_by(f"{'' if order == 'asc' else '-'}{field}", "-id"))
+    q = (request.GET.get("q") or "").strip()
+    if q:
+        needle = q.lower()
+        invoices = [
+            inv for inv in invoices
+            if needle in " ".join((inv.invoice_no, inv.client.name, inv.provider_name, inv.get_status_display(),
+                                   f"{inv.created_at:%d-%b-%y}")).lower()]
+    return invoices, sort_by, order, q
+
+
+@login_required
+def invoice_status_excel(request):
+    """The Invoices Status list (same sort and search as on screen) as an Excel file."""
+    invoices, _, _, _ = _invoice_list(request)
+    response = HttpResponse(
+        invoice_xlsx.build_status(invoices),
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    response["Content-Disposition"] = 'attachment; filename="Invoices Status.xlsx"'
+    return response
 
 
 @login_required

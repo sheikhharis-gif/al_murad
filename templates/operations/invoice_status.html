@@ -13,13 +13,14 @@
             <h5 class="fw-bold mb-0 text-dark">Invoices</h5>
             <div class="d-flex flex-wrap gap-2 align-items-center">
                 <form method="get" class="d-flex gap-2 align-items-center" id="sortForm">
+                    <input type="hidden" name="q" id="sortQ" value="{{ q }}">
                     <label class="small text-muted fw-semibold mb-0">Sort by</label>
-                    <select name="sort_by" class="form-select form-select-sm" onchange="document.getElementById('sortForm').submit()">
+                    <select name="sort_by" class="form-select form-select-sm" onchange="sortSubmit()">
                         {% for field, label in sort_fields.items %}
                             <option value="{{ field }}" {% if sort_by == field %}selected{% endif %}>{{ label }}</option>
                         {% endfor %}
                     </select>
-                    <select name="order" class="form-select form-select-sm" onchange="document.getElementById('sortForm').submit()">
+                    <select name="order" class="form-select form-select-sm" onchange="sortSubmit()">
                         <option value="asc" {% if order == "asc" %}selected{% endif %}>Ascending</option>
                         <option value="desc" {% if order == "desc" %}selected{% endif %}>Descending</option>
                     </select>
@@ -27,8 +28,10 @@
                 <div class="input-group w-auto">
                     <span class="input-group-text bg-light border-0"><i class="bi bi-search"></i></span>
                     <input type="text" id="invoiceSearch" class="form-control bg-light border-0 small" style="min-width:260px;"
-                           placeholder="Search invoice #, client, service provider, status..." autocomplete="off">
+                           placeholder="Search invoice #, client, service provider, status..." autocomplete="off" value="{{ q }}">
                 </div>
+                <a id="invoiceExcel" href="{% url 'invoice_status_excel' %}?sort_by={{ sort_by }}&order={{ order }}&q={{ q|urlencode }}"
+                   class="btn btn-success btn-sm fw-bold px-3"><i class="bi bi-file-earmark-excel me-1"></i>Download Excel</a>
             </div>
         </div>
         <div class="table-responsive">
@@ -89,7 +92,16 @@
 
 <script>
     // Live search: type any part of an invoice #, client, service provider or status.
+    // Changing Sort by / order keeps whatever is typed in the search box.
+    function sortSubmit() {
+        document.getElementById('sortQ').value = document.getElementById('invoiceSearch').value.trim();
+        document.getElementById('sortForm').submit();
+    }
+    var excelLink = document.getElementById('invoiceExcel');
+    var excelBase = excelLink.href.split('&q=')[0];
     document.getElementById('invoiceSearch').addEventListener('input', function () {
+        // the Excel download follows the search box (and the Sort by choice already in the link)
+        excelLink.href = excelBase + '&q=' + encodeURIComponent(this.value.trim());
         var q = this.value.trim().toLowerCase();
         var shown = 0;
         document.querySelectorAll('#invoiceTableBody tr:not(#invoiceNoMatch)').forEach(function (row) {

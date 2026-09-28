@@ -379,6 +379,42 @@ def _nontax_workbook(data):
     return wb
 
 
+def build_status(invoices):
+    """Invoices Status as a sheet in the invoices' own look: blue header row, thin grey borders."""
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Invoices Status"
+    headers = ["Invoice #", "Date", "Client", "Service Provider", "Trips", "Subtotal", "Tax", "Grand Total", "Status"]
+    widths = [22, 13, 32, 32, 8, 16, 14, 16, 12]
+    right = {"Subtotal", "Tax", "Grand Total"}
+    _put(ws, f"A1:{get_column_letter(len(headers))}1", "INVOICES STATUS", _font(16, True, color=WHITE), _fill(BLUE), A_LEFT)
+    ws.row_dimensions[1].height = 28
+    for i, (h, w) in enumerate(zip(headers, widths), start=1):
+        ws.column_dimensions[get_column_letter(i)].width = w
+        _put(ws, f"{get_column_letter(i)}3", h, _font(10, True, color=WHITE), _fill(BLUE),
+             A_RIGHT if h in right else A_LEFT, **_box())
+    ws.row_dimensions[3].height = 22
+    r = 4
+    for inv in invoices:
+        values = [inv.invoice_no, inv.created_at.date(), inv.client.name, inv.provider_name, inv.trips.count(),
+                  float(inv.subtotal), float(inv.tax_amount), float(inv.grand_total), inv.get_status_display()]
+        for i, (h, v) in enumerate(zip(headers, values), start=1):
+            _put(ws, f"{get_column_letter(i)}{r}", v, _font(10), None, A_RIGHT if h in right else A_LEFT,
+                 nf=DATE_FMT if h == "Date" else ("#,##0" if h in right else None), **_box())
+        r += 1
+    if invoices:
+        edge = dict(left=THIN, right=THIN, top=MEDIUM, bottom=MEDIUM)
+        _put(ws, f"A{r}:E{r}", f"TOTAL ({len(invoices)} invoices)", _font(11, True), _fill(LIGHT), A_V, **edge)
+        for col in "FGH":
+            _put(ws, f"{col}{r}", f"=SUM({col}4:{col}{r - 1})", _font(11, True), _fill(LIGHT), A_RIGHT, nf="#,##0", **edge)
+        _put(ws, f"I{r}", None, None, _fill(LIGHT), None, top=MEDIUM, bottom=MEDIUM)
+    ws.freeze_panes = "A4"
+    _page(ws, "landscape", max(r, 4), len(headers))
+    out = io.BytesIO()
+    wb.save(out)
+    return out.getvalue()
+
+
 def build(data):
     wb = _tax_workbook(data) if data["tax_enabled"] else _nontax_workbook(data)
     out = io.BytesIO()
