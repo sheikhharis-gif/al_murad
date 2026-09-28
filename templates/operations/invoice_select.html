@@ -131,12 +131,18 @@
                     </div>
                     <span class="small fw-bold text-success" id="selectedSummary"></span>
                     <div>
-                        <label class="form-label small fw-semibold text-muted mb-0 me-1">Service Recipient</label>
-                        <select name="company" class="form-select form-select-sm searchable-select" style="width:220px;">
-                            <option value="">--- Same as client ({{ client.name }}) ---</option>
-                            {% for co in companies %}<option value="{{ co.id }}">{{ co.name }}</option>{% endfor %}
-                        </select>
-                        <a href="{% url 'company_add' %}" class="small ms-1" target="_blank">+ Add</a>
+                        <label class="form-label small fw-semibold text-muted mb-0 me-1">Service Provider</label>
+                        <div class="d-inline-block align-middle" style="width:280px;">
+                            <select name="company" class="form-select form-select-sm dropdown-search-select"
+                                    data-match="contains" data-theme="light"
+                                    data-placeholder="Same as {{ client.name }} - type to search..."
+                                    data-empty-text="No matching client / company">
+                                <option value="">--- Same as client ({{ client.name }}) ---</option>
+                                {% for c in all_clients %}<option value="client:{{ c.id }}">{{ c.name }}</option>{% endfor %}
+                                {% for co in companies %}<option value="company:{{ co.id }}">{{ co.name }} (Company)</option>{% endfor %}
+                            </select>
+                        </div>
+                        <a href="{% url 'company_add' %}" class="small ms-1" target="_blank">+ Add Company</a>
                     </div>
                     <div>
                         <label class="form-label small fw-semibold text-muted mb-0 me-1">Sales Tax No.</label>
@@ -221,7 +227,12 @@ document.addEventListener('DOMContentLoaded', function () {
         sync();
     });
 
-    // Warn (visibly) if no trip is ticked. Service Recipient is optional: left
+    // Enter inside the search box just picks the match - it must not submit (download) the invoice.
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' && e.target.matches && e.target.matches('.dropdown-search-input')) e.preventDefault();
+    });
+
+    // Warn (visibly) if no trip is ticked. Service Provider is optional: left
     // blank, the customer on the invoice is the client itself.
     var invoiceForm = document.getElementById('invoiceForm');
     if (invoiceForm) {

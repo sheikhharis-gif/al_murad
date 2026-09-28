@@ -16,7 +16,7 @@
                         <th class="ps-3">Invoice #</th>
                         <th>Date</th>
                         <th>Client</th>
-                        <th>Service Recipient</th>
+                        <th>Service Provider</th>
                         <th class="text-center">Trips</th>
                         <th class="text-end">Subtotal</th>
                         <th class="text-end">Tax</th>
@@ -31,7 +31,7 @@
                         <td class="ps-3 fw-bold">{{ inv.invoice_no }}</td>
                         <td>{{ inv.created_at|date:"d-M-y" }}</td>
                         <td>{{ inv.client.name }}</td>
-                        <td>{{ inv.company.name|default:inv.client.name }}</td>
+                        <td>{% if inv.company %}{{ inv.company.name }}{% elif inv.recipient_client %}{{ inv.recipient_client.name }}{% else %}{{ inv.client.name }}{% endif %}</td>
                         <td class="text-center">{{ inv.trips.count }}</td>
                         <td class="text-end">{{ inv.subtotal|floatformat:0 }}</td>
                         <td class="text-end">{{ inv.tax_amount|floatformat:0 }}</td>

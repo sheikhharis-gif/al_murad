@@ -118,6 +118,7 @@ def invoice_select(request):
     return render(request, "operations/invoice_select.html", {
         "clients": Client.objects.order_by("name"),
         "companies": Company.objects.filter(is_active=True).order_by("name"),
+        "all_clients": Client.objects.filter(is_active=True).order_by("name"),
         "client": client,
         "start_date": start_date, "end_date": end_date,
         "trip_rows": trip_rows,
@@ -252,7 +253,7 @@ def _invoice_data(invoice, trips, cols):
             row.append(value)
         rows.append(row)
 
-    party = invoice.company or invoice.client  # Bill To: the chosen company, else the client itself
+    party = invoice.company or invoice.recipient_client or invoice.client  # Bill To
     return {
         "invoice_no": invoice.invoice_no,
         "invoice_date": inv_date,
@@ -279,7 +280,7 @@ def _safe_filename(text):
 
 def _respond(invoice, trips, cols, fmt):
     data = _invoice_data(invoice, trips, cols)
-    name = _safe_filename(f"Invoice {invoice.invoice_no} - {(invoice.company or invoice.client).name}")
+    name = _safe_filename(f"Invoice {invoice.invoice_no} - {(invoice.company or invoice.recipient_client or invoice.client).name}")
     if fmt == "xlsx":
         response = HttpResponse(
             invoice_xlsx.build(data),
@@ -299,11 +300,15 @@ def invoice_generate_pdf(request):
         return redirect("invoice_select")
 
     client = get_object_or_404(Client, pk=request.POST.get("client"))
-    company_id = request.POST.get("company") or ""
-    company = Company.objects.filter(pk=company_id).first() if company_id.isdigit() else None
+    # The dropdown lists every client and every company: "client:<id>" / "company:<id>", or blank
+    # (= the invoice's own client).
+    choice = request.POST.get("company") or ""
+    kind, _, pk = choice.partition(":")
+    company = Company.objects.filter(pk=pk).first() if kind == "company" and pk.isdigit() else None
+    recipient_client = Client.objects.filter(pk=pk).first() if kind == "client" and pk.isdigit() else None
     trip_ids = request.POST.getlist("trip_ids")
-    problem = ("That Service Recipient no longer exists - pick another, or leave it as the client."
-               if company_id and not company else "Please tick at least one trip." if not trip_ids else "")
+    problem = ("That Service Provider no longer exists - pick another, or leave it as the client."
+               if choice and not (company or recipient_client) else "Please tick at least one trip." if not trip_ids else "")
     if problem:
         messages.error(request, problem)
         back = {"client": client.pk, "start_date": request.POST.get("start_date") or "",
@@ -330,7 +335,7 @@ def invoice_generate_pdf(request):
         payment_days = TaxSettings.current().payment_terms_days
 
     invoice = GeneratedInvoice.objects.create(
-        client=client, company=company, columns=col_keys,
+        client=client, company=company, recipient_client=recipient_client, columns=col_keys,
         period_start=_parse_date(request.POST.get("start_date")),
         period_end=_parse_date(request.POST.get("end_date")), payment_days=payment_days,
         notes=(TaxSettings.current().invoice_notes if request.POST.get("notes_auto") == "on"
@@ -346,7 +351,7 @@ def invoice_generate_pdf(request):
 
 @login_required
 def invoice_redownload(request, invoice_id):
-    invoice = get_object_or_404(GeneratedInvoice.objects.select_related("client", "company"), pk=invoice_id)
+    invoice = get_object_or_404(GeneratedInvoice.objects.select_related("client", "company", "recipient_client"), pk=invoice_id)
     trips = list(invoice.trips.select_related(*TRIP_RELATED).order_by("trip_date", "id"))
     by_key = {c[0]: c for c in _client_columns(invoice.client)}
     cols = [by_key[k] for k in invoice.columns if k in by_key]
@@ -355,7 +360,7 @@ def invoice_redownload(request, invoice_id):
 
 @login_required
 def invoice_status(request):
-    invoices = GeneratedInvoice.objects.select_related("client", "company").order_by("-created_at")
+    invoices = GeneratedInvoice.objects.select_related("client", "company", "recipient_client").order_by("-created_at")
     return render(request, "operations/invoice_status.html", {
         "invoices": invoices,
         "status_choices": GeneratedInvoice.STATUS_CHOICES,

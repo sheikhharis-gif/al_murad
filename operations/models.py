@@ -399,9 +399,12 @@ class GeneratedInvoice(models.Model):
 
     invoice_no = models.CharField(max_length=30, unique=True, editable=False)
     client = models.ForeignKey("masters.Client", on_delete=models.PROTECT, related_name="generated_invoices")
-    # Optional "Service Recipient" override; blank means the invoice is addressed to the client itself.
+    # Optional override of who the invoice is addressed to: a Company, or another Client.
+    # Both blank means it is addressed to the invoice's own client.
     company = models.ForeignKey("masters.Company", on_delete=models.PROTECT, null=True, blank=True,
                                 related_name="generated_invoices")
+    recipient_client = models.ForeignKey("masters.Client", on_delete=models.PROTECT, null=True, blank=True,
+                                         related_name="received_invoices")
     trips = models.ManyToManyField(Trip, related_name="generated_invoices")
     columns = models.JSONField(default=list)
     period_start = models.DateField(null=True, blank=True)
