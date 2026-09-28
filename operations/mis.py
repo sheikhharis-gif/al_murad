@@ -98,6 +98,9 @@ def build_mis(request):
     if client_id:
         trips = trips.filter(client_id=client_id)
     trips = list(trips)
+    invoiced = Trip.invoiced_ids()
+    for t in trips:
+        t._invoiced = t.id in invoiced
 
     expenses = {e.job_id: e for e in JobExpense.objects.filter(job_id__in=job_ids)}
     fuel_by_job = {

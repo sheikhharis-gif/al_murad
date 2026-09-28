@@ -19,6 +19,7 @@ from django.contrib.auth.decorators import login_required
 from django.db.models import CharField, Value
 from django.db.models.functions import Coalesce
 from django.http import HttpResponse
+from django.utils import timezone
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 
@@ -99,13 +100,18 @@ def invoice_select(request):
     end_date = request.GET.get("end_date") or ""
     client = Client.objects.filter(pk=client_id).first() if client_id else None
     trips = []
+    hidden_invoiced = 0
     if client:
         trips = Trip.objects.filter(client=client).select_related(*TRIP_RELATED)
         if start_date:
             trips = trips.filter(trip_date__gte=start_date)
         if end_date:
             trips = trips.filter(trip_date__lte=end_date)
+        # Trips already on a live (uncancelled) generated invoice are locked out of this list.
+        invoiced = Trip.invoiced_ids()
         trips = list(trips.order_by("trip_date", "id"))
+        hidden_invoiced = sum(1 for t in trips if t.pk in invoiced)
+        trips = [t for t in trips if t.pk not in invoiced]
 
     columns = _client_columns(client) if client else []
     trip_rows = []
@@ -129,6 +135,7 @@ def invoice_select(request):
         "trip_rows": trip_rows,
         "columns": columns,
         "default_columns": DEFAULT_COLUMNS,
+        "hidden_invoiced": hidden_invoiced,
         "tax_provinces": TAX_PROVINCES,
         "tax_settings": TaxSettings.current(),
     })
@@ -285,9 +292,9 @@ def _safe_filename(text):
     return re.sub(r"\s+", " ", re.sub(r"[^A-Za-z0-9 ._()#-]", "", text)).strip(" .") or "Invoice"
 
 
-def _respond(invoice, trips, cols, fmt):
+def _respond(invoice, trips, cols, fmt, preview=False):
     data = _invoice_data(invoice, trips, cols)
-    name = _safe_filename(f"Invoice {invoice.invoice_no} - {invoice.client.name}")
+    name = _safe_filename(f"{'Review' if preview else 'Invoice ' + invoice.invoice_no} - {invoice.client.name}")
     if fmt == "xlsx":
         response = HttpResponse(
             invoice_xlsx.build(data),
@@ -301,8 +308,11 @@ def _respond(invoice, trips, cols, fmt):
 
 @login_required
 def invoice_generate_pdf(request):
-    """Creates the invoice record and returns it as a PDF (format=pdf, the
-    default) or an Excel file (format=xlsx)."""
+    """Two ways in from the Generate Invoice page:
+      * action=generate  -> creates the invoice (gets its number, locks its trips as Invoiced)
+                            and goes to Invoices Status, where it can be downloaded;
+      * format=pdf|xlsx  -> a review download only: same document (numbered PREVIEW), nothing
+                            is created and no trip is locked."""
     if request.method != "POST":
         return redirect("invoice_select")
 
@@ -330,6 +340,13 @@ def invoice_generate_pdf(request):
 
     trips = list(Trip.objects.filter(pk__in=trip_ids, client=client)
                  .select_related(*TRIP_RELATED).order_by("trip_date", "id"))
+    back = {"client": client.pk, "start_date": request.POST.get("start_date") or "",
+            "end_date": request.POST.get("end_date") or ""}
+    locked = Trip.invoiced_ids().intersection(t.pk for t in trips)
+    if locked:
+        messages.error(request, f"{len(locked)} of the ticked trip(s) are already on an invoice - "
+                                "cancel that invoice on Invoices Status to invoice them again. Nothing was created.")
+        return redirect(f"{reverse('invoice_select')}?{urlencode(back)}")
 
     tax_enabled, tax_mode, tax_rates = _tax_inputs(request.POST)
     subtotal, tax_amount, _ = _compute_tax(trips, tax_enabled, tax_mode, tax_rates)
@@ -338,7 +355,7 @@ def invoice_generate_pdf(request):
     except (TypeError, ValueError):
         payment_days = TaxSettings.current().payment_terms_days
 
-    invoice = GeneratedInvoice.objects.create(
+    fields = dict(
         client=client, provider_company=provider_company, columns=col_keys,
         period_start=_parse_date(request.POST.get("start_date")),
         period_end=_parse_date(request.POST.get("end_date")), payment_days=payment_days,
@@ -347,10 +364,15 @@ def invoice_generate_pdf(request):
         sales_tax_no=(request.POST.get("sales_tax_no") or "").strip()[:40],
         tax_enabled=tax_enabled, tax_mode=tax_mode, tax_rates=tax_rates,
         subtotal=subtotal, tax_amount=tax_amount, grand_total=subtotal + tax_amount,
-        created_by=request.user if request.user.is_authenticated else None,
     )
-    invoice.trips.set(trips)
-    return _respond(invoice, trips, cols, request.POST.get("format"))
+    if request.POST.get("action") == "generate":
+        invoice = GeneratedInvoice.objects.create(**fields, created_by=request.user if request.user.is_authenticated else None)
+        invoice.trips.set(trips)
+        messages.success(request, f"Invoice {invoice.invoice_no} generated for {len(trips)} trip(s). Those trips are now "
+                                  "locked and read Invoiced in Operational MIS Data until this invoice is cancelled.")
+        return redirect("invoice_status")
+    review = GeneratedInvoice(**fields, invoice_no="PREVIEW", created_at=timezone.now())
+    return _respond(review, trips, cols, request.POST.get("format"), preview=True)
 
 
 @login_required
@@ -412,7 +434,18 @@ def invoice_status_update(request, invoice_id):
     invoice = get_object_or_404(GeneratedInvoice, pk=invoice_id)
     if request.method == "POST":
         status = request.POST.get("status")
-        if status in dict(GeneratedInvoice.STATUS_CHOICES):
+        if invoice.status == "CANCELLED":
+            messages.error(request, f"{invoice.invoice_no} is cancelled - its status can't be changed. "
+                                    "Generate a new invoice for those trips instead.")
+        elif status == "CANCELLED":
+            # Cancelling frees the trips, so a single click isn't enough: the invoice number must be typed.
+            if (request.POST.get("confirm") or "").strip().upper() != invoice.invoice_no.upper():
+                messages.error(request, f"Not cancelled - to cancel {invoice.invoice_no} type its invoice number to confirm.")
+            else:
+                invoice.status = "CANCELLED"
+                invoice.save(update_fields=["status"])
+                messages.success(request, f"{invoice.invoice_no} cancelled. Its {invoice.trips.count()} trip(s) can be invoiced again.")
+        elif status in dict(GeneratedInvoice.STATUS_CHOICES):
             invoice.status = status
             invoice.save(update_fields=["status"])
     return redirect("invoice_status")

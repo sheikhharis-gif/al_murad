@@ -230,10 +230,23 @@ class Trip(models.Model):
                                   sub_category_id=self.sub_category_id)
         return (rate or 0) + (self.additional_charges or 0) + (self.stopover_charges or 0)
 
+    @staticmethod
+    def invoiced_ids():
+        """Ids of trips that are on a generated invoice which hasn't been cancelled - those trips
+        are locked: hidden from Generate Invoice and shown as Invoiced in the MIS report."""
+        return set(GeneratedInvoice.trips.through.objects.exclude(generatedinvoice__status="CANCELLED")
+                   .values_list("trip_id", flat=True))
+
     @property
     def status_display(self):
         """Where the trip is now, from its date-times (a time still in the
-        future doesn't count yet): At Loading -> Departed -> Arrived -> Delivered."""
+        future doesn't count yet): At Loading -> Departed -> Arrived -> Delivered.
+        Once it is on a live (uncancelled) generated invoice it reads Invoiced."""
+        invoiced = getattr(self, "_invoiced", None)  # report views pass this in to avoid a query per trip
+        if invoiced is None:
+            invoiced = self.generated_invoices.exclude(status="CANCELLED").exists() if self.pk else False
+        if invoiced:
+            return "Invoiced"
         now = timezone.now()
         for when, label in ((self.delivered_at, "Delivered"), (self.arrived_at, "Arrived"),
                             (self.departed_at, "Departured"), (self.reached_at, "At Loading")):

@@ -124,7 +124,8 @@
             <div class="card-header bg-white border-0 pt-3 px-4 d-flex justify-content-between align-items-center flex-wrap gap-2">
                 <div>
                     <h6 class="fw-bold mb-0 text-primary">{{ client.name }}</h6>
-                    <p class="text-muted small mb-0">{{ trip_rows|length }} trip(s) found. Untick any you don't want to invoice.</p>
+                    <p class="text-muted small mb-0">{{ trip_rows|length }} trip(s) found. Untick any you don't want to invoice.
+                        {% if hidden_invoiced %}<span class="text-warning fw-semibold">{{ hidden_invoiced }} already-invoiced trip(s) hidden - cancel their invoice on Invoices Status to bring them back.</span>{% endif %}</p>
                 </div>
                 <div class="d-flex align-items-center gap-3 flex-wrap">
                     <div class="form-check m-0">
@@ -155,12 +156,22 @@
                         <input type="number" name="payment_days" min="0" max="365" value="{{ tax_settings.payment_terms_days }}"
                                class="form-control form-control-sm d-inline-block" style="width:80px;">
                     </div>
-                    <button type="submit" name="format" value="pdf" class="btn btn-success btn-sm fw-bold px-3" {% if not trip_rows %}disabled{% endif %}>
-                        <i class="bi bi-file-earmark-pdf me-1"></i>Generate PDF
+                    <input type="hidden" name="action" value="generate" id="actionField" disabled>
+                    <button type="button" id="generateBtn" class="btn btn-primary btn-sm fw-bold px-3" {% if not trip_rows %}disabled{% endif %}>
+                        <i class="bi bi-check2-circle me-1"></i>Generate Invoice
                     </button>
-                    <button type="submit" name="format" value="xlsx" class="btn btn-outline-success btn-sm fw-bold px-3" {% if not trip_rows %}disabled{% endif %}>
+                    <button type="submit" name="format" value="pdf" class="btn btn-outline-danger btn-sm fw-bold px-3" {% if not trip_rows %}disabled{% endif %}
+                            title="Review only - does not create an invoice">
+                        <i class="bi bi-file-earmark-pdf me-1"></i>Download PDF
+                    </button>
+                    <button type="submit" name="format" value="xlsx" class="btn btn-outline-success btn-sm fw-bold px-3" {% if not trip_rows %}disabled{% endif %}
+                            title="Review only - does not create an invoice">
                         <i class="bi bi-file-earmark-excel me-1"></i>Download Excel
                     </button>
+                </div>
+                <div class="w-100 small text-muted">
+                    <i class="bi bi-info-circle me-1"></i>Download PDF / Excel are <b>for review only</b> - they do not create an invoice or lock any trip.
+                    <b>Generate Invoice</b> numbers the invoice and locks its trips (status <b>Invoiced</b>) until the invoice is cancelled on Invoices Status.
                 </div>
             </div>
             <div class="table-responsive">
@@ -190,6 +201,31 @@
             </div>
         </div>
     </form>
+
+    <div class="modal fade" id="generateModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content rounded-4 border-0 shadow">
+                <div class="modal-header border-0 pb-0">
+                    <h5 class="modal-title fw-bold"><i class="bi bi-exclamation-triangle text-warning me-2"></i>Confirm - Generate Invoice</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body small">
+                    <p class="mb-2">Please double-check before generating:</p>
+                    <table class="table table-sm mb-2">
+                        <tr><th style="width:38%">Client</th><td>{{ client.name }}</td></tr>
+                        <tr><th>Service Provider</th><td id="gmProvider"></td></tr>
+                        <tr><th>Trips</th><td id="gmTrips"></td></tr>
+                        <tr><th>Amount (before tax)</th><td id="gmAmount"></td></tr>
+                    </table>
+                    <p class="mb-0 text-danger fw-semibold">These trips will be locked and change from Delivered to Invoiced. They will not appear here again unless this invoice is cancelled.</p>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-light fw-bold" data-bs-dismiss="modal">Go back</button>
+                    <button type="button" class="btn btn-primary fw-bold" id="generateConfirm"><i class="bi bi-check2-circle me-1"></i>Yes, Generate Invoice</button>
+                </div>
+            </div>
+        </div>
+    </div>
     {% endif %}
 </div>
 
@@ -254,6 +290,23 @@ document.addEventListener('DOMContentLoaded', function () {
                 e.preventDefault();
                 alert('Please tick at least one trip.');
             }
+        });
+
+        // Generate Invoice is a two-step action: the button only opens a summary, and the
+        // invoice is created (trips locked) only after "Yes, Generate Invoice" is pressed.
+        var genModal = new bootstrap.Modal(document.getElementById('generateModal'));
+        document.getElementById('generateBtn').addEventListener('click', function () {
+            if (!invoiceForm.querySelector('.trip-check:checked')) { alert('Please tick at least one trip.'); return; }
+            var sel = invoiceForm.querySelector('select[name="provider"]');
+            document.getElementById('gmProvider').textContent = sel.options[sel.selectedIndex].text.replace(/^--- | ---$/g, '').trim();
+            document.getElementById('gmTrips').textContent = document.querySelectorAll('.trip-check:checked').length;
+            document.getElementById('gmAmount').textContent = 'Rs ' + (summary.textContent.split('Rs ')[1] || '0');
+            genModal.show();
+        });
+        document.getElementById('generateConfirm').addEventListener('click', function () {
+            this.disabled = true;
+            document.getElementById('actionField').disabled = false;
+            invoiceForm.submit();
         });
     }
 

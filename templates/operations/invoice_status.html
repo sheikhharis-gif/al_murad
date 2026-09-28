@@ -52,7 +52,7 @@
                 </thead>
                 <tbody id="invoiceTableBody">
                     {% for inv in invoices %}
-                    <tr>
+                    <tr {% if inv.status == "CANCELLED" %}class="text-muted" style="opacity:.6"{% endif %}>
                         <td class="ps-3 fw-bold">{{ inv.invoice_no }}</td>
                         <td>{{ inv.created_at|date:"d-M-y" }}</td>
                         <td>{{ inv.client.name }}</td>
@@ -64,7 +64,9 @@
                         <td>
                             <form method="post" action="{% url 'invoice_status_update' inv.id %}" class="d-inline">
                                 {% csrf_token %}
-                                <select name="status" class="form-select form-select-sm status-select status-{{ inv.status|lower }}" onchange="this.form.submit()">
+                                <select name="status" class="form-select form-select-sm status-select status-{{ inv.status|lower }}"
+                                        data-invoice="{{ inv.invoice_no }}" data-trips="{{ inv.trips.count }}"
+                                        data-url="{% url 'invoice_status_update' inv.id %}" {% if inv.status == "CANCELLED" %}disabled title="Cancelled invoices can't be changed"{% endif %}>
                                     {% for code, label in status_choices %}
                                     <option value="{{ code }}" {% if inv.status == code %}selected{% endif %}>{{ label }}</option>
                                     {% endfor %}
@@ -90,7 +92,53 @@
     </div>
 </div>
 
+<div class="modal fade" id="cancelModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <form method="post" id="cancelForm" class="modal-content rounded-4 border-0 shadow">
+            {% csrf_token %}
+            <input type="hidden" name="status" value="CANCELLED">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold text-danger"><i class="bi bi-exclamation-octagon me-2"></i>Cancel invoice?</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body small">
+                <p class="mb-2">You are about to cancel <b id="cancelNo"></b> (<span id="cancelTrips"></span> trip(s)).
+                   Its trips will be unlocked, go back to <b>Delivered</b> in Operational MIS Data and appear again in Generate Invoice.
+                   A cancelled invoice cannot be re-opened.</p>
+                <label class="form-label fw-semibold mb-1">Type the invoice number to confirm</label>
+                <input type="text" name="confirm" id="cancelConfirm" class="form-control" autocomplete="off">
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <button type="button" class="btn btn-light fw-bold" data-bs-dismiss="modal">Keep invoice</button>
+                <button type="submit" class="btn btn-danger fw-bold" id="cancelGo" disabled>Yes, Cancel Invoice</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <script>
+    // Any status change submits at once, except Cancelled: that opens the double-check box,
+    // and the invoice is only cancelled after its number is typed correctly.
+    document.addEventListener('DOMContentLoaded', function () {
+        var modal = new bootstrap.Modal(document.getElementById('cancelModal'));
+        var input = document.getElementById('cancelConfirm'), go = document.getElementById('cancelGo'), need = '';
+        document.querySelectorAll('select.status-select').forEach(function (sel) {
+            var prev = sel.value;
+            sel.addEventListener('change', function () {
+                if (sel.value !== 'CANCELLED') { sel.form.submit(); return; }
+                sel.value = prev;   // stays as it was until the cancel is confirmed
+                need = sel.dataset.invoice;
+                document.getElementById('cancelNo').textContent = need;
+                document.getElementById('cancelTrips').textContent = sel.dataset.trips;
+                document.getElementById('cancelForm').action = sel.dataset.url;
+                input.value = ''; input.placeholder = need; go.disabled = true;
+                modal.show();
+            });
+        });
+        input.addEventListener('input', function () { go.disabled = input.value.trim().toUpperCase() !== need.toUpperCase(); });
+        document.getElementById('cancelModal').addEventListener('shown.bs.modal', function () { input.focus(); });
+    });
+
     // Live search: type any part of an invoice #, client, service provider or status.
     // Changing Sort by / order keeps whatever is typed in the search box.
     function sortSubmit() {
