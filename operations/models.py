@@ -29,6 +29,9 @@ class Job(models.Model):
 
     job_number = models.AutoField(primary_key=True)
     vehicle = models.ForeignKey(Vehicle, on_delete=models.CASCADE, related_name='jobs')
+    # Rental jobs only: the supplier the vehicle was hired from (Suppliers master)
+    rental_supplier = models.ForeignKey("masters.Vendor", on_delete=models.SET_NULL, null=True, blank=True,
+                                        related_name="rental_jobs", verbose_name="Rental Supplier")
 
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='in_progress')
     job_date = models.DateField(default=timezone.now)
@@ -326,6 +329,8 @@ def refresh_trip_freight(client_id, route_id, vehicle_type_id, weight, sub_categ
 # -----------------------
 class JobExpense(models.Model):
     job = models.OneToOneField(Job, on_delete=models.CASCADE, related_name="expense_breakdown")
+    # Rental jobs: the hire fare paid to the rental supplier
+    trip_fare = models.DecimalField("Trip Fare", max_digits=12, decimal_places=2, default=0)
     toll_plaza = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     food = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     incentive = models.DecimalField(max_digits=10, decimal_places=2, default=0)
@@ -348,7 +353,7 @@ class JobExpense(models.Model):
             self.toll_plaza or 0, self.food or 0, self.incentive or 0, self.mobile_expense or 0,
             self.challan or 0, self.tyre_expense or 0, self.service or 0, self.loading or 0,
             self.offloading or 0, self.weighbridge or 0, self.maintenance or 0,
-            self.labor_charges or 0, self.fuel or 0, self.other or 0,
+            self.labor_charges or 0, self.fuel or 0, self.other or 0, self.trip_fare or 0,
         ])
         super().save(*args, **kwargs)
 

@@ -69,9 +69,12 @@ class JobForm(forms.ModelForm):
 
     class Meta:
         model = Job
-        fields = ["vehicle", "job_date", "trip_advance", "remarks"]
+        fields = ["vehicle", "rental_supplier", "job_date", "trip_advance", "remarks"]
         widgets = {
             "vehicle": forms.Select(attrs={"class": "form-select searchable-select", "autofocus": "autofocus"}),
+            "rental_supplier": forms.Select(attrs={
+                "class": "form-select dropdown-search-select", "data-match": "contains", "data-theme": "light",
+                "data-placeholder": "Type supplier name to search...", "data-empty-text": "No matching supplier"}),
             "job_date": forms.DateInput(attrs={"class": "form-control datepicker"}),
             "trip_advance": forms.NumberInput(attrs={"class": "form-control", "step": "0.01"}),
             "remarks": forms.Textarea(attrs={"class": "form-control", "rows": 2, "placeholder": "Voyage details..."}),
@@ -81,6 +84,11 @@ class JobForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         self.fields["vehicle"].queryset = Vehicle.objects.filter(is_active=True).order_by("vehicle_number")
         self.fields["vehicle"].empty_label = "--- Select Vehicle ---"
+        # the suppliers created under Suppliers (plus this job's own, even if since deactivated)
+        from masters.models import Vendor
+        self.fields["rental_supplier"].queryset = Vendor.objects.filter(
+            Q(is_active=True) | Q(pk=self.instance.rental_supplier_id)).order_by("name")
+        self.fields["rental_supplier"].empty_label = "--- Select Supplier ---"
         if self.instance.pk and self.instance.vehicle_id and self.instance.vehicle.vehicle_mode == "RENTAL":
             self.fields["is_rental"].initial = True
             self.fields["rental_vehicle_number"].initial = self.instance.vehicle.vehicle_number
@@ -98,6 +106,8 @@ class JobForm(forms.ModelForm):
                 cleaned["vehicle"] = vehicle
         elif not cleaned.get("vehicle"):
             self.add_error("vehicle", "Please select a vehicle.")
+        if not cleaned.get("is_rental"):
+            cleaned["rental_supplier"] = None  # only rental jobs have a supplier
         return cleaned
 
 
@@ -265,23 +275,36 @@ TripFormSet = inlineformset_factory(
 # -----------------------
 # JOB EXPENSE FORM (single shared breakdown per Job)
 # -----------------------
+# A rental job's only expense heads (the vehicle, its driver, tolls etc. are the supplier's).
+RENTAL_EXPENSE_FIELDS = ["trip_fare", "fuel", "weighbridge", "loading", "offloading"]
+
+
 class JobExpenseForm(forms.ModelForm):
     class Meta:
         model = JobExpense
         fields = [
-            "toll_plaza", "food", "incentive", "mobile_expense", "challan",
+            "trip_fare", "toll_plaza", "food", "incentive", "mobile_expense", "challan",
             "tyre_expense", "service", "loading", "offloading", "weighbridge",
             "maintenance", "labor_charges", "fuel", "other", "remarks",
         ]
         widgets = {
             field: forms.NumberInput(attrs={"class": "form-control", "step": "0.01"})
             for field in [
-                "toll_plaza", "food", "incentive", "mobile_expense", "challan",
+                "trip_fare", "toll_plaza", "food", "incentive", "mobile_expense", "challan",
                 "tyre_expense", "service", "loading", "offloading", "weighbridge",
                 "maintenance", "labor_charges", "fuel", "other",
             ]
         }
         widgets["remarks"] = forms.Textarea(attrs={"class": "form-control", "rows": 2})
+
+    def __init__(self, *args, rental=False, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Rental job: just its 5 heads. Own vehicle: every head but Trip Fare.
+        # (Fields left out keep whatever they already hold when the form is saved.)
+        keep = RENTAL_EXPENSE_FIELDS if rental else [f for f in self.fields if f != "trip_fare"]
+        for name in list(self.fields):
+            if name not in keep:
+                del self.fields[name]
 
 
 # -----------------------

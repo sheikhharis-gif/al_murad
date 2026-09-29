@@ -39,6 +39,10 @@
                         <label class="form-label small fw-bold text-muted">Rental Vehicle #</label>
                         {{ job_form.rental_vehicle_number }}
                     </div>
+                    <div class="col-md-2 d-none" id="rental-supplier-block">
+                        <label class="form-label small fw-bold text-muted">Rental Supplier</label>
+                        {{ job_form.rental_supplier }}
+                    </div>
                     <div class="d-none">{{ job_form.is_rental }}</div>
                     <div class="col-md-2">
                         <label class="form-label small fw-bold text-muted">Date</label>
@@ -268,6 +272,20 @@
         <div class="card-body p-3">
             <form method="post">
                 {% csrf_token %}
+                {% if job.vehicle.vehicle_mode == "RENTAL" %}
+                {# Rental job: only these heads - the vehicle's running costs are the supplier's #}
+                <div class="row g-2">
+                    <div class="col-md-2"><label class="form-label x-small fw-bold mb-1">Trip Fare</label>{{ expense_form.trip_fare }}</div>
+                    <div class="col-md-2"><label class="form-label x-small fw-bold mb-1">Fuel</label>{{ expense_form.fuel }}</div>
+                    <div class="col-md-2"><label class="form-label x-small fw-bold mb-1">Weighbridge</label>{{ expense_form.weighbridge }}</div>
+                    <div class="col-md-2"><label class="form-label x-small fw-bold mb-1">Loading</label>{{ expense_form.loading }}</div>
+                    <div class="col-md-2"><label class="form-label x-small fw-bold mb-1">Offloading</label>{{ expense_form.offloading }}</div>
+                    <div class="col-md-2">
+                        <label class="form-label x-small fw-bold mb-1">Total</label>
+                        <div class="fw-bold fs-6">{{ job.trip_expense|floatformat:2 }}</div>
+                    </div>
+                </div>
+                {% else %}
                 <div class="row g-2">
                     <div class="col-md-2"><label class="form-label x-small fw-bold mb-1">Toll Plaza</label>{{ expense_form.toll_plaza }}</div>
                     <div class="col-md-2"><label class="form-label x-small fw-bold mb-1">Food</label>{{ expense_form.food }}</div>
@@ -294,6 +312,7 @@
                         {{ expense_form.remarks }}
                     </div>
                 </div>
+                {% endif %}
                 <div class="text-end mt-3">
                     <button type="submit" name="save_expense" class="btn btn-primary fw-bold px-4">
                         <i class="bi bi-save me-1"></i>Save Expense
@@ -303,7 +322,8 @@
         </div>
     </div>
 
-    <!-- Fuel -->
+    <!-- Fuel (own vehicles only - a rental vehicle's fuel is the supplier's) -->
+    {% if job.vehicle.vehicle_mode != "RENTAL" %}
     <div class="card border-0 shadow-sm rounded-4 mb-4">
         <div class="card-header bg-white border-0 pt-3 px-3">
             <h5 class="fw-bold mb-0 text-primary">Fuel</h5>
@@ -355,6 +375,7 @@
             </form>
         </div>
     </div>
+    {% endif %}
 </div>
 
 <style>
@@ -451,6 +472,7 @@
         if (rentalFlag && rentalFlag.checked) {
             document.getElementById('own-vehicle-block').classList.add('d-none');
             document.getElementById('rental-vehicle-block').classList.remove('d-none');
+            document.getElementById('rental-supplier-block').classList.remove('d-none');
         }
 
         function wireAddRow(buttonId, containerId, rowClass, totalFormsId) {

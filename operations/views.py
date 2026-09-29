@@ -230,6 +230,7 @@ def job_add(request):
 def job_edit(request, job_id):
     job = get_object_or_404(Job, job_number=job_id)
     expense, _ = JobExpense.objects.get_or_create(job=job)
+    is_rental = job.vehicle.vehicle_mode == "RENTAL"
 
     if request.method == "POST":
         if "save_job" in request.POST:
@@ -258,12 +259,12 @@ def job_edit(request, job_id):
                 "job": job,
                 "job_form": JobForm(instance=job),
                 "trip_formset": trip_formset,
-                "expense_form": JobExpenseForm(instance=expense),
+                "expense_form": JobExpenseForm(instance=expense, rental=is_rental),
                 "fuel_formset": JobFuelEntryFormSet(instance=job, prefix="fuel"),
             })
 
         if "save_expense" in request.POST:
-            expense_form = JobExpenseForm(request.POST, instance=expense)
+            expense_form = JobExpenseForm(request.POST, instance=expense, rental=is_rental)
             if expense_form.is_valid():
                 expense_form.save()
                 messages.success(request, "Expense breakdown updated.")
@@ -282,7 +283,7 @@ def job_edit(request, job_id):
 
     job_form = JobForm(instance=job)
     trip_formset = TripFormSet(instance=job, prefix="trips")
-    expense_form = JobExpenseForm(instance=expense)
+    expense_form = JobExpenseForm(instance=expense, rental=is_rental)
     fuel_formset = JobFuelEntryFormSet(instance=job, prefix="fuel")
 
     return render(request, "operations/job_sheet.html", {

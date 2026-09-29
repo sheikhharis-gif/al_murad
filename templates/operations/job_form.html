@@ -53,6 +53,15 @@
                                 <div class="text-danger small mt-1">{{ form.rental_vehicle_number.errors }}</div>
                             {% endif %}
                             <div class="form-text small">Gari ka number type karein - KMs yahan zaroori nahi hain.</div>
+
+                            <label class="form-label fw-bold text-secondary small text-uppercase tracking-wider mt-3">
+                                <i class="bi bi-shop me-1"></i> Rental Supplier
+                                <a href="{% url 'vendor_add' %}" target="_blank" class="ms-1 fw-normal text-lowercase">+ add supplier</a>
+                            </label>
+                            {{ form.rental_supplier }}
+                            {% if form.rental_supplier.errors %}
+                                <div class="text-danger small mt-1">{{ form.rental_supplier.errors }}</div>
+                            {% endif %}
                         </div>
 
                         <div class="row g-3 mb-4">
