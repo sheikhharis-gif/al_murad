@@ -168,7 +168,7 @@ class TripForm(forms.ModelForm):
     class Meta:
         model = Trip
         fields = [
-            "trip_date", "client", "sub_category", "bilty_number", "weight", "route", "vehicle_type",
+            "trip_date", "auto_times", "client", "sub_category", "bilty_number", "weight", "route", "vehicle_type",
             "reached_at", "departed_at", "arrived_at", "delivered_at",
             "stopover_city", "stopover_charges", "additional_charges", "remarks",
             "trip_fare", "trip_fuel", "trip_weighbridge", "trip_loading", "trip_offloading",
@@ -176,7 +176,8 @@ class TripForm(forms.ModelForm):
         widgets = {
             **{f: forms.NumberInput(attrs={"class": "form-control form-control-sm trip-exp", "step": "0.01", "placeholder": "0"})
                for f in ("trip_fare", "trip_fuel", "trip_weighbridge", "trip_loading", "trip_offloading")},
-            "trip_date": forms.DateInput(attrs={"class": "form-control form-control-sm", "type": "date"}),
+            "trip_date": forms.DateInput(attrs={"class": "form-control form-control-sm trip-date", "type": "date"}),
+            "auto_times": forms.CheckboxInput(attrs={"class": "form-check-input trip-auto-times"}),
             "client": ClientSelect(attrs={"class": "form-select form-select-sm"}),
             "sub_category": SubCategorySelect(attrs={"class": "form-select form-select-sm trip-subcategory"}),
             "bilty_number": forms.TextInput(attrs={"class": "form-control form-control-sm", "placeholder": "Bilty #"}),
@@ -266,6 +267,13 @@ class TripForm(forms.ModelForm):
         for f in Trip.TRIP_EXPENSE_FIELDS:
             if f in self.fields and cleaned.get(f) is None:
                 cleaned[f] = Decimal(0)
+        # Auto: all four times = the trip date at 00:00 (stored as typed, like
+        # every other trip time under the UTC setting)
+        if cleaned.get("auto_times") and cleaned.get("trip_date"):
+            midnight = dt.datetime.combine(cleaned["trip_date"], dt.time(0, 0), tzinfo=dt.timezone.utc)
+            for f in ("reached_at", "departed_at", "arrived_at", "delivered_at"):
+                cleaned[f] = midnight
+                self.errors.pop(f, None)
         if self.rental_pool:
             number = (cleaned.get("rental_vehicle_number") or "").strip().upper()
             if not number:

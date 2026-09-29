@@ -154,6 +154,11 @@
                             <div class="col-md-2">
                                 <label class="form-label x-small fw-bold mb-1">Date</label>
                                 {{ tf.trip_date }}
+                                {# Auto: same-day / local trip - all four times become this date, 00:00 #}
+                                <div class="form-check mt-1" title="Same-day / local trip: Reached, Departure, Arrival and Delivery all = this date, 00:00">
+                                    {{ tf.auto_times }}
+                                    <label class="form-check-label small fw-bold" for="{{ tf.auto_times.id_for_label }}">Auto</label>
+                                </div>
                             </div>
                             <div class="col-md-3">
                                 <label class="form-label x-small fw-bold mb-1">Client</label>
@@ -589,6 +594,34 @@
         }
 
         wireAddRow('add-trip-row', 'trip-formset', 'trip-block', 'id_trips-TOTAL_FORMS');
+
+        // "Auto" on a trip: Reached / Departure / Arrival / Delivery all follow the
+        // trip Date at 00:00 and are locked while it's ticked.
+        var TIME_FIELDS = ['reached_at', 'departed_at', 'arrived_at', 'delivered_at'];
+        function syncAutoTimes(blk) {
+            var box = blk.querySelector('input.trip-auto-times');
+            var dateInput = blk.querySelector('input.trip-date');
+            if (!box || !dateInput) return;
+            TIME_FIELDS.forEach(function (name) {
+                var el = blk.querySelector('input[name$="-' + name + '"]');
+                if (!el) return;
+                var fp = el._flatpickr;
+                var visible = fp && fp.altInput ? fp.altInput : el;
+                if (box.checked && dateInput.value) {
+                    var value = dateInput.value + ' 00:00';
+                    if (fp) fp.setDate(value, false); else el.value = value;
+                }
+                visible.readOnly = box.checked;
+                visible.classList.toggle('bg-light', box.checked);
+            });
+        }
+        var formsetEl = document.getElementById('trip-formset');
+        formsetEl.addEventListener('change', function (e) {
+            if (e.target.matches('input.trip-auto-times, input.trip-date')) syncAutoTimes(e.target.closest('.trip-block'));
+        });
+        window.addEventListener('load', function () {
+            document.querySelectorAll('.trip-block').forEach(syncAutoTimes);
+        });
 
         // Monthly rental trip: its Trip Expense Total follows the five boxes as you type.
         document.getElementById('trip-formset').addEventListener('input', function (e) {

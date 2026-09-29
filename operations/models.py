@@ -171,6 +171,9 @@ class Trip(models.Model):
     vehicle = models.ForeignKey("masters.Vehicle", on_delete=models.PROTECT, editable=False)
     trip_no = models.CharField(max_length=50, blank=True, editable=False)
     trip_date = models.DateField()
+    # "Auto": local / same-day trip - Reached, Departure, Arrival and Delivery
+    # are all set to the trip date, 00:00 (set by the trip form).
+    auto_times = models.BooleanField("Auto", default=False)
     route = models.ForeignKey("masters.Route", on_delete=models.PROTECT, related_name="job_trips")
 
     # Optional unit of the client this trip is for (e.g. Five Star -> Assia /
