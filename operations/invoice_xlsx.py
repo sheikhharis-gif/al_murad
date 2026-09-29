@@ -10,6 +10,7 @@ The tables are the columns ticked (and dragged into order) on Generate
 Invoice, so their width varies; everything else follows the template.
 """
 import io
+import textwrap
 from decimal import Decimal
 
 from openpyxl import Workbook
@@ -116,7 +117,7 @@ def _page(ws, orientation, last_row, last_col, one_page=False, letterhead=True):
 TRIPS_SUMMARY_WIDTH = 100
 NON_TAX_WIDTH = 100
 # Remarks: as wide as its longest remark needs, within these limits (it wraps beyond).
-_REMARKS_MIN, _REMARKS_MAX = 14, 30
+_REMARKS_MIN, _REMARKS_MAX = 14, 38
 _SNO_CHARS = 6
 
 
@@ -150,15 +151,20 @@ def _grid(ws, keys, target, data=None):
     return widths
 
 
-def _data_row_height(data, widths):
-    """One fixed height for every trip row: one line, or two if a remark
-    wraps in its column."""
+def _data_row_heights(data, widths):
+    """Height of each trip row: the standard one-line height, taller only for a
+    row whose remark needs more lines once wrapped in its column - so every
+    remark prints in full without stretching the other rows."""
     if "remarks" not in data["keys"]:
-        return 19.95
+        return [19.95] * len(data["rows"])
     idx = data["keys"].index("remarks")
-    col_chars = widths[idx + 1]
-    longest = max((len(str(row[idx] or "")) for row in data["rows"]), default=0)
-    return 19.95 if longest <= col_chars * 1.05 else 32
+    # characters that fit on one line: a width unit is one digit; mixed text runs a bit wider
+    per_line = max(int(widths[idx + 1] * 0.85), 8)
+    heights = []
+    for row in data["rows"]:
+        lines = max(len(textwrap.wrap(str(row[idx] or ""), per_line, break_long_words=True)), 1)
+        heights.append(19.95 if lines == 1 else round(13.5 * lines + 6, 2))
+    return heights
 
 
 def _split_width(widths, groups):
@@ -213,7 +219,7 @@ def _table(ws, data, header_row, spans, height_rows=None, wrap_header=True):
                 value = None
             _put(ws, _rng(r, spans[i - 1]), value, _font(10), None, A_CELL, nf=_col_format(key, is_money), **_box())
         if height_rows:
-            ws.row_dimensions[r].height = height_rows
+            ws.row_dimensions[r].height = height_rows[n - 1] if isinstance(height_rows, list) else height_rows
         r += 1
     return header_row + 1, r - 1
 
@@ -286,7 +292,7 @@ def _tax_workbook(data):
     _info_row(ts, 3, meta, widths, _font(10, True), _font(10), boxed=True)
     ts.row_dimensions[3].height = ts.row_dimensions[4].height = 19.95
     ts.row_dimensions[6].height = 30
-    first_data, last_data = _table(ts, data, 6, spans, height_rows=_data_row_height(data, widths))
+    first_data, last_data = _table(ts, data, 6, spans, height_rows=_data_row_heights(data, widths))
     spacer = last_data + 1
     ts.row_dimensions[spacer].height = 17.4
     total_row = spacer + 1
@@ -380,7 +386,7 @@ def _nontax_workbook(data):
                       ("Payment Terms", f"{data['payment_days']} Days"), ("Due Date", f"{data['due_date']:%d %b %Y}"),
                       ("Invoice #", data["invoice_no"])], widths, _font(9, True), _font(10), boxed=False)
     _put(ws, f"A12:{L(n_cols)}12", "TRIPS SUMMARY", _font(16, True, color=WHITE), _fill(BLUE), A_LEFT)
-    first_data, last_data = _table(ws, data, 14, spans, height_rows=_data_row_height(data, widths))
+    first_data, last_data = _table(ws, data, 14, spans, height_rows=_data_row_heights(data, widths))
     total_row = last_data + 2
     _total_row(ws, data, total_row, first_data, last_data, spans)
     inv_row = total_row + 2
@@ -400,9 +406,9 @@ def _nontax_workbook(data):
         _put(ws, f"A{notes_row + i}:{L(n_cols)}{notes_row + i}", line, _font(9), None, A_V, bottom=THIN)
     last = notes_row + len(lines)
 
-    row_h = _data_row_height(data, widths)
+    row_heights = _data_row_heights(data, widths)
     for row in range(3, last + 1):
-        ws.row_dimensions[row].height = row_h if first_data <= row <= last_data else 19.95
+        ws.row_dimensions[row].height = row_heights[row - first_data] if first_data <= row <= last_data else 19.95
     ws.row_dimensions[1].height = 30
     ws.row_dimensions[12].height = 25.05
     ws.row_dimensions[14].height = 30  # header row: wraps onto two lines
