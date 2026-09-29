@@ -554,7 +554,7 @@
                     <select name="price" class="form-select mb-3" id="applyFuelPrice" required>
                         <option value="">--- Select fuel price ---</option>
                         {% for fp in fuel_prices %}
-                        <option value="{{ fp.id }}" data-product="{{ fp.product_id }}">{{ fp.effective_date|date:"j-M-y" }} &mdash; {{ fp.fuel_price }}</option>
+                        <option value="{{ fp.id }}" data-product="{{ fp.product_id }}" {% if fp.already_applied %}disabled{% endif %}>{{ fp.effective_date|date:"j-M-y" }} &mdash; {{ fp.fuel_price }}{% if fp.already_applied %} (applied){% endif %}</option>
                         {% endfor %}
                     </select>
                     {% if blank_product_rates %}

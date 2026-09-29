@@ -199,8 +199,14 @@ def pso_fuel_prices():
 def fuel_price_choices(client):
     """For the Apply Fuel Price window: every PSO fuel price (newest first) by
     product, plus how many of the client's rates have no fuel product set."""
-    prices = pso_fuel_prices().select_related("product").order_by("-effective_date", "-id")
-    products = FuelProduct.objects.filter(pk__in=prices.values("product_id")).order_by("name")
+    prices = list(pso_fuel_prices().select_related("product").order_by("-effective_date", "-id"))
+    products = FuelProduct.objects.filter(pk__in={p.product_id for p in prices}).order_by("name")
+    # A price already applied to this client (its rates have an entry on that product
+    # + date) is shown disabled, so the same update can't be applied twice.
+    applied = set(ClientRate.objects.filter(client=client, fuel_product__isnull=False)
+                  .values_list("fuel_product_id", "effective_date"))
+    for p in prices:
+        p.already_applied = (p.product_id, p.effective_date) in applied
     return {
         "fuel_products": products,
         "fuel_prices": prices,
