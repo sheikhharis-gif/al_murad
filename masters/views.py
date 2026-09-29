@@ -281,6 +281,56 @@ def vehicle_list(request):
 
     return render(request, "vehicle/vehicle_list.html", context)
 
+def vehicle_excel(request):
+    """All vehicles as an Excel sheet in the Asset Data layout - the same columns
+    import_asset_data reads, so the file can be edited and loaded back."""
+    from openpyxl import Workbook
+    from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
+    from django.http import HttpResponse
+    from .management.commands.import_asset_data import HEADERS
+
+    vehicles = Vehicle.objects.select_related("vehicle_type", "wheeler", "dedicated_client", "driver", "driver2").order_by("vehicle_number")
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Asset"
+    headers = list(HEADERS.values())
+    widths = {"Owner": 30, "Chassis No": 22, "Engine No": 18, "Registration Name": 26, "Dedicated to Client": 26,
+              "Driver 1": 20, "Driver 2": 20, "Vehicle Number": 14, "Type": 14, "Purchase Date": 13}
+    thin = Side(style="thin", color="A6A6A6")
+    border = Border(left=thin, right=thin, top=thin, bottom=thin)
+    for c, h in enumerate(headers, start=1):
+        cell = ws.cell(row=1, column=c, value=h)
+        cell.font, cell.fill, cell.border = Font(bold=True, color="FFFFFF"), PatternFill("solid", fgColor="1F4E78"), border
+        cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+        ws.column_dimensions[cell.column_letter].width = widths.get(h, 11)
+
+    def wheels(w):
+        name = w.name if w else ""
+        return int(name.split()[0]) if name.endswith(" WHEELER") and name.split()[0].isdigit() else name
+
+    for r, v in enumerate(vehicles, start=2):
+        row = [
+            v.vehicle_mode, v.vehicle_number, v.owner, v.make, v.model_year,
+            v.vehicle_type.name if v.vehicle_type_id else "", wheels(v.wheeler), v.color, v.chassis_no, v.engine_no,
+            v.weight_capacity, v.purchase_date, float(v.value) if v.value is not None else None, v.m_tag,
+            v.starting_km, v.current_km, v.dedicated_client.name if v.dedicated_client_id else "",
+            "Yes" if v.leased else "", v.container_no, v.registration_name,
+            v.driver.name if v.driver_id else "", v.driver2.name if v.driver2_id else "",
+        ]
+        for c, value in enumerate(row, start=1):
+            cell = ws.cell(row=r, column=c, value=value if value not in ("",) else None)
+            cell.border = border
+            if c == headers.index("Purchase Date") + 1 and value:
+                cell.number_format = "d-mmm-yy"
+    ws.freeze_panes = "C2"
+    ws.auto_filter.ref = f"A1:{ws.cell(row=1, column=len(headers)).column_letter}{max(ws.max_row, 1)}"
+
+    response = HttpResponse(content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    response["Content-Disposition"] = f'attachment; filename="Asset Data {date.today():%Y-%m-%d}.xlsx"'
+    wb.save(response)
+    return response
+
+
 # 2. Naya vehicle register karne ke liye
 def vehicle_add(request):
     # Agar data POST hai toh form fill hoga, warna khali form

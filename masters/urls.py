@@ -13,6 +13,7 @@ urlpatterns = [
 
     # VEHICLES
     path("vehicles/", views.vehicle_list, name="vehicle_list"),
+    path("vehicles/excel/", views.vehicle_excel, name="vehicle_excel"),
     path("vehicles/add/", views.vehicle_add, name="vehicle_add"),
     path("vehicles/edit/<int:vehicle_id>/", views.vehicle_edit, name="vehicle_edit"),
     path("vehicles/delete/<int:vehicle_id>/", views.vehicle_delete, name="vehicle_delete"),
