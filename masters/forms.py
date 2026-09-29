@@ -476,6 +476,17 @@ class ClientForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["client_type"].empty_label = "--- Select Client Type ---"
+        # Billing Company = the client's Service Provider: picked from the registered
+        # companies (Invoicing > Add Company), same list as on Generate Invoice.
+        names = list(Company.objects.filter(is_active=True).order_by("name").values_list("name", flat=True))
+        current = (self.instance.billing_company or "").strip() if self.instance.pk else ""
+        if current and current not in names:
+            names.append(current)  # keep an older free-text value selectable
+        self.fields["billing_company"].label = "Service Provider"
+        self.fields["billing_company"].widget = forms.Select(
+            choices=[("", "--- Select Service Provider ---")] + [(n, n) for n in names],
+            attrs={"class": "form-select dropdown-search-select", "data-match": "contains", "data-theme": "light",
+                   "data-placeholder": "Type company name to search...", "data-empty-text": "No matching company"})
 
 
 class CompanyForm(forms.ModelForm):

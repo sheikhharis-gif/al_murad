@@ -92,42 +92,73 @@ def _pct(rate):
     return float(rate / 100), ("0%" if rate == rate.to_integral_value() else "0.00%")
 
 
-def _page(ws, orientation, last_row, last_col):
+def _page(ws, orientation, last_row, last_col, one_page=False, letterhead=True):
+    """A4, fitted to the page width (and, with one_page, to a single page).
+    Invoices are printed on the company letterhead, so they keep its header /
+    footer areas clear: ~40 mm at the top, ~25 mm at the bottom."""
     ws.sheet_view.showGridLines = False
     ws.sheet_format.defaultRowHeight = 16.8
     ws.sheet_properties.pageSetUpPr = PageSetupProperties(fitToPage=True)
     ws.page_setup.orientation = orientation
     ws.page_setup.paperSize = ws.PAPERSIZE_A4
     ws.page_setup.fitToWidth = 1
-    ws.page_setup.fitToHeight = 0
+    ws.page_setup.fitToHeight = 1 if one_page else 0
     ws.print_options.horizontalCentered = True
-    ws.page_margins.left = ws.page_margins.right = 0.25
-    ws.page_margins.top = ws.page_margins.bottom = 0.35
+    ws.page_margins.left = ws.page_margins.right = 0.47 if letterhead else 0.25
+    ws.page_margins.top, ws.page_margins.bottom = (1.6, 1.0) if letterhead else (0.35, 0.35)
+    ws.page_margins.footer = 0.6 if letterhead else 0.3
     ws.oddFooter.center.text = "Page &P of &N"
     ws.print_area = f"A1:{get_column_letter(last_col)}{last_row}"
 
 
-# The templates' total sheet widths: a table with few columns is stretched to this so it
-# still fills the page; one with many just gets a wider sheet (printing scales it to fit).
-TRIPS_SUMMARY_WIDTH = 183.22
-NON_TAX_WIDTH = 152.55
-# Width (characters) of each column, enough for its header and values.
-_COL_CHARS = {"trip_no": 12, "trip_date": 13, "bilty_number": 14, "vehicle": 14, "vehicle_type": 16, "sub_category": 16,
-              "route": 14, "weight": 17, "stopover_city": 17, "stopover_charges": 20, "trip_charges": 16,
-              "additional_charges": 23, "total_freight": 17, "remarks": 30}
-_SNO_CHARS = 14
+# Total sheet width (characters) that prints at about 100% across A4 portrait inside the
+# letterhead margins: a narrower table is stretched to it, a wider one is scaled down to fit.
+TRIPS_SUMMARY_WIDTH = 100
+NON_TAX_WIDTH = 100
+# Remarks: as wide as its longest remark needs, within these limits (it wraps beyond).
+_REMARKS_MIN, _REMARKS_MAX = 14, 30
+_SNO_CHARS = 6
 
 
-def _grid(ws, keys, target):
-    """Set every table column's own fixed width (S.no first), stretched
-    proportionally if the sheet would otherwise be narrower than `target`.
-    Returns the width list."""
-    prefs = [_COL_CHARS.get(k, 16) for k in keys[1:]]
-    scale = max((target - _SNO_CHARS) / sum(prefs), 1) if prefs else 1
-    widths = [_SNO_CHARS] + [round(w * scale, 2) for w in prefs]
+def _text_len(value, key, money):
+    if value in (None, ""):
+        return 0
+    if money:
+        return len(f"{value:,.2f}")
+    if hasattr(value, "strftime"):
+        return 9  # 12-Aug-26
+    return len(str(value))
+
+
+def _grid(ws, keys, target, data=None):
+    """Set every table column's width (S.no first): what its values and its
+    header (which wraps at spaces) need, Remarks up to _REMARKS_MAX, the whole
+    stretched proportionally if narrower than `target`. Returns the width list."""
+    widths = [_SNO_CHARS]
+    for n, key in enumerate(keys[1:]):
+        header = data["headers"][n] if data else key
+        money = data["money"][n] if data else False
+        values = max((_text_len(row[n], key, money) for row in data["rows"]), default=0) if data else 10
+        if key == "remarks":
+            widths.append(min(max(values + 2, _REMARKS_MIN), _REMARKS_MAX))
+        else:
+            widths.append(max(values + 2, max(len(w) for w in header.split()) + 2, 7))
+    scale = max(target / sum(widths), 1)
+    widths = [round(w * scale, 2) for w in widths]
     for i, w in enumerate(widths, start=1):
         ws.column_dimensions[get_column_letter(i)].width = w
     return widths
+
+
+def _data_row_height(data, widths):
+    """One fixed height for every trip row: one line, or two if a remark
+    wraps in its column."""
+    if "remarks" not in data["keys"]:
+        return 19.95
+    idx = data["keys"].index("remarks")
+    col_chars = widths[idx + 1]
+    longest = max((len(str(row[idx] or "")) for row in data["rows"]), default=0)
+    return 19.95 if longest <= col_chars * 1.05 else 32
 
 
 def _split_width(widths, groups):
@@ -246,7 +277,7 @@ def _tax_workbook(data):
     keys = ["sno"] + data["keys"]
     W = len(headers)
     spans = [(i, i) for i in range(1, W + 1)]
-    widths = _grid(ts, keys, TRIPS_SUMMARY_WIDTH)
+    widths = _grid(ts, keys, TRIPS_SUMMARY_WIDTH, data)
     last = get_column_letter(W)
     _put(ts, f"A1:{last}1", "TRIPS SUMMARY", _font(18, True, color=WHITE), _fill(BLUE), A_LEFT)
     ts.row_dimensions[1].height = 30
@@ -255,14 +286,14 @@ def _tax_workbook(data):
     _info_row(ts, 3, meta, widths, _font(10, True), _font(10), boxed=True)
     ts.row_dimensions[3].height = ts.row_dimensions[4].height = 19.95
     ts.row_dimensions[6].height = 30
-    first_data, last_data = _table(ts, data, 6, spans)
+    first_data, last_data = _table(ts, data, 6, spans, height_rows=_data_row_height(data, widths))
     spacer = last_data + 1
     ts.row_dimensions[spacer].height = 17.4
     total_row = spacer + 1
     _total_row(ts, data, total_row, first_data, last_data, spans)
     footer_row = total_row + 2
     _put(ts, f"A{footer_row}:{last}{footer_row}", "Page 2 of 2", _font(8, italic=True, color=FOOT), None, Alignment(horizontal="center"))
-    _page(ts, "landscape", footer_row, W)
+    _page(ts, "portrait", footer_row, W, one_page=len(data["rows"]) <= 45)
 
     # ===== Invoice (page 1) - 10 columns of 17
     for i in range(1, 11):
@@ -319,7 +350,7 @@ def _tax_workbook(data):
     for row in range(2, foot + 1):
         ws.row_dimensions[row].height = 19.95
     ws.row_dimensions[1].height = 30
-    _page(ws, "portrait", foot, 10)
+    _page(ws, "portrait", foot, 10, one_page=True)
     return wb
 
 
@@ -333,7 +364,7 @@ def _nontax_workbook(data):
     n_cols = max(len(headers), 4)
     L = get_column_letter
     spans = [(i, i) for i in range(1, len(headers) + 1)]
-    widths = _grid(ws, keys, NON_TAX_WIDTH)
+    widths = _grid(ws, keys, NON_TAX_WIDTH, data)
     widths += [16] * (n_cols - len(widths))
     for i in range(len(headers) + 1, n_cols + 1):
         ws.column_dimensions[L(i)].width = 16
@@ -349,7 +380,7 @@ def _nontax_workbook(data):
                       ("Payment Terms", f"{data['payment_days']} Days"), ("Due Date", f"{data['due_date']:%d %b %Y}"),
                       ("Invoice #", data["invoice_no"])], widths, _font(9, True), _font(10), boxed=False)
     _put(ws, f"A12:{L(n_cols)}12", "TRIPS SUMMARY", _font(16, True, color=WHITE), _fill(BLUE), A_LEFT)
-    first_data, last_data = _table(ws, data, 14, spans, height_rows=19.95, wrap_header=False)
+    first_data, last_data = _table(ws, data, 14, spans, height_rows=_data_row_height(data, widths))
     total_row = last_data + 2
     _total_row(ws, data, total_row, first_data, last_data, spans)
     inv_row = total_row + 2
@@ -369,13 +400,15 @@ def _nontax_workbook(data):
         _put(ws, f"A{notes_row + i}:{L(n_cols)}{notes_row + i}", line, _font(9), None, A_V, bottom=THIN)
     last = notes_row + len(lines)
 
+    row_h = _data_row_height(data, widths)
     for row in range(3, last + 1):
-        ws.row_dimensions[row].height = 19.95
+        ws.row_dimensions[row].height = row_h if first_data <= row <= last_data else 19.95
     ws.row_dimensions[1].height = 30
-    ws.row_dimensions[12].height = ws.row_dimensions[14].height = 25.05
+    ws.row_dimensions[12].height = 25.05
+    ws.row_dimensions[14].height = 30  # header row: wraps onto two lines
     ws.row_dimensions[inv_row].height = 30
     ws.row_dimensions[total_row].height = 19.95
-    _page(ws, "landscape", last, n_cols)
+    _page(ws, "portrait", last, n_cols, one_page=len(data["rows"]) <= 35)
     return wb
 
 
@@ -409,7 +442,7 @@ def build_status(invoices):
             _put(ws, f"{col}{r}", f"=SUM({col}4:{col}{r - 1})", _font(11, True), _fill(LIGHT), A_RIGHT, nf="#,##0", **edge)
         _put(ws, f"I{r}", None, None, _fill(LIGHT), None, top=MEDIUM, bottom=MEDIUM)
     ws.freeze_panes = "A4"
-    _page(ws, "landscape", max(r, 4), len(headers))
+    _page(ws, "landscape", max(r, 4), len(headers), letterhead=False)
     out = io.BytesIO()
     wb.save(out)
     return out.getvalue()

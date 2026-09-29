@@ -23,7 +23,7 @@ from django.utils import timezone
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 
-from masters.models import DEFAULT_INVOICE_NOTES, Client, Company, TaxSettings
+from masters.models import DEFAULT_INVOICE_NOTES, Client, ClientSubCategory, Company, TaxSettings
 from . import invoice_pdf, invoice_xlsx
 from .models import GeneratedInvoice, Trip
 
@@ -98,11 +98,15 @@ def invoice_select(request):
     client_id = request.GET.get("client") or ""
     start_date = request.GET.get("start_date") or ""
     end_date = request.GET.get("end_date") or ""
+    sub_category = request.GET.get("sub_category") or ""
     client = Client.objects.filter(pk=client_id).first() if client_id else None
     trips = []
     hidden_invoiced = 0
     if client:
         trips = Trip.objects.filter(client=client).select_related(*TRIP_RELATED)
+        # A client with Sub-Categories can be invoiced one sub-category at a time.
+        if client.has_sub_categories and sub_category.isdigit():
+            trips = trips.filter(sub_category_id=sub_category)
         if start_date:
             trips = trips.filter(trip_date__gte=start_date)
         if end_date:
@@ -132,6 +136,9 @@ def invoice_select(request):
         "companies": Company.objects.filter(is_active=True).order_by("name"),
         "client": client,
         "start_date": start_date, "end_date": end_date,
+        "sub_category": sub_category,
+        # every client's sub-categories; the page shows the chosen client's (if it has them on)
+        "sub_categories": ClientSubCategory.objects.filter(client__has_sub_categories=True).order_by("name"),
         "trip_rows": trip_rows,
         "columns": columns,
         "default_columns": DEFAULT_COLUMNS,
@@ -326,7 +333,8 @@ def invoice_generate_pdf(request):
     if problem:
         messages.error(request, problem)
         back = {"client": client.pk, "start_date": request.POST.get("start_date") or "",
-                "end_date": request.POST.get("end_date") or ""}
+                "end_date": request.POST.get("end_date") or "",
+                "sub_category": request.POST.get("sub_category") or ""}
         return redirect(f"{reverse('invoice_select')}?{urlencode(back)}")
     by_key = {c[0]: c for c in _client_columns(client)}
     # The columns arrive in the order they were dragged into on the page.
@@ -341,7 +349,8 @@ def invoice_generate_pdf(request):
     trips = list(Trip.objects.filter(pk__in=trip_ids, client=client)
                  .select_related(*TRIP_RELATED).order_by("trip_date", "id"))
     back = {"client": client.pk, "start_date": request.POST.get("start_date") or "",
-            "end_date": request.POST.get("end_date") or ""}
+            "end_date": request.POST.get("end_date") or "",
+                "sub_category": request.POST.get("sub_category") or ""}
     locked = Trip.invoiced_ids().intersection(t.pk for t in trips)
     if locked:
         messages.error(request, f"{len(locked)} of the ticked trip(s) are already on an invoice - "

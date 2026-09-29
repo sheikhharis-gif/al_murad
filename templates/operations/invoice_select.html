@@ -28,6 +28,14 @@
                     <label class="form-label small fw-semibold text-muted">End Date</label>
                     <input type="date" name="end_date" value="{{ end_date }}" class="form-control form-control-sm rounded-3">
                 </div>
+                {# Shown only for a client with Has Sub-Categories on (see the script below) #}
+                <div class="col-md-2 col-sm-6 d-none" id="subCatBox">
+                    <label class="form-label small fw-semibold text-muted">Sub-Category</label>
+                    <select name="sub_category" id="subCatSelect" class="form-select form-select-sm rounded-3">
+                        <option value="">-- All Sub-Categories --</option>
+                        {% for sc in sub_categories %}<option value="{{ sc.id }}" data-client="{{ sc.client_id }}" {% if sub_category == sc.id|stringformat:"s" %}selected{% endif %}>{{ sc.name }}</option>{% endfor %}
+                    </select>
+                </div>
                 <div class="col-md-2 col-sm-6">
                     <button type="submit" class="btn btn-primary btn-sm fw-bold w-100">Load Trips</button>
                 </div>
@@ -41,6 +49,7 @@
         <input type="hidden" name="client" value="{{ client.id }}">
         <input type="hidden" name="start_date" value="{{ start_date }}">
         <input type="hidden" name="end_date" value="{{ end_date }}">
+        <input type="hidden" name="sub_category" value="{{ sub_category }}">
 
         <div class="card border-0 shadow-sm rounded-4 mb-4">
             <div class="card-header bg-white border-0 pt-3 px-4">
@@ -268,6 +277,23 @@ document.addEventListener('DOMContentLoaded', function () {
     // Load Trips needs a client. The Client box is a live-search dropdown (its real <select> is
     // hidden), so check it here with a visible warning instead of a silent browser block.
     var loadForm = document.getElementById('loadForm');
+
+    // Sub-Category box: only for a client that has sub-categories, listing just that client's.
+    var clientSel = loadForm.querySelector('select[name="client"]');
+    var subBox = document.getElementById('subCatBox');
+    var subSel = document.getElementById('subCatSelect');
+    var subOptions = Array.prototype.slice.call(subSel.options).filter(function (o) { return o.value; });
+    function syncSubCategories() {
+        var mine = subOptions.filter(function (o) { return o.dataset.client === clientSel.value; });
+        var keep = subSel.value;
+        subSel.innerHTML = '<option value="">-- All Sub-Categories --</option>';
+        mine.forEach(function (o) { subSel.appendChild(o); });
+        subSel.value = mine.some(function (o) { return o.value === keep; }) ? keep : '';
+        subBox.classList.toggle('d-none', !mine.length);
+    }
+    clientSel.addEventListener('change', syncSubCategories);
+    syncSubCategories();
+
     loadForm.addEventListener('submit', function (e) {
         if (!loadForm.querySelector('select[name="client"]').value) {
             e.preventDefault();
