@@ -381,7 +381,7 @@
         document.querySelectorAll('select.route-city-select').forEach(function (select) {
             const options = Array.from(select.options).filter(function (option) { return option.value; });
             const wrapper = document.createElement('div');
-            wrapper.className = 'dropdown-search-wrapper';
+            wrapper.className = 'dropdown-search-wrapper dropdown-search-light';  // light: dark text on the white card
             const input = document.createElement('input');
             input.type = 'text';
             input.className = 'form-control dropdown-search-input';
