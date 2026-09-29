@@ -1113,6 +1113,64 @@ def client_subcategory_add(request, client_id):
     return redirect("client_rates", client_id=client.id)
 
 
+def locations_excel(request):
+    """Cities & Routes as an Excel file: a Cities sheet and a Routes sheet."""
+    from openpyxl import Workbook
+    from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
+    from django.http import HttpResponse
+
+    wb = Workbook()
+    head_font, head_fill = Font(bold=True, color="FFFFFF"), PatternFill("solid", fgColor="1F4E78")
+    thin = Side(style="thin", color="A6A6A6")
+    border = Border(left=thin, right=thin, top=thin, bottom=thin)
+
+    def sheet(ws, title, headers, widths, rows):
+        ws.title = title
+        for c, (h, w) in enumerate(zip(headers, widths), start=1):
+            cell = ws.cell(row=1, column=c, value=h)
+            cell.font, cell.fill, cell.border = head_font, head_fill, border
+            cell.alignment = Alignment(horizontal="center", vertical="center")
+            ws.column_dimensions[cell.column_letter].width = w
+        for r, row in enumerate(rows, start=2):
+            for c, value in enumerate(row, start=1):
+                ws.cell(row=r, column=c, value=value).border = border
+        ws.freeze_panes = "A2"
+        if rows:
+            ws.auto_filter.ref = f"A1:{ws.cell(row=1, column=len(headers)).column_letter}{len(rows) + 1}"
+
+    cities = City.objects.order_by("name")
+    sheet(wb.active, "Cities", ["City", "Code", "Province", "Latitude", "Longitude"], [28, 10, 18, 14, 14],
+          [(c.name, c.code, c.get_province_display() if c.province else "", float(c.latitude), float(c.longitude)) for c in cities])
+    routes = Route.objects.select_related("origin", "destination").order_by("route_code")
+    sheet(wb.create_sheet(), "Routes", ["Route Code", "Origin", "Destination", "KMs", "Transit Duration (Hours)"], [14, 24, 24, 10, 22],
+          [(r.route_code, r.origin.name, r.destination.name, r.distance_km, float(r.tt_hours) if r.tt_hours is not None else None) for r in routes])
+
+    response = HttpResponse(content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    response["Content-Disposition"] = f'attachment; filename="Cities and Routes {timezone.localdate():%Y-%m-%d}.xlsx"'
+    wb.save(response)
+    return response
+
+
+def client_subcategory_rename(request, client_id, sub_id):
+    """Fix a typo in a sub-category's name - its rates and trips follow (same record)."""
+    client = get_object_or_404(Client, id=client_id)
+    sub = get_object_or_404(ClientSubCategory, id=sub_id, client=client)
+    name = (request.POST.get("name") or "").strip().upper()
+    if request.method == "POST":
+        if not name:
+            messages.error(request, "Sub-Category name is required.")
+        elif name == sub.name:
+            pass
+        elif ClientSubCategory.objects.filter(client=client, name=name).exclude(pk=sub.pk).exists():
+            messages.error(request, f"'{name}' already exists for {client.name}.")
+        else:
+            old = sub.name
+            sub.name = name
+            sub.save()
+            messages.success(request, f"Sub-Category '{old}' renamed to '{name}'.")
+    return redirect("client_rates", client_id=client.id)
+
+
 def client_subcategory_delete(request, client_id, sub_id):
     client = get_object_or_404(Client, id=client_id)
     sub = get_object_or_404(ClientSubCategory, id=sub_id, client=client)

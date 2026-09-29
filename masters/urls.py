@@ -60,6 +60,7 @@ urlpatterns = [
     path("clients/<int:client_id>/stopover/save/", views.client_stopover_save, name="client_stopover_save"),
     path("clients/<int:client_id>/stopover/<int:rate_id>/delete/", views.client_stopover_delete, name="client_stopover_delete"),
     path("clients/<int:client_id>/subcategories/add/", views.client_subcategory_add, name="client_subcategory_add"),
+    path("clients/<int:client_id>/subcategories/<int:sub_id>/rename/", views.client_subcategory_rename, name="client_subcategory_rename"),
     path("clients/<int:client_id>/subcategories/<int:sub_id>/delete/", views.client_subcategory_delete, name="client_subcategory_delete"),
     path("clients/<int:client_id>/rates/excel/", rate_exports.client_rates_excel, name="client_rates_excel"),
     path("clients/<int:client_id>/rates/pdf/", rate_exports.client_rates_pdf, name="client_rates_pdf"),
@@ -89,6 +90,7 @@ urlpatterns = [
     path("expenses/delete/<int:expense_id>/", views.expense_delete, name="expense_delete"),
     
     path("locations/", views.locations_master, name="locations_master"),
+    path("locations/excel/", views.locations_excel, name="locations_excel"),
     path("locations/city/<int:city_id>/edit/", views.city_edit, name="city_edit"),
     path("locations/city/<int:city_id>/delete/", views.city_delete, name="city_delete"),
     path("locations/route/<int:route_id>/edit/", views.route_edit, name="route_edit"),

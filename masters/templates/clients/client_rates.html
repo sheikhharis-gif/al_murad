@@ -115,6 +115,12 @@
                 {% for sc in sub_categories %}
                 <span class="badge bg-primary-subtle text-primary-emphasis border d-inline-flex align-items-center gap-1 px-2 py-1">
                     {{ sc.name }}
+                    {# Rename: a small prompt, the typed name is posted by the hidden form #}
+                    <form method="post" action="{% url 'client_subcategory_rename' client.id sc.id %}" class="d-inline m-0 subcat-rename"
+                          data-name="{{ sc.name }}">
+                        {% csrf_token %}<input type="hidden" name="name">
+                        <button type="submit" class="btn btn-link p-0 ms-1 text-warning" style="font-size:.75rem; line-height:1;" title="Rename"><i class="bi bi-pencil-square"></i></button>
+                    </form>
                     <form method="post" action="{% url 'client_subcategory_delete' client.id sc.id %}" class="d-inline m-0"
                           onsubmit="return confirm('Delete sub-category {{ sc.name }}?')">
                         {% csrf_token %}<button type="submit" class="btn-close ms-1" style="font-size:.5rem;" title="Delete"></button>
@@ -992,6 +998,16 @@ document.addEventListener('DOMContentLoaded', function () {
 <style>
     .copy-to-list { max-height: 260px; overflow-y: auto; }
 </style>
+<script>
+    // Sub-Category rename: ask for the new name, then post it.
+    document.querySelectorAll('form.subcat-rename').forEach(function (form) {
+        form.addEventListener('submit', function (e) {
+            var name = prompt('Rename sub-category "' + form.dataset.name + '" to:', form.dataset.name);
+            if (name === null || !name.trim() || name.trim().toUpperCase() === form.dataset.name) { e.preventDefault(); return; }
+            form.querySelector('input[name="name"]').value = name.trim().toUpperCase();
+        });
+    });
+</script>
 <script>
     // Apply Fuel Price window: only list the chosen product's prices (newest first, pre-selected).
     document.addEventListener('DOMContentLoaded', function () {
