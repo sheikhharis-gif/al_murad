@@ -25,11 +25,11 @@ from reportlab.lib.units import mm
 from reportlab.platypus import PageBreak, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
 from masters.models import Client, MaintenanceJob, Staff, Vehicle
-from .models import Job, JobExpense, JobFuelEntry, Trip
+from .models import GeneratedInvoice, Job, JobExpense, JobFuelEntry, Trip
 
 MIS_HEADERS = [
     "JOB #", "Trip #", "Vehicle #", "Vehicle Type", "Date", "Client", "Sub-Category", "Bilty #",
-    "Weight (Tons)", "Route", "Stopover City", "Status", "Trip Charges", "Stopover Charges",
+    "Weight (Tons)", "Route", "Stopover City", "Status", "Invoice #", "Trip Charges", "Stopover Charges",
     "Additional Charges", "Total Freight",
     "Departure Meter", "Arrival Meter", "Running KMs",
     "Reached Date & Time", "Departure Date & Time", "Arrival Date & Time",
@@ -102,6 +102,10 @@ def build_mis(request):
         trips = trips.filter(vehicle_id=vehicle_id)
     trips = list(trips)
     invoiced = Trip.invoiced_ids()
+    # Invoice # of each invoiced trip (its live, uncancelled invoice)
+    invoice_no = dict(GeneratedInvoice.trips.through.objects.exclude(generatedinvoice__status="CANCELLED")
+                      .filter(trip_id__in=[t.id for t in trips])
+                      .values_list("trip_id", "generatedinvoice__invoice_no"))
     for t in trips:
         t._invoiced = t.id in invoiced
 
@@ -135,6 +139,7 @@ def build_mis(request):
                 t.weight if t else None, t.route.route_code if t else "",
                 (t.stopover_city.name if t and t.stopover_city_id else ""),
                 t.status_display if t else "",
+                invoice_no.get(t.id, "") if t else "",
                 (t.freight - (t.additional_charges or 0) - (t.stopover_charges or 0)) if t else None,
                 t.stopover_charges if t else None,
                 t.additional_charges if t else None,
@@ -354,7 +359,7 @@ def mis_excel(request):
         write_row(ws, r, row)
         r += 1
     write_row(ws, r, data["totals"], font=bold, fill=head_fill)
-    widths = {"Client": 28, "Route": 12, "Remarks": 30, "Vehicle #": 13, "Vehicle Type": 14, "Actual Transit": 16}
+    widths = {"Client": 28, "Route": 12, "Remarks": 30, "Vehicle #": 13, "Vehicle Type": 14, "Actual Transit": 16, "Invoice #": 20}
     for c, title in enumerate(data["headers"], start=1):
         ws.column_dimensions[get_column_letter(c)].width = widths.get(title, 18 if "Date & Time" in title else 12)
     ws.row_dimensions[2].height = 30
