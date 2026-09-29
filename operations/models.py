@@ -117,9 +117,16 @@ class Job(models.Model):
     @property
     def trip_expense(self):
         breakdown = getattr(self, "expense_breakdown", None)
-        # + the per-trip hire fares of a monthly rental job
-        fares = self.trips.aggregate(t=models.Sum("trip_fare"))["t"] or 0
-        return (breakdown.total if breakdown else 0) + fares
+        # + a monthly rental job's per-trip expenses
+        sums = self.trips.aggregate(**{f: models.Sum(f) for f in Trip.TRIP_EXPENSE_FIELDS})
+        return (breakdown.total if breakdown else 0) + sum((v or 0) for v in sums.values())
+
+    def trip_expense_heads(self):
+        """Monthly rental job: its trips' expenses added up per head (for the Job Sheet)."""
+        sums = self.trips.aggregate(**{f: models.Sum(f) for f in Trip.TRIP_EXPENSE_FIELDS})
+        labels = {"trip_fare": "Trip Fare", "trip_fuel": "Fuel", "trip_weighbridge": "Weighbridge",
+                  "trip_loading": "Loading", "trip_offloading": "Offloading"}
+        return [(labels[f], sums[f] or 0) for f in Trip.TRIP_EXPENSE_FIELDS]
 
     @property
     def fuel_expense(self):
@@ -194,8 +201,13 @@ class Trip(models.Model):
     )
     stopover_charges = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     additional_charges = models.DecimalField(max_digits=12, decimal_places=2, default=0)
-    # Monthly rental job: hire fare paid to the supplier for this trip's vehicle
+    # Monthly rental job: this trip's own expenses (each trip can be a different
+    # client / route) - the hire fare paid to the supplier plus its running costs.
     trip_fare = models.DecimalField("Trip Fare", max_digits=12, decimal_places=2, default=0)
+    trip_fuel = models.DecimalField("Fuel", max_digits=12, decimal_places=2, default=0)
+    trip_weighbridge = models.DecimalField("Weighbridge", max_digits=12, decimal_places=2, default=0)
+    trip_loading = models.DecimalField("Loading", max_digits=12, decimal_places=2, default=0)
+    trip_offloading = models.DecimalField("Offloading", max_digits=12, decimal_places=2, default=0)
     remarks = models.CharField(max_length=255, blank=True)
     freight = models.DecimalField(max_digits=12, decimal_places=2, default=0, editable=False)
 
@@ -275,6 +287,13 @@ class Trip(models.Model):
         are locked: hidden from Generate Invoice and shown as Invoiced in the MIS report."""
         return set(GeneratedInvoice.trips.through.objects.exclude(generatedinvoice__status="CANCELLED")
                    .values_list("trip_id", flat=True))
+
+    # The per-trip expense fields of a monthly rental trip
+    TRIP_EXPENSE_FIELDS = ("trip_fare", "trip_fuel", "trip_weighbridge", "trip_loading", "trip_offloading")
+
+    @property
+    def trip_expense_total(self):
+        return sum((getattr(self, f) or 0) for f in self.TRIP_EXPENSE_FIELDS)
 
     @property
     def status_display(self):

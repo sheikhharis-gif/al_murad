@@ -153,11 +153,17 @@ def build_mis(request):
                 t.actual_transit_display if t else "",
             ]
             show_expense = idx == 0 and expense is not None
+            # a monthly rental trip's own expenses go in their columns on its row
+            own = {"fuel": t.trip_fuel, "weighbridge": t.trip_weighbridge, "loading": t.trip_loading,
+                   "offloading": t.trip_offloading} if t else {}
             for field, _ in EXPENSE_FIELDS:
-                row.append(getattr(expense, field) if show_expense else None)
+                value = getattr(expense, field) if show_expense else None
+                if own.get(field):
+                    value = (value or 0) + own[field]
+                row.append(value)
             total = expense.total if show_expense else None
-            if t and t.trip_fare:  # a monthly rental trip's own hire fare
-                total = (total or 0) + t.trip_fare
+            if t and t.trip_expense_total:  # incl. the trip's hire fare
+                total = (total or 0) + t.trip_expense_total
             row.append(total)
             row.append(t.remarks if t else (job.remarks or ""))
             rows.append(row)
@@ -172,7 +178,7 @@ def build_mis(request):
     # ---- Headline figures
     freight = sum((_d(t.freight) for t in trips), Decimal(0))
     additional = sum((_d(t.additional_charges) for t in trips), Decimal(0))
-    trip_expense = sum((_d(e.total) for e in expenses.values()), Decimal(0)) + sum((_d(t.trip_fare) for t in trips), Decimal(0))
+    trip_expense = sum((_d(e.total) for e in expenses.values()), Decimal(0)) + sum((_d(t.trip_expense_total) for t in trips), Decimal(0))
     fuel_liters = sum((_d(f["liters"]) for f in fuel_by_job.values()), Decimal(0))
     fuel_amount = sum((_d(f["amount"]) for f in fuel_by_job.values()), Decimal(0))
     running_kms = totals[km_col]
@@ -246,7 +252,7 @@ def build_mis(request):
                 v = vehicle_entry(t.vehicle.vehicle_number, str(t.vehicle_type or t.vehicle.vehicle_type or ""))
                 v["trips"] += 1
                 v["freight"] += _d(t.freight)
-                v["expense"] += _d(t.trip_fare)
+                v["expense"] += _d(t.trip_expense_total)
             v = vehicle_entry(job.vehicle_label, "RENTAL")
             v["jobs"] += 1
             v["expense"] += _d(expenses[job_id].total) if job_id in expenses else 0

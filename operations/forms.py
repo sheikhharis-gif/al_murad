@@ -170,10 +170,12 @@ class TripForm(forms.ModelForm):
         fields = [
             "trip_date", "client", "sub_category", "bilty_number", "weight", "route", "vehicle_type",
             "reached_at", "departed_at", "arrived_at", "delivered_at",
-            "stopover_city", "stopover_charges", "additional_charges", "trip_fare", "remarks",
+            "stopover_city", "stopover_charges", "additional_charges", "remarks",
+            "trip_fare", "trip_fuel", "trip_weighbridge", "trip_loading", "trip_offloading",
         ]
         widgets = {
-            "trip_fare": forms.NumberInput(attrs={"class": "form-control form-control-sm", "step": "0.01", "placeholder": "0"}),
+            **{f: forms.NumberInput(attrs={"class": "form-control form-control-sm trip-exp", "step": "0.01", "placeholder": "0"})
+               for f in ("trip_fare", "trip_fuel", "trip_weighbridge", "trip_loading", "trip_offloading")},
             "trip_date": forms.DateInput(attrs={"class": "form-control form-control-sm", "type": "date"}),
             "client": ClientSelect(attrs={"class": "form-select form-select-sm"}),
             "sub_category": SubCategorySelect(attrs={"class": "form-select form-select-sm trip-subcategory"}),
@@ -215,7 +217,8 @@ class TripForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields["trip_fare"].required = False
+        for f in Trip.TRIP_EXPENSE_FIELDS:
+            self.fields[f].required = False
         if self.instance.pk and self.instance.vehicle_id:
             self.initial.setdefault("rental_vehicle_number", self.instance.vehicle.vehicle_number)
         # Active clients, plus this trip's own client even if it's since been
@@ -260,8 +263,9 @@ class TripForm(forms.ModelForm):
 
     def clean(self):
         cleaned = super().clean()
-        if cleaned.get("trip_fare") is None:
-            cleaned["trip_fare"] = Decimal(0)
+        for f in Trip.TRIP_EXPENSE_FIELDS:
+            if f in self.fields and cleaned.get(f) is None:
+                cleaned[f] = Decimal(0)
         if self.rental_pool:
             number = (cleaned.get("rental_vehicle_number") or "").strip().upper()
             if not number:
@@ -305,9 +309,10 @@ class BaseTripFormSet(forms.BaseInlineFormSet):
         form = super()._construct_form(i, **kwargs)
         form.rental_pool = bool(getattr(self.instance, "rental_pool", False))
         if not form.rental_pool:
-            # only a monthly rental job's trips carry their own vehicle # and hire fare
+            # only a monthly rental job's trips carry their own vehicle # and expenses
             del form.fields["rental_vehicle_number"]
-            del form.fields["trip_fare"]
+            for f in Trip.TRIP_EXPENSE_FIELDS:
+                del form.fields[f]
         # Trip rows without a vehicle type yet (new rows) pre-select the job
         # vehicle's type; the user can change it per trip. Done here because
         # the job isn't attached to the form's instance until after __init__.
