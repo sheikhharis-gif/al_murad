@@ -6,7 +6,7 @@
     <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
         <div>
             <h3 class="fw-bold text-dark mb-1"><i class="bi bi-journal-richtext text-primary me-2"></i>Job Sheet - #{{ job.job_code }}</h3>
-            <p class="text-muted small mb-0">Vehicle {{ job.vehicle.vehicle_number }} - add trips, expenses and fuel entries below.</p>
+            <p class="text-muted small mb-0">{% if job.rental_pool %}Rental - {{ job.rental_supplier|default:"" }} - {{ job.rental_month|date:"F Y" }} - add each trip with its vehicle # below.{% else %}Vehicle {{ job.vehicle_label }} - add trips, expenses and fuel entries below.{% endif %}</p>
         </div>
         <div class="d-flex gap-2 flex-wrap">
             <a href="{% url 'job_list' %}" class="btn btn-light border px-3">
@@ -31,17 +31,21 @@
                         <label class="form-label small fw-bold text-muted">Job #</label>
                         <div class="fw-bold fs-6">{{ job.job_code }}</div>
                     </div>
-                    <div class="col-md-2" id="own-vehicle-block">
+                    <div class="col-md-2 {% if job.is_rental %}d-none{% endif %}" id="own-vehicle-block">
                         <label class="form-label small fw-bold text-muted">Vehicle</label>
                         {{ job_form.vehicle }}
                     </div>
-                    <div class="col-md-2 d-none" id="rental-vehicle-block">
+                    <div class="col-md-2 {% if not job.is_rental or job.rental_pool %}d-none{% endif %}" id="rental-vehicle-block">
                         <label class="form-label small fw-bold text-muted">Rental Vehicle #</label>
                         {{ job_form.rental_vehicle_number }}
                     </div>
-                    <div class="col-md-2 d-none" id="rental-supplier-block">
+                    <div class="col-md-2 {% if not job.is_rental %}d-none{% endif %}" id="rental-supplier-block">
                         <label class="form-label small fw-bold text-muted">Rental Supplier</label>
                         {{ job_form.rental_supplier }}
+                    </div>
+                    <div class="col-md-2 {% if not job.rental_pool %}d-none{% endif %}" id="rental-month-block">
+                        <label class="form-label small fw-bold text-muted">Month</label>
+                        {{ job_form.rental_month }}
                     </div>
                     <div class="d-none">{{ job_form.is_rental }}</div>
                     <div class="col-md-2">
@@ -186,11 +190,19 @@
                                 <label class="form-label x-small fw-bold mb-1">Departure Date &amp; Time</label>
                                 {{ tf.departed_at }}
                             </div>
+                            {% if job.rental_pool %}
+                            <div class="col-md-3">
+                                <label class="form-label x-small fw-bold mb-1">Vehicle # (hired)</label>
+                                {{ tf.rental_vehicle_number }}
+                                {% if tf.rental_vehicle_number.errors %}<div class="text-danger small mt-1">{{ tf.rental_vehicle_number.errors.0 }}</div>{% endif %}
+                            </div>
+                            {% else %}
                             <div class="col-md-1"></div>
                             <div class="col-md-2">
                                 <label class="form-label x-small fw-bold mb-1">Departure Meter</label>
                                 <div class="form-control form-control-sm trip-readonly trip-computed">{% if tf.instance.pk %}{{ tf.instance.departure_meter|default_if_none:"--" }}{% else %}--{% endif %}</div>
                             </div>
+                            {% endif %}
                         </div>
                         <div class="row g-2 mt-1">
                             <div class="col-md-2">
@@ -201,6 +213,13 @@
                                 <label class="form-label x-small fw-bold mb-1">Delivery Date &amp; Time</label>
                                 {{ tf.delivered_at }}
                             </div>
+                            {% if job.rental_pool %}
+                            <div class="col-md-3">
+                                <label class="form-label x-small fw-bold mb-1">Trip Fare (to supplier)</label>
+                                {{ tf.trip_fare }}
+                            </div>
+                            <div class="col-md-2"></div>
+                            {% else %}
                             <div class="col-md-1"></div>
                             <div class="col-md-2">
                                 <label class="form-label x-small fw-bold mb-1">Arrival Meter</label>
@@ -210,6 +229,7 @@
                                 <label class="form-label x-small fw-bold mb-1">Running KMs</label>
                                 <div class="form-control form-control-sm trip-readonly trip-computed">{% if tf.instance.pk and tf.instance.route_id %}{{ tf.instance.route.distance_km }}{% else %}--{% endif %}</div>
                             </div>
+                            {% endif %}
                             <div class="col-md-2">
                                 <label class="form-label x-small fw-bold mb-1">Actual Transit</label>
                                 <div class="form-control form-control-sm trip-readonly trip-computed">{% if tf.instance.pk %}{{ tf.instance.actual_transit_display|default:"--" }}{% else %}--{% endif %}</div>
@@ -272,10 +292,10 @@
         <div class="card-body p-3">
             <form method="post">
                 {% csrf_token %}
-                {% if job.vehicle.vehicle_mode == "RENTAL" %}
+                {% if job.is_rental %}
                 {# Rental job: only these heads - the vehicle's running costs are the supplier's #}
                 <div class="row g-2">
-                    <div class="col-md-2"><label class="form-label x-small fw-bold mb-1">Trip Fare</label>{{ expense_form.trip_fare }}</div>
+                    {% if not job.rental_pool %}<div class="col-md-2"><label class="form-label x-small fw-bold mb-1">Trip Fare</label>{{ expense_form.trip_fare }}</div>{% endif %}
                     <div class="col-md-2"><label class="form-label x-small fw-bold mb-1">Fuel</label>{{ expense_form.fuel }}</div>
                     <div class="col-md-2"><label class="form-label x-small fw-bold mb-1">Weighbridge</label>{{ expense_form.weighbridge }}</div>
                     <div class="col-md-2"><label class="form-label x-small fw-bold mb-1">Loading</label>{{ expense_form.loading }}</div>
@@ -323,7 +343,7 @@
     </div>
 
     <!-- Fuel (own vehicles only - a rental vehicle's fuel is the supplier's) -->
-    {% if job.vehicle.vehicle_mode != "RENTAL" %}
+    {% if not job.is_rental %}
     <div class="card border-0 shadow-sm rounded-4 mb-4">
         <div class="card-header bg-white border-0 pt-3 px-3">
             <h5 class="fw-bold mb-0 text-primary">Fuel</h5>
@@ -468,12 +488,6 @@
             if (e.target.matches('input.trip-stopover-charges')) e.target.dataset.manual = '1';
         });
 
-        var rentalFlag = document.getElementById('id_is_rental');
-        if (rentalFlag && rentalFlag.checked) {
-            document.getElementById('own-vehicle-block').classList.add('d-none');
-            document.getElementById('rental-vehicle-block').classList.remove('d-none');
-            document.getElementById('rental-supplier-block').classList.remove('d-none');
-        }
 
         function wireAddRow(buttonId, containerId, rowClass, totalFormsId) {
             var btn = document.getElementById(buttonId);

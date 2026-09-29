@@ -74,6 +74,13 @@
                                     <i class="bi bi-truck"></i>
                                 </div>
                                 <div>
+                                    {% if job.rental_pool %}
+                                    <div class="fw-bold text-dark">
+                                        {{ job.rental_supplier|default:"RENTAL" }}
+                                        <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle ms-1" style="font-size: 0.65rem;">RENTAL</span>
+                                    </div>
+                                    <div class="small text-muted">{{ job.rental_month|date:"M-Y" }} &middot; {{ job.vehicle_count }} vehicle{{ job.vehicle_count|pluralize }}</div>
+                                    {% else %}
                                     <div class="fw-bold text-dark">
                                         {{ job.vehicle.vehicle_number }}
                                         {% if job.vehicle.vehicle_mode == 'RENTAL' %}
@@ -83,6 +90,7 @@
                                         {% endif %}
                                     </div>
                                     <div class="small text-muted">{{ job.vehicle.vehicle_type }}</div>
+                                    {% endif %}
                                 </div>
                             </div>
                         </td>

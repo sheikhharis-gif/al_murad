@@ -69,9 +69,10 @@ class JobForm(forms.ModelForm):
 
     class Meta:
         model = Job
-        fields = ["vehicle", "rental_supplier", "job_date", "trip_advance", "remarks"]
+        fields = ["vehicle", "rental_supplier", "rental_month", "job_date", "trip_advance", "remarks"]
         widgets = {
             "vehicle": forms.Select(attrs={"class": "form-select searchable-select", "autofocus": "autofocus"}),
+            "rental_month": forms.DateInput(attrs={"class": "form-control", "type": "month"}, format="%Y-%m"),
             "rental_supplier": forms.Select(attrs={
                 "class": "form-select dropdown-search-select", "data-match": "contains", "data-theme": "light",
                 "data-placeholder": "Type supplier name to search...", "data-empty-text": "No matching supplier"}),
@@ -84,17 +85,41 @@ class JobForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         self.fields["vehicle"].queryset = Vehicle.objects.filter(is_active=True).order_by("vehicle_number")
         self.fields["vehicle"].empty_label = "--- Select Vehicle ---"
-        # the suppliers created under Suppliers (plus this job's own, even if since deactivated)
+        # Suppliers whose Supplier Type is a vehicle provider (e.g. "VEHICLE PROVIDER"),
+        # plus this job's own supplier even if since changed / deactivated.
         from masters.models import Vendor
+        providers = Q(is_active=True) & (Q(supplier_type__name__icontains="VEHICLE") | Q(supplier_type__name__icontains="RENTAL"))
         self.fields["rental_supplier"].queryset = Vendor.objects.filter(
-            Q(is_active=True) | Q(pk=self.instance.rental_supplier_id)).order_by("name")
+            providers | Q(pk=self.instance.rental_supplier_id)).order_by("name")
         self.fields["rental_supplier"].empty_label = "--- Select Supplier ---"
+        self.fields["rental_month"].input_formats = ["%Y-%m", "%Y-%m-%d"]
+        if not self.instance.pk and not self.initial.get("rental_month"):
+            self.initial["rental_month"] = timezone.localdate(timezone=ZoneInfo("Asia/Karachi")).replace(day=1)
+        if self.instance.pk and self.instance.rental_pool:
+            self.fields["is_rental"].initial = True
         if self.instance.pk and self.instance.vehicle_id and self.instance.vehicle.vehicle_mode == "RENTAL":
             self.fields["is_rental"].initial = True
             self.fields["rental_vehicle_number"].initial = self.instance.vehicle.vehicle_number
 
+    @property
+    def single_rental(self):
+        """An older rental job tied to one vehicle (made before monthly rental jobs)."""
+        return bool(self.instance.pk and not self.instance.rental_pool and self.instance.vehicle_id
+                    and self.instance.vehicle.vehicle_mode == "RENTAL")
+
     def clean(self):
         cleaned = super().clean()
+        if cleaned.get("is_rental") and not self.single_rental:
+            # Monthly rental job: supplier + month, no single vehicle.
+            if not cleaned.get("rental_supplier"):
+                self.add_error("rental_supplier", "Choose the rental supplier.")
+            if not cleaned.get("rental_month"):
+                self.add_error("rental_month", "Choose the month.")
+            else:
+                cleaned["rental_month"] = cleaned["rental_month"].replace(day=1)
+            cleaned["vehicle"] = None
+            self.instance.rental_pool = True
+            return cleaned
         if cleaned.get("is_rental"):
             number = (cleaned.get("rental_vehicle_number") or "").strip().upper()
             if not number:
@@ -108,6 +133,7 @@ class JobForm(forms.ModelForm):
             self.add_error("vehicle", "Please select a vehicle.")
         if not cleaned.get("is_rental"):
             cleaned["rental_supplier"] = None  # only rental jobs have a supplier
+        cleaned["rental_month"] = None
         return cleaned
 
 
@@ -144,9 +170,10 @@ class TripForm(forms.ModelForm):
         fields = [
             "trip_date", "client", "sub_category", "bilty_number", "weight", "route", "vehicle_type",
             "reached_at", "departed_at", "arrived_at", "delivered_at",
-            "stopover_city", "stopover_charges", "additional_charges", "remarks",
+            "stopover_city", "stopover_charges", "additional_charges", "trip_fare", "remarks",
         ]
         widgets = {
+            "trip_fare": forms.NumberInput(attrs={"class": "form-control form-control-sm", "step": "0.01", "placeholder": "0"}),
             "trip_date": forms.DateInput(attrs={"class": "form-control form-control-sm", "type": "date"}),
             "client": ClientSelect(attrs={"class": "form-select form-select-sm"}),
             "sub_category": SubCategorySelect(attrs={"class": "form-select form-select-sm trip-subcategory"}),
@@ -179,8 +206,18 @@ class TripForm(forms.ModelForm):
             "remarks": forms.TextInput(attrs={"class": "form-control form-control-sm", "placeholder": "Remarks"}),
         }
 
+    # Monthly rental job only: the hired vehicle's number, typed per trip
+    rental_vehicle_number = forms.CharField(
+        required=False, label="Vehicle #",
+        widget=forms.TextInput(attrs={"class": "form-control form-control-sm", "placeholder": "e.g. TLH-985", "data-uppercase": "1"}))
+
+    rental_pool = False  # set by the formset for a monthly rental job
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.fields["trip_fare"].required = False
+        if self.instance.pk and self.instance.vehicle_id:
+            self.initial.setdefault("rental_vehicle_number", self.instance.vehicle.vehicle_number)
         # Active clients, plus this trip's own client even if it's since been
         # deactivated - otherwise the trip could never be saved again.
         self.fields["client"].queryset = Client.objects.filter(
@@ -223,6 +260,17 @@ class TripForm(forms.ModelForm):
 
     def clean(self):
         cleaned = super().clean()
+        if cleaned.get("trip_fare") is None:
+            cleaned["trip_fare"] = Decimal(0)
+        if self.rental_pool:
+            number = (cleaned.get("rental_vehicle_number") or "").strip().upper()
+            if not number:
+                self.add_error("rental_vehicle_number", "Enter the hired vehicle's number.")
+            else:
+                vehicle, _ = Vehicle.objects.get_or_create(vehicle_number=number, defaults={"vehicle_mode": "RENTAL"})
+                self.instance.vehicle = vehicle
+                if not cleaned.get("vehicle_type") and not vehicle.vehicle_type_id:
+                    self.add_error("vehicle_type", "Choose the vehicle type (it sets the rate).")
         client, sub = cleaned.get("client"), cleaned.get("sub_category")
         if sub and client and sub.client_id != client.pk:
             self.add_error("sub_category", f"{sub.name} doesn't belong to {client.name}.")
@@ -255,6 +303,11 @@ class TripForm(forms.ModelForm):
 class BaseTripFormSet(forms.BaseInlineFormSet):
     def _construct_form(self, i, **kwargs):
         form = super()._construct_form(i, **kwargs)
+        form.rental_pool = bool(getattr(self.instance, "rental_pool", False))
+        if not form.rental_pool:
+            # only a monthly rental job's trips carry their own vehicle # and hire fare
+            del form.fields["rental_vehicle_number"]
+            del form.fields["trip_fare"]
         # Trip rows without a vehicle type yet (new rows) pre-select the job
         # vehicle's type; the user can change it per trip. Done here because
         # the job isn't attached to the form's instance until after __init__.
@@ -297,11 +350,15 @@ class JobExpenseForm(forms.ModelForm):
         }
         widgets["remarks"] = forms.Textarea(attrs={"class": "form-control", "rows": 2})
 
-    def __init__(self, *args, rental=False, **kwargs):
+    def __init__(self, *args, rental=False, pool=False, **kwargs):
         super().__init__(*args, **kwargs)
-        # Rental job: just its 5 heads. Own vehicle: every head but Trip Fare.
+        # Rental job: just its 5 heads (a monthly rental job's Trip Fare is on each
+        # trip instead). Own vehicle: every head but Trip Fare.
         # (Fields left out keep whatever they already hold when the form is saved.)
-        keep = RENTAL_EXPENSE_FIELDS if rental else [f for f in self.fields if f != "trip_fare"]
+        if rental:
+            keep = [f for f in RENTAL_EXPENSE_FIELDS if not (pool and f == "trip_fare")]
+        else:
+            keep = [f for f in self.fields if f != "trip_fare"]
         for name in list(self.fields):
             if name not in keep:
                 del self.fields[name]

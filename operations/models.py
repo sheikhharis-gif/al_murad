@@ -28,7 +28,12 @@ class Job(models.Model):
     ]
 
     job_number = models.AutoField(primary_key=True)
-    vehicle = models.ForeignKey(Vehicle, on_delete=models.CASCADE, related_name='jobs')
+    # Blank only for a monthly rental job (rental_pool), whose trips each carry their own vehicle.
+    vehicle = models.ForeignKey(Vehicle, on_delete=models.CASCADE, related_name='jobs', null=True, blank=True)
+    # Monthly rental job: one job per supplier per month, any number of hired
+    # vehicles (each trip has its own vehicle #, no meters / KMs).
+    rental_pool = models.BooleanField("Monthly rental job", default=False)
+    rental_month = models.DateField("Rental Month", null=True, blank=True)  # 1st of the month
     # Rental jobs only: the supplier the vehicle was hired from (Suppliers master)
     rental_supplier = models.ForeignKey("masters.Vendor", on_delete=models.SET_NULL, null=True, blank=True,
                                         related_name="rental_jobs", verbose_name="Rental Supplier")
@@ -41,7 +46,22 @@ class Job(models.Model):
     remarks = models.TextField(blank=True, help_text="Voyage related notes")
 
     def __str__(self):
-        return f"Job #{self.job_number} | {self.vehicle.vehicle_number}"
+        return f"Job #{self.job_number} | {self.vehicle_label}"
+
+    @property
+    def vehicle_label(self):
+        """The job's vehicle number, or for a monthly rental job its supplier + month."""
+        if self.rental_pool:
+            return f"RENTAL - {self.rental_supplier or 'SUPPLIER'} - {self.rental_month:%b-%y}" if self.rental_month else "RENTAL"
+        return self.vehicle.vehicle_number if self.vehicle_id else ""
+
+    @property
+    def is_rental(self):
+        return self.rental_pool or bool(self.vehicle_id and self.vehicle.vehicle_mode == "RENTAL")
+
+    @property
+    def vehicle_count(self):
+        return self.trips.values("vehicle").distinct().count()
 
     def save(self, *args, **kwargs):
         if self.status == 'completed' and not self.completion_date:
@@ -97,7 +117,9 @@ class Job(models.Model):
     @property
     def trip_expense(self):
         breakdown = getattr(self, "expense_breakdown", None)
-        return breakdown.total if breakdown else 0
+        # + the per-trip hire fares of a monthly rental job
+        fares = self.trips.aggregate(t=models.Sum("trip_fare"))["t"] or 0
+        return (breakdown.total if breakdown else 0) + fares
 
     @property
     def fuel_expense(self):
@@ -172,6 +194,8 @@ class Trip(models.Model):
     )
     stopover_charges = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     additional_charges = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    # Monthly rental job: hire fare paid to the supplier for this trip's vehicle
+    trip_fare = models.DecimalField("Trip Fare", max_digits=12, decimal_places=2, default=0)
     remarks = models.CharField(max_length=255, blank=True)
     freight = models.DecimalField(max_digits=12, decimal_places=2, default=0, editable=False)
 
@@ -179,6 +203,18 @@ class Trip(models.Model):
         ordering = ["id"]
 
     def save(self, *args, **kwargs):
+        if self.job.rental_pool:
+            # Monthly rental job: the trip's own hired vehicle (set by the form), no meters / KMs.
+            if not self.vehicle_type_id:
+                self.vehicle_type_id = self.vehicle.vehicle_type_id
+            self.departure_meter = self.arrival_meter = None
+            self.freight = self.compute_freight()
+            super().save(*args, **kwargs)
+            if not self.trip_no:
+                self.trip_no = f"{self.pk:06d}"
+                super().save(update_fields=["trip_no"])
+            return
+
         self.vehicle = self.job.vehicle
         if not self.vehicle_type_id:
             self.vehicle_type_id = self.vehicle.vehicle_type_id

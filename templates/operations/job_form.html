@@ -42,19 +42,9 @@
                             <div class="form-text small">Chassis number aur plate dekh kar gari select karein.</div>
                         </div>
 
+                        {# Rental = one job per supplier per month; each trip carries its own hired vehicle #}
                         <div class="mb-4 d-none" id="rental-vehicle-block">
                             <label class="form-label fw-bold text-secondary small text-uppercase tracking-wider">
-                                <i class="bi bi-key me-1"></i> Rental Vehicle Number
-                            </label>
-                            <div class="input-group">
-                                {{ form.rental_vehicle_number }}
-                            </div>
-                            {% if form.rental_vehicle_number.errors %}
-                                <div class="text-danger small mt-1">{{ form.rental_vehicle_number.errors }}</div>
-                            {% endif %}
-                            <div class="form-text small">Gari ka number type karein - KMs yahan zaroori nahi hain.</div>
-
-                            <label class="form-label fw-bold text-secondary small text-uppercase tracking-wider mt-3">
                                 <i class="bi bi-shop me-1"></i> Rental Supplier
                                 <a href="{% url 'vendor_add' %}" target="_blank" class="ms-1 fw-normal text-lowercase">+ add supplier</a>
                             </label>
@@ -62,6 +52,16 @@
                             {% if form.rental_supplier.errors %}
                                 <div class="text-danger small mt-1">{{ form.rental_supplier.errors }}</div>
                             {% endif %}
+                            <div class="form-text small">Sirf woh suppliers jin ka Supplier Type "Vehicle Provider" hai.</div>
+
+                            <label class="form-label fw-bold text-secondary small text-uppercase tracking-wider mt-3">
+                                <i class="bi bi-calendar-month me-1"></i> Month
+                            </label>
+                            {{ form.rental_month }}
+                            {% if form.rental_month.errors %}
+                                <div class="text-danger small mt-1">{{ form.rental_month.errors }}</div>
+                            {% endif %}
+                            <div class="form-text small">Is supplier ki is mahine ki ek hi Job banegi - har trip mein gari ka number alag daalein. KMs ki zaroorat nahi.</div>
                         </div>
 
                         <div class="row g-3 mb-4">

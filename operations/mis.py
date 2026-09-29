@@ -11,7 +11,7 @@ from collections import OrderedDict
 from decimal import Decimal
 
 from django.contrib.auth.decorators import login_required
-from django.db.models import Sum
+from django.db.models import Q, Sum
 from django.http import HttpResponse
 from django.shortcuts import render
 from django.utils import timezone
@@ -84,7 +84,8 @@ def build_mis(request):
     if end_date:
         jobs = jobs.filter(job_date__lte=end_date)
     if vehicle_id:
-        jobs = jobs.filter(vehicle_id=vehicle_id)
+        # a monthly rental job's vehicles are on its trips
+        jobs = jobs.filter(Q(vehicle_id=vehicle_id) | Q(trips__vehicle_id=vehicle_id)).distinct()
     if status:
         jobs = jobs.filter(status=status)
     if client_id:
@@ -97,6 +98,8 @@ def build_mis(request):
     ).order_by("job_id", "id")
     if client_id:
         trips = trips.filter(client_id=client_id)
+    if vehicle_id:
+        trips = trips.filter(vehicle_id=vehicle_id)
     trips = list(trips)
     invoiced = Trip.invoiced_ids()
     for t in trips:
@@ -123,8 +126,8 @@ def build_mis(request):
         for idx, t in enumerate(job_trips or [None]):
             vehicle = t.vehicle if t else job.vehicle
             row = [
-                job.job_code, t.trip_no if t else "", vehicle.vehicle_number,
-                str((t.vehicle_type if t else None) or vehicle.vehicle_type or ""),
+                job.job_code, t.trip_no if t else "", vehicle.vehicle_number if vehicle else job.vehicle_label,
+                str((t.vehicle_type if t else None) or (vehicle.vehicle_type if vehicle else "") or ""),
                 t.trip_date if t else job.job_date,
                 t.client.name if t else "",
                 (t.sub_category.name if t and t.sub_category_id else ""),
@@ -147,7 +150,10 @@ def build_mis(request):
             show_expense = idx == 0 and expense is not None
             for field, _ in EXPENSE_FIELDS:
                 row.append(getattr(expense, field) if show_expense else None)
-            row.append(expense.total if show_expense else None)
+            total = expense.total if show_expense else None
+            if t and t.trip_fare:  # a monthly rental trip's own hire fare
+                total = (total or 0) + t.trip_fare
+            row.append(total)
             row.append(t.remarks if t else (job.remarks or ""))
             rows.append(row)
 
@@ -161,7 +167,7 @@ def build_mis(request):
     # ---- Headline figures
     freight = sum((_d(t.freight) for t in trips), Decimal(0))
     additional = sum((_d(t.additional_charges) for t in trips), Decimal(0))
-    trip_expense = sum((_d(e.total) for e in expenses.values()), Decimal(0))
+    trip_expense = sum((_d(e.total) for e in expenses.values()), Decimal(0)) + sum((_d(t.trip_fare) for t in trips), Decimal(0))
     fuel_liters = sum((_d(f["liters"]) for f in fuel_by_job.values()), Decimal(0))
     fuel_amount = sum((_d(f["amount"]) for f in fuel_by_job.values()), Decimal(0))
     running_kms = totals[km_col]
@@ -184,7 +190,7 @@ def build_mis(request):
     summary = [
         ("Total Jobs", len(jobs), "int"),
         ("Total Trips", len(trips), "int"),
-        ("Vehicles Used", len({j.vehicle_id for j in jobs}), "int"),
+        ("Vehicles Used", len({t.vehicle_id for t in trips} | {j.vehicle_id for j in jobs if j.vehicle_id}), "int"),
         ("Clients Served", len({t.client_id for t in trips}), "int"),
         ("Running KMs", running_kms, "int"),
         ("Freight Revenue", freight, "money"),
@@ -220,12 +226,27 @@ def build_mis(request):
     by_client = sorted(by_client.items(), key=lambda kv: -kv[1]["freight"])
 
     by_vehicle = OrderedDict()
-    for job_id, job_trips in trips_by_job.items():
-        job = job_by_id[job_id]
-        v = by_vehicle.setdefault(job.vehicle.vehicle_number, {
-            "type": str(job.vehicle.vehicle_type or ""), "jobs": 0, "trips": 0, "kms": Decimal(0),
+
+    def vehicle_entry(key, vtype):
+        return by_vehicle.setdefault(key, {
+            "type": vtype, "jobs": 0, "trips": 0, "kms": Decimal(0),
             "freight": Decimal(0), "expense": Decimal(0), "liters": Decimal(0), "fuel": Decimal(0),
         })
+    for job_id, job_trips in trips_by_job.items():
+        job = job_by_id[job_id]
+        if job.rental_pool:
+            # each hired vehicle on its own line (freight - its hire fare), the
+            # job's shared costs on the job's line
+            for t in job_trips:
+                v = vehicle_entry(t.vehicle.vehicle_number, str(t.vehicle_type or t.vehicle.vehicle_type or ""))
+                v["trips"] += 1
+                v["freight"] += _d(t.freight)
+                v["expense"] += _d(t.trip_fare)
+            v = vehicle_entry(job.vehicle_label, "RENTAL")
+            v["jobs"] += 1
+            v["expense"] += _d(expenses[job_id].total) if job_id in expenses else 0
+            continue
+        v = vehicle_entry(job.vehicle.vehicle_number, str(job.vehicle.vehicle_type or ""))
         v["jobs"] += 1
         v["trips"] += len(job_trips)
         v["kms"] += sum((_d(t.route.distance_km) for t in job_trips), Decimal(0))

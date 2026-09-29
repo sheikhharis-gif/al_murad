@@ -176,8 +176,10 @@ def job_list(request):
     order_field = sort_by if order == "asc" else f"-{sort_by}"
 
     jobs = Job.objects.exclude(status="completed").order_by(order_field)
-    if fleet_mode != "all":
-        jobs = jobs.filter(vehicle__vehicle_mode=fleet_mode)
+    if fleet_mode == "RENTAL":
+        jobs = jobs.filter(Q(vehicle__vehicle_mode="RENTAL") | Q(rental_pool=True))
+    elif fleet_mode == "OWN":
+        jobs = jobs.filter(vehicle__vehicle_mode="OWN")
     return render(request, "operations/job_list.html", {
         "jobs": jobs,
         "sort_fields": JOB_SORT_FIELDS,
@@ -210,6 +212,19 @@ def job_update_status(request, job_id):
 def job_add(request):
     form = JobForm(request.POST or None)
     if request.method == "POST" and form.is_valid():
+        if form.instance.rental_pool:
+            # One monthly rental job per supplier per month - reuse it if it's still open.
+            supplier, month = form.cleaned_data["rental_supplier"], form.cleaned_data["rental_month"]
+            open_job = (Job.objects.filter(rental_pool=True, rental_supplier=supplier, rental_month=month)
+                        .exclude(status__in=["completed", "cancelled"]).order_by("-job_number").first())
+            if open_job:
+                messages.info(request, f"{supplier} already has an open rental Job #{open_job.job_code} for "
+                                       f"{month:%b-%Y} - continuing that job.")
+                return redirect("job_edit", job_id=open_job.job_number)
+            job = form.save()
+            messages.success(request, f"Rental Job #{job.job_code} created for {supplier} ({month:%b-%Y}) - "
+                                      "add each trip with its vehicle #.")
+            return redirect("job_edit", job_id=job.job_number)
         vehicle = form.cleaned_data["vehicle"]
         open_job = (
             Job.objects.filter(vehicle=vehicle)
@@ -230,7 +245,7 @@ def job_add(request):
 def job_edit(request, job_id):
     job = get_object_or_404(Job, job_number=job_id)
     expense, _ = JobExpense.objects.get_or_create(job=job)
-    is_rental = job.vehicle.vehicle_mode == "RENTAL"
+    is_rental = job.is_rental
 
     if request.method == "POST":
         if "save_job" in request.POST:
@@ -259,12 +274,12 @@ def job_edit(request, job_id):
                 "job": job,
                 "job_form": JobForm(instance=job),
                 "trip_formset": trip_formset,
-                "expense_form": JobExpenseForm(instance=expense, rental=is_rental),
+                "expense_form": JobExpenseForm(instance=expense, rental=is_rental, pool=job.rental_pool),
                 "fuel_formset": JobFuelEntryFormSet(instance=job, prefix="fuel"),
             })
 
         if "save_expense" in request.POST:
-            expense_form = JobExpenseForm(request.POST, instance=expense, rental=is_rental)
+            expense_form = JobExpenseForm(request.POST, instance=expense, rental=is_rental, pool=job.rental_pool)
             if expense_form.is_valid():
                 expense_form.save()
                 messages.success(request, "Expense breakdown updated.")
@@ -283,7 +298,7 @@ def job_edit(request, job_id):
 
     job_form = JobForm(instance=job)
     trip_formset = TripFormSet(instance=job, prefix="trips")
-    expense_form = JobExpenseForm(instance=expense, rental=is_rental)
+    expense_form = JobExpenseForm(instance=expense, rental=is_rental, pool=job.rental_pool)
     fuel_formset = JobFuelEntryFormSet(instance=job, prefix="fuel")
 
     return render(request, "operations/job_sheet.html", {
@@ -728,7 +743,7 @@ def quick_open_suggest(request):
             for job in jobs:
                 results.append({
                     "url": reverse("job_edit", kwargs={"job_id": job.job_number}),
-                    "title": f"Job #{job.job_number} - {job.vehicle.vehicle_number}",
+                    "title": f"Job #{job.job_number} - {job.vehicle_label}",
                     "sub": f"{job.job_date:%d-%b-%y} | {job.get_status_display()} | {job.trip_count} trip(s)",
                 })
         else:
