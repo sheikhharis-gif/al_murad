@@ -272,7 +272,7 @@
                 </div>
                 <span class="small text-muted rate-search-count"></span>
             </div>
-            <div style="max-height: 400px; overflow-y: auto;">
+            <div style="max-height: 400px; overflow: auto;">
                 <table class="table table-hover align-middle custom-table rate-table mb-0">
                     <colgroup>
                         {% if client.has_sub_categories %}<col style="width:7%"><col style="width:6%">{% endif %}
@@ -441,7 +441,7 @@
                 </div>
                 <span class="small text-muted rate-search-count"></span>
             </div>
-            <div style="max-height: 400px; overflow-y: auto;">
+            <div style="max-height: 400px; overflow: auto;">
                 <table class="table table-hover align-middle custom-table rate-table mb-0">
                     <colgroup>
                         <col style="width:9%">
@@ -796,9 +796,11 @@
     .x-small { font-size: 0.7rem; text-transform: uppercase; font-weight: bold; color: #64748b; }
     .btn-white { background-color: #fff; border: none; }
     .btn-white:hover { background-color: #f8fafc; }
-    .rate-table { table-layout: fixed; width: 100%; font-size: 0.78rem; }
+    /* Columns size to their content: names wrap onto two lines, numbers never break
+       or get cut ("..."); a table wider than the card scrolls sideways. */
+    .rate-table { table-layout: auto; width: 100%; font-size: 0.78rem; }
     .rate-table th { border: none; background-color: #ed7d31; color: #fff; font-weight: 700; font-size: 0.7rem; padding: 8px 6px; white-space: normal; line-height: 1.15; vertical-align: middle; }
-    .rate-table td { padding: 8px 6px; border-bottom: 1px solid #f1f4f8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .rate-table td { padding: 8px 6px; border-bottom: 1px solid #f1f4f8; white-space: normal; word-break: normal; overflow-wrap: normal; }
     .rate-table td.rsr-col { background-color: #f1f3f5; color: #6c757d; }
     .rate-table td.utc-col { background-color: #dbe9fb; color: #1a56db; font-weight: 700; }
 
