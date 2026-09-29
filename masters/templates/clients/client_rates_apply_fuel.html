@@ -36,7 +36,7 @@
                         <span class="fs-5 fw-bold text-primary">{{ price.fuel_price|acct }}</span>
                         <span class="text-muted">{{ price.product.name }} &middot; effective {{ price.effective_date|date:"j-M-y" }}</span>
                     </div>
-                    <div class="small text-muted mt-2">Each rate keeps its own Effective %; the new entries get Effective Date {{ price.effective_date|date:"j-M-y" }}.</div>
+                    <div class="small text-muted mt-2">Effective % comes from each rate (editable below); the new entries get Effective Date {{ price.effective_date|date:"j-M-y" }}.</div>
                 </div>
             </div>
         </div>
@@ -47,16 +47,21 @@
             <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
                 <h6 class="fw-bold mb-0">{{ to_update }} of {{ rows|length }} rate{{ rows|length|pluralize }} will be updated</h6>
                 {% if to_update %}
-                <form method="post">
-                    {% csrf_token %}
-                    <input type="hidden" name="price" value="{{ price.id }}">
-                    <input type="hidden" name="include_blank" value="{% if include_blank %}1{% endif %}">
-                    <button type="submit" class="btn btn-primary fw-bold px-4" onclick="return confirm('Create {{ to_update }} new rate entr{{ to_update|pluralize:"y,ies" }} at {{ price.fuel_price }} effective {{ price.effective_date|date:"j-M-y" }}?')">
+                <div class="d-flex align-items-center gap-2 flex-wrap">
+                    {# Effective % is editable per rate below; this sets it on every rate at once #}
+                    <label class="small fw-semibold text-muted mb-0" for="pctAll">Effective % for all</label>
+                    <input type="number" id="pctAll" class="form-control form-control-sm" style="width:90px;" step="0.01" min="0" max="100" placeholder="e.g. 50">
+                    <button type="button" id="pctAllBtn" class="btn btn-sm btn-outline-primary fw-bold">Apply to all</button>
+                    <button type="submit" form="applyForm" class="btn btn-primary fw-bold px-4" onclick="return confirm('Create {{ to_update }} new rate entr{{ to_update|pluralize:"y,ies" }} at {{ price.fuel_price }} effective {{ price.effective_date|date:"j-M-y" }}?')">
                         <i class="bi bi-check2-circle me-1"></i>Confirm &amp; Apply
                     </button>
-                </form>
+                </div>
                 {% endif %}
             </div>
+            <form method="post" id="applyForm">
+                {% csrf_token %}
+                <input type="hidden" name="price" value="{{ price.id }}">
+                <input type="hidden" name="include_blank" value="{% if include_blank %}1{% endif %}">
             <div class="table-responsive" style="max-height: 560px;">
                 <table class="table table-sm table-hover align-middle mb-0 small">
                     <thead class="table-light sticky-top">
@@ -69,21 +74,25 @@
                     </thead>
                     <tbody>
                         {% for row in rows %}
-                        <tr class="{% if row.skip %}text-muted{% endif %}">
+                        <tr class="{% if row.skip %}text-muted{% else %}pct-row{% endif %}" data-fuel="{{ row.base_fuel }}"
+                            data-new-fuel="{{ price.fuel_price }}" data-cost="{{ row.base.updated_trip_cost }}">
                             <td class="fw-bold">{{ row.base.route.route_code|upper }}</td>
                             <td>{{ row.base.vehicle_type.name|default:"--" }}</td>
                             <td class="text-end">{{ row.base.weight_tons|default:"--" }}</td>
-                            <td class="text-end">{{ row.base.updated_fuel_price|acct }} <span class="text-muted">({{ row.base.effective_date|date:"j-M" }})</span></td>
+                            <td class="text-end">{{ row.base_fuel|acct }} <span class="text-muted">({{ row.base.effective_date|date:"j-M" }})</span></td>
                             {% if row.skip %}
                             <td colspan="6" class="text-end fst-italic">{{ row.skip }} - left as is</td>
                             <td></td>
                             {% else %}
                             <td class="text-end">{{ row.new.updated_fuel_price|acct }}</td>
                             <td class="text-end {% if row.new.fuel_price_change_percent < 0 %}text-danger{% else %}text-success{% endif %}">{{ row.new.fuel_price_change_percent|pct }}</td>
-                            <td class="text-end">{{ row.base.effective_percent|pct_trim }}</td>
+                            <td class="text-end" style="width:95px;">
+                                <input type="number" name="pct_{{ row.base.id }}" value="{{ row.pct|floatformat:'-2' }}" step="0.01" min="0" max="100"
+                                       class="form-control form-control-sm text-end pct-input {% if not row.pct %}border-warning bg-warning-subtle{% endif %}">
+                            </td>
                             <td class="text-end">{{ row.base.updated_trip_cost|acct }}</td>
-                            <td class="text-end fw-bold text-primary">{{ row.new.updated_trip_cost|acct }}</td>
-                            <td class="text-end {% if row.diff < 0 %}text-danger{% else %}text-success{% endif %}">{{ row.diff|acct }}</td>
+                            <td class="text-end fw-bold text-primary new-cost">{{ row.new.updated_trip_cost|acct }}</td>
+                            <td class="text-end diff {% if row.diff < 0 %}text-danger{% else %}text-success{% endif %}">{{ row.diff|acct }}</td>
                             <td></td>
                             {% endif %}
                         </tr>
@@ -93,7 +102,43 @@
                     </tbody>
                 </table>
             </div>
+            </form>
+            <div class="small text-muted mt-2">Effective % is taken from each rate's latest entry - a highlighted 0 means that entry had none; type the right % (or use "Apply to all") before confirming.</div>
         </div>
     </div>
 </div>
+
+<script>
+    // Live recalculation of the New Trip Cost / Difference as Effective % is typed
+    // (same formula as the server; the server recalculates on Confirm anyway).
+    (function () {
+        function fmt(n) {
+            var s = Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            return n < 0 ? '(' + s + ')' : s;
+        }
+        function recalc(tr) {
+            var fuel = parseFloat(tr.dataset.fuel) || 0, nf = parseFloat(tr.dataset.newFuel) || 0, cost = parseFloat(tr.dataset.cost) || 0;
+            var input = tr.querySelector('.pct-input');
+            var pct = parseFloat(input.value) || 0;
+            var change = fuel ? (nf - fuel) / fuel : 0;
+            var diff = cost * pct / 100 * change;
+            tr.querySelector('.new-cost').textContent = fmt(cost + diff);
+            var d = tr.querySelector('.diff');
+            d.textContent = fmt(diff);
+            d.classList.toggle('text-danger', diff < 0);
+            d.classList.toggle('text-success', diff >= 0);
+            input.classList.toggle('border-warning', !pct);
+            input.classList.toggle('bg-warning-subtle', !pct);
+        }
+        document.querySelectorAll('tr.pct-row .pct-input').forEach(function (input) {
+            input.addEventListener('input', function () { recalc(input.closest('tr')); });
+        });
+        var allBtn = document.getElementById('pctAllBtn');
+        if (allBtn) allBtn.addEventListener('click', function () {
+            var v = document.getElementById('pctAll').value;
+            if (v === '') return;
+            document.querySelectorAll('tr.pct-row').forEach(function (tr) { tr.querySelector('.pct-input').value = v; recalc(tr); });
+        });
+    })();
+</script>
 {% endblock %}

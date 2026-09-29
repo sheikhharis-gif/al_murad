@@ -672,7 +672,7 @@ class ClientRate(models.Model):
         self.rate_subject_to_revision = self.current_rate * (self.effective_percent / 100)
         self.fuel_price_change_percent = (
             (self.updated_fuel_price - self.current_fuel_price) / self.current_fuel_price * 100
-            if self.current_fuel_price else 0
+            if self.current_fuel_price else Decimal(0)  # a plain 0 made the next line int/float * Decimal -> crash
         )
         self.rate_adjustment = self.rate_subject_to_revision * (self.fuel_price_change_percent / 100)
         self.updated_trip_cost = self.current_rate + self.rate_adjustment

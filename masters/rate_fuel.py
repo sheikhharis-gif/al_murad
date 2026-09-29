@@ -38,9 +38,37 @@ def _latest_rates(client, product, include_blank):
     return sorted(latest.values(), key=lambda r: (str(r.sub_category or ""), r.route.route_code, str(r.vehicle_type or ""), r.weight_tons or 0))
 
 
-def _revise(base, new_price):
+def _base_fuel(base, product):
+    """The fuel price `base` is on. A first entry saved with Updated Fuel Price 0
+    falls back to its Current Fuel Price, then to the PSO price in force on its
+    effective date (else the earliest PSO price) - a 0 base would mean no change."""
+    if base.updated_fuel_price:
+        return base.updated_fuel_price
+    if base.current_fuel_price:
+        return base.current_fuel_price
+    prices = pso_fuel_prices().filter(product=product)
+    on_date = prices.filter(effective_date__lte=base.effective_date).order_by("-effective_date", "-id").first()
+    fallback = on_date or prices.order_by("effective_date", "id").first()
+    return fallback.fuel_price if fallback else Decimal(0)
+
+
+def _pct_overrides(data):
+    """Effective % typed on the preview page: {rate id: Decimal} from pct_<id> fields."""
+    out = {}
+    for key, value in data.items():
+        if key.startswith("pct_") and key[4:].isdigit() and str(value).strip() != "":
+            try:
+                out[int(key[4:])] = min(max(Decimal(str(value).strip()), Decimal(0)), Decimal(100))
+            except Exception:
+                pass
+    return out
+
+
+def _revise(base, new_price, pct=None, current_fuel=None):
     """New trip cost for `base` at `new_price` - same formula as ClientRate.save()."""
-    current_fuel, current_rate, pct = base.updated_fuel_price, base.updated_trip_cost, base.effective_percent
+    current_fuel = base.updated_fuel_price if current_fuel is None else current_fuel
+    current_rate = base.updated_trip_cost
+    pct = base.effective_percent if pct is None else pct
     subject = current_rate * (pct / 100)
     change_pct = (new_price - current_fuel) / current_fuel * 100 if current_fuel else Decimal(0)
     adjustment = subject * (change_pct / 100)
@@ -52,14 +80,17 @@ def _revise(base, new_price):
     }
 
 
-def _plan(client, price, include_blank):
+def _plan(client, price, include_blank, pcts=None):
+    """pcts: Effective % typed on the preview for some rates (else each rate's own)."""
+    pcts = pcts or {}
     rows = []
     for base in _latest_rates(client, price.product, include_blank):
-        row = {"base": base, "skip": ""}
+        row = {"base": base, "skip": "", "base_fuel": _base_fuel(base, price.product)}
+        row["pct"] = pcts.get(base.id, base.effective_percent)
         if base.effective_date >= price.effective_date:
             row["skip"] = f"Already revised on {base.effective_date:%d-%b-%y}"
         else:
-            row["new"] = _revise(base, price.fuel_price)
+            row["new"] = _revise(base, price.fuel_price, row["pct"], row["base_fuel"])
             row["diff"] = row["new"]["updated_trip_cost"] - base.updated_trip_cost
         rows.append(row)
     return rows
@@ -74,7 +105,7 @@ def client_rate_apply_fuel(request, client_id):
         messages.error(request, "Apply Fuel Price: choose the new fuel price first.")
         return back
 
-    rows = _plan(client, price, include_blank)
+    rows = _plan(client, price, include_blank, _pct_overrides(request.POST if request.method == "POST" else request.GET))
 
     if request.method == "POST":
         to_create = []
@@ -115,7 +146,7 @@ def client_rate_apply_fuel(request, client_id):
     basis = OrderedDict()
     for row in rows:
         b = row["base"]
-        key = (b.updated_fuel_price, b.effective_date)
+        key = (row["base_fuel"], b.effective_date)
         basis[key] = basis.get(key, 0) + 1
     return render(request, "clients/client_rates_apply_fuel.html", {
         "client": client, "price": price, "rows": rows, "include_blank": include_blank,
