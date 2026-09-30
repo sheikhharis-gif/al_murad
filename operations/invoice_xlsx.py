@@ -93,7 +93,7 @@ def _pct(rate):
     return float(rate / 100), ("0%" if rate == rate.to_integral_value() else "0.00%")
 
 
-def _page(ws, orientation, last_row, last_col, one_page=False, letterhead=True):
+def _page(ws, orientation, last_row, last_col, one_page=False, letterhead=True, margin_lr=None):
     """A4, fitted to the page width (and, with one_page, to a single page).
     Invoices are printed on the company letterhead, so they keep its header /
     footer areas clear: ~40 mm at the top, ~25 mm at the bottom."""
@@ -105,7 +105,7 @@ def _page(ws, orientation, last_row, last_col, one_page=False, letterhead=True):
     ws.page_setup.fitToWidth = 1
     ws.page_setup.fitToHeight = 1 if one_page else 0
     ws.print_options.horizontalCentered = True
-    ws.page_margins.left = ws.page_margins.right = 0.47 if letterhead else 0.25
+    ws.page_margins.left = ws.page_margins.right = margin_lr if margin_lr is not None else (0.47 if letterhead else 0.25)
     ws.page_margins.top, ws.page_margins.bottom = (1.6, 1.0) if letterhead else (0.35, 0.35)
     ws.page_margins.footer = 0.6 if letterhead else 0.3
     ws.oddFooter.center.text = "Page &P of &N"
@@ -131,10 +131,11 @@ def _text_len(value, key, money):
     return len(str(value))
 
 
-def _grid(ws, keys, target, data=None):
+def _grid(ws, keys, target, data=None, offset=0):
     """Set every table column's width (S.no first): what its values and its
     header (which wraps at spaces) need, Remarks up to _REMARKS_MAX, the whole
-    stretched proportionally if narrower than `target`. Returns the width list."""
+    stretched proportionally if narrower than `target`. Returns the width list.
+    `offset` shifts the columns right, past a leading margin column (see _nontax_workbook)."""
     widths = [_SNO_CHARS]
     for n, key in enumerate(keys[1:]):
         header = data["headers"][n] if data else key
@@ -147,7 +148,7 @@ def _grid(ws, keys, target, data=None):
     scale = max(target / sum(widths), 1)
     widths = [round(w * scale, 2) for w in widths]
     for i, w in enumerate(widths, start=1):
-        ws.column_dimensions[get_column_letter(i)].width = w
+        ws.column_dimensions[get_column_letter(i + offset)].width = w
     return widths
 
 
@@ -167,9 +168,10 @@ def _data_row_heights(data, widths):
     return heights
 
 
-def _split_width(widths, groups):
+def _split_width(widths, groups, offset=0):
     """[(first, last), ...] contiguous columns cutting the sheet into `groups`
-    pieces of about equal WIDTH (not equal column count)."""
+    pieces of about equal WIDTH (not equal column count). `offset` shifts the
+    result past a leading margin column (see _nontax_workbook)."""
     n, total = len(widths), sum(widths)
     groups = min(groups, n)
     out, start, acc = [], 1, 0.0
@@ -182,7 +184,7 @@ def _split_width(widths, groups):
             end += 1
         out.append((start, end))
         start, acc = end + 1, acc_end
-    return out
+    return [(a + offset, b + offset) for a, b in out]
 
 
 def _rng(row, span):
@@ -230,9 +232,11 @@ def _total_row(ws, data, row, first_data, last_data, spans):
     money = [False] + data["money"]
     edge = dict(left=THIN, right=THIN, top=MEDIUM, bottom=MEDIUM)
     first_money = next((i for i, m in enumerate(money) if m), None)
+    first_col = spans[0][0]
     label_to = spans[first_money][0] - 1 if first_money else spans[0][1]
-    _put(ws, f"A{row}:{get_column_letter(label_to)}{row}" if label_to > 1 else f"A{row}", "TOTAL",
-         _font(11, True), _fill(LIGHT), A_V, **edge)
+    label_from = get_column_letter(first_col)
+    _put(ws, f"{label_from}{row}:{get_column_letter(label_to)}{row}" if label_to > first_col else f"{label_from}{row}",
+         "TOTAL", _font(11, True), _fill(LIGHT), A_V, **edge)
     for i, span in enumerate(spans):
         if span[0] <= label_to:
             continue
@@ -254,9 +258,9 @@ def _freight_ref(data, sheet_prefix, total_row, spans):
     return float(data["subtotal"])
 
 
-def _info_row(ws, labels_row, pairs, widths, label_font, value_font, boxed):
+def _info_row(ws, labels_row, pairs, widths, label_font, value_font, boxed, offset=0):
     """The Invoice Date / Billing Period / ... strip, spread over the sheet width."""
-    for (a, b), (label, value) in zip(_split_width(widths, len(pairs)), pairs):
+    for (a, b), (label, value) in zip(_split_width(widths, len(pairs), offset), pairs):
         ra, rb = get_column_letter(a), get_column_letter(b)
         rng = (lambda row: f"{ra}{row}:{rb}{row}" if b > a else f"{ra}{row}")
         if boxed:
@@ -361,6 +365,13 @@ def _tax_workbook(data):
 
 
 # --------------------------------------------------------------- non-tax invoice
+# A narrow blank column before the table, like the copies actually printed - the sheet
+# never sits flush against the page edge.
+NON_TAX_MARGIN_COL = True
+_MARGIN_W = 0.78
+_MARGIN_LR = 0.17
+
+
 def _nontax_workbook(data):
     wb = Workbook()
     ws = wb.active
@@ -369,41 +380,46 @@ def _nontax_workbook(data):
     keys = ["sno"] + data["keys"]
     n_cols = max(len(headers), 4)
     L = get_column_letter
-    spans = [(i, i) for i in range(1, len(headers) + 1)]
-    widths = _grid(ws, keys, NON_TAX_WIDTH, data)
+    off = 1 if NON_TAX_MARGIN_COL else 0
+    spans = [(i + off, i + off) for i in range(1, len(headers) + 1)]
+    widths = _grid(ws, keys, NON_TAX_WIDTH, data, offset=off)
     widths += [16] * (n_cols - len(widths))
     for i in range(len(headers) + 1, n_cols + 1):
-        ws.column_dimensions[L(i)].width = 16
-    half = _split_width(widths, 2)[0][1]  # Bill To / Service Provider: two halves of equal width
+        ws.column_dimensions[L(i + off)].width = 16
+    if off:
+        ws.column_dimensions[L(1)].width = _MARGIN_W
+    n_cols += off
+    half = _split_width(widths, 2, off)[0][1]  # Bill To / Service Provider: two halves of equal width
+    first = L(1 + off)
 
     b, p = data["bill_to"], data["provider"]
-    _put(ws, f"A1:{L(half)}1", "BILL TO / CUSTOMER", _font(14, True, color=WHITE), _fill(BLUE), A_V, **_box())
+    _put(ws, f"{first}1:{L(half)}1", "BILL TO / CUSTOMER", _font(14, True, color=WHITE), _fill(BLUE), A_V, **_box())
     _put(ws, f"{L(half + 1)}1:{L(n_cols)}1", "SERVICE PROVIDER", _font(14, True, color=WHITE), _fill(BLUE), A_V, **_box())
     top = Alignment(vertical="top", wrap_text=True)
-    _put(ws, f"A2:{L(half)}7", _party(b["name"], b["address"], b["ntn"], b["strn"], 18), _font(9), None, top, **_box())
+    _put(ws, f"{first}2:{L(half)}7", _party(b["name"], b["address"], b["ntn"], b["strn"], 18), _font(9), None, top, **_box())
     _put(ws, f"{L(half + 1)}2:{L(n_cols)}7", _party(p["name"], p["address"], p["ntn"], p["strn"], 18), _font(9), None, top, **_box())
     _info_row(ws, 9, [("Invoice Date", f"{data['invoice_date']:%d %b %Y}"), ("Billing Period", data["period"]),
                       ("Payment Terms", f"{data['payment_days']} Days"), ("Due Date", f"{data['due_date']:%d %b %Y}"),
-                      ("Invoice #", data["invoice_no"])], widths, _font(9, True), _font(10), boxed=False)
-    _put(ws, f"A12:{L(n_cols)}12", "TRIPS SUMMARY", _font(16, True, color=WHITE), _fill(BLUE), A_LEFT)
+                      ("Invoice #", data["invoice_no"])], widths, _font(9, True), _font(10), boxed=False, offset=off)
+    _put(ws, f"{first}12:{L(n_cols)}12", "TRIPS SUMMARY", _font(16, True, color=WHITE), _fill(BLUE), A_LEFT)
     first_data, last_data = _table(ws, data, 14, spans, height_rows=_data_row_heights(data, widths))
     total_row = last_data + 2
     _total_row(ws, data, total_row, first_data, last_data, spans)
     inv_row = total_row + 2
     edge = dict(left=THIN, right=THIN, top=MEDIUM, bottom=MEDIUM)
     amount_cols = 2
-    _put(ws, f"A{inv_row}:{L(n_cols - amount_cols)}{inv_row}", "TOTAL INVOICE AMOUNT", _font(12, True), _fill(LIGHT), A_LEFT, **edge)
+    _put(ws, f"{first}{inv_row}:{L(n_cols - amount_cols)}{inv_row}", "TOTAL INVOICE AMOUNT", _font(12, True), _fill(LIGHT), A_LEFT, **edge)
     _put(ws, f"{L(n_cols - amount_cols + 1)}{inv_row}:{L(n_cols)}{inv_row}",
          _freight_ref(data, "", total_row, spans), _font(13, True, color=BLUE), _fill(LIGHT), A_RIGHT, nf=ACCOUNTING0, **edge)
     words_row = inv_row + 2
-    _put(ws, f"A{words_row}:B{words_row}", "AMOUNT IN WORDS", _font(9, True), None, None, bottom=THIN)
-    _put(ws, f"C{words_row}:{L(n_cols)}{words_row}", data["in_words"], _font(10, italic=True), None, None, bottom=THIN)
+    _put(ws, f"{first}{words_row}:{L(2 + off)}{words_row}", "AMOUNT IN WORDS", _font(9, True), None, None, bottom=THIN)
+    _put(ws, f"{L(3 + off)}{words_row}:{L(n_cols)}{words_row}", data["in_words"], _font(10, italic=True), None, None, bottom=THIN)
     notes_row = words_row + 2
-    _put(ws, f"A{notes_row}:{L(n_cols)}{notes_row}", "NOTES", _font(10, True, color=WHITE), _fill(BLUE), None, **_box())
+    _put(ws, f"{first}{notes_row}:{L(n_cols)}{notes_row}", "NOTES", _font(10, True, color=WHITE), _fill(BLUE), None, **_box())
     # a single page has no "Page 2" to refer to
     lines = _bullets([n for n in data["notes"] if "Page 2" not in n])
     for i, line in enumerate(lines, start=1):
-        _put(ws, f"A{notes_row + i}:{L(n_cols)}{notes_row + i}", line, _font(9), None, A_V, bottom=THIN)
+        _put(ws, f"{first}{notes_row + i}:{L(n_cols)}{notes_row + i}", line, _font(9), None, A_V, bottom=THIN)
     last = notes_row + len(lines)
 
     row_heights = _data_row_heights(data, widths)
@@ -414,7 +430,7 @@ def _nontax_workbook(data):
     ws.row_dimensions[14].height = 30  # header row: wraps onto two lines
     ws.row_dimensions[inv_row].height = 30
     ws.row_dimensions[total_row].height = 19.95
-    _page(ws, "portrait", last, n_cols, one_page=len(data["rows"]) <= 35)
+    _page(ws, "portrait", last, n_cols, one_page=len(data["rows"]) <= 35, margin_lr=_MARGIN_LR if off else None)
     return wb
 
 
