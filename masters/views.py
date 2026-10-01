@@ -665,6 +665,7 @@ def route_delete(request, route_id):
 
 # ================= SUPPLIERS (Vendor model) =================
 VENDOR_SORT_FIELDS = {
+    "id": "Partner ID",
     "name": "Supplier Name",
     "supplier_type__name": "Supplier Type",
     "poc1_phone": "Phone",
@@ -673,7 +674,7 @@ VENDOR_SORT_FIELDS = {
 
 def vendor_list(request):
     vendors, sort_by, order = _sorted_queryset(
-        request, Vendor.objects.annotate(vehicle_count=Count("vehicles")), VENDOR_SORT_FIELDS, "name"
+        request, Vendor.objects.annotate(vehicle_count=Count("vehicles")), VENDOR_SORT_FIELDS, "id"
     )
     return render(request, "vendors/vendor_list.html", {
         "vendors": vendors,
