@@ -82,12 +82,16 @@ class Vendor(models.Model):
 
     def save(self, *args, **kwargs):
         for field in (
-            "name", "poc1_name", "poc1_email", "poc2_name", "poc2_email",
+            "name", "poc1_name", "poc2_name",
             "address", "ntn", "stn", "term_of_service", "billing_period",
         ):
             value = getattr(self, field, None)
             if value:
                 setattr(self, field, value.strip().upper())
+        for field in ("poc1_email", "poc2_email"):  # an email address reads lowercase, not shouted
+            value = getattr(self, field, None)
+            if value:
+                setattr(self, field, value.strip().lower())
         super().save(*args, **kwargs)
 
     def __str__(self):

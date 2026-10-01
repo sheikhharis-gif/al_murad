@@ -262,6 +262,28 @@
         document.querySelectorAll('select.dropdown-search-select').forEach(enhanceDropdownSearchSelect);
     };
 
+    // A second click on Save while the first click's request is still in flight (slow
+    // connection, or just no visible change yet) used to post the same form twice and
+    // create a duplicate record. This greys out the Save button the instant the form
+    // submits, so a repeat click does nothing until the page itself moves on; a file
+    // download doesn't navigate away, so the button re-enables after a few seconds
+    // in case the same Download is wanted again. A page's own "nothing is ticked" /
+    // similar checks run first (their script block prints before this one) and call
+    // preventDefault(), which this skips so the button stays live for a retry.
+    window.guardDoubleSubmit = function () {
+        document.querySelectorAll('form[method="post" i]:not([data-no-resubmit-guard])').forEach(function (form) {
+            form.addEventListener('submit', function (e) {
+                if (e.defaultPrevented) return;
+                var buttons = form.querySelectorAll('button[type="submit"]:not([disabled]), input[type="submit"]:not([disabled])');
+                buttons.forEach(function (btn) {
+                    btn.disabled = true;
+                    btn.classList.add('disabled');
+                    setTimeout(function () { btn.disabled = false; btn.classList.remove('disabled'); }, 3000);
+                });
+            });
+        });
+    };
+
     // Turns any <input class="datepicker"> into a typing-friendly date field
     // showing "10-Jan-26" (Flatpickr's altInput), while the real value
     // submitted to the server stays ISO (Y-m-d) so Django's DateField parses
@@ -332,7 +354,11 @@
                 },
             };
             if (el.dataset.maxToday) opts.maxDate = 'today';
-            if (!el.value) opts.defaultDate = 'today';
+            // data-no-default: an extra/blank formset row (e.g. the always-present empty Fuel
+            // Price row on Add Supplier) must stay truly empty - defaulting its date made the
+            // row look "filled in" to the server, which then demanded the Product/Price next to
+            // it and silently failed to save (the vendor itself had already been created by then).
+            if (!el.value && !el.dataset.noDefault) opts.defaultDate = 'today';
 
             flatpickr(el, opts);
         });
@@ -460,6 +486,53 @@
         });
     };
 
+    // Same idea, lowercased - email fields (data-lowercase), so an address
+    // doesn't end up typed as all caps.
+    window.enhanceLowercaseInputs = function () {
+        document.querySelectorAll('[data-lowercase]').forEach(function (el) {
+            if (el.dataset.lcEnhanced) return;
+            el.dataset.lcEnhanced = '1';
+            el.addEventListener('input', function () {
+                var start = el.selectionStart, end = el.selectionEnd;
+                el.value = el.value.toLowerCase();
+                if (start !== null) el.setSelectionRange(start, end);
+            });
+        });
+    };
+
+    // <input data-letters-only> (a Point of Contact's name) drops any digit as
+    // it's typed - a phone number pasted into the name box by mistake no
+    // longer saves silently.
+    window.enhanceLettersOnlyInputs = function () {
+        document.querySelectorAll('[data-letters-only]').forEach(function (el) {
+            if (el.dataset.loEnhanced) return;
+            el.dataset.loEnhanced = '1';
+            el.addEventListener('input', function () {
+                var start = el.selectionStart;
+                var cleaned = el.value.replace(/[0-9]/g, '');
+                if (cleaned !== el.value) start -= (el.value.length - cleaned.length);
+                el.value = cleaned;
+                if (start !== null) el.setSelectionRange(start, start);
+            });
+        });
+    };
+
+    // <input data-digits-only> (a Point of Contact's phone) drops any letter
+    // as it's typed - digits, spaces and + - ( ) still work for a formatted number.
+    window.enhanceDigitsOnlyInputs = function () {
+        document.querySelectorAll('[data-digits-only]').forEach(function (el) {
+            if (el.dataset.doEnhanced) return;
+            el.dataset.doEnhanced = '1';
+            el.addEventListener('input', function () {
+                var start = el.selectionStart;
+                var cleaned = el.value.replace(/[a-zA-Z]/g, '');
+                if (cleaned !== el.value) start -= (el.value.length - cleaned.length);
+                el.value = cleaned;
+                if (start !== null) el.setSelectionRange(start, start);
+            });
+        });
+    };
+
     // Navbar "Open Trip # / Job #" box: as you type, lists matching trips/jobs
     // (partial number, vehicle number or bilty); arrow keys + Enter or a click
     // opens one. Enter with nothing highlighted opens the exact number typed.
@@ -528,4 +601,8 @@
     document.addEventListener('DOMContentLoaded', window.enhanceDatepickers);
     document.addEventListener('DOMContentLoaded', window.enhanceDatetimepickers);
     document.addEventListener('DOMContentLoaded', window.enhanceUppercaseInputs);
+    document.addEventListener('DOMContentLoaded', window.enhanceLowercaseInputs);
+    document.addEventListener('DOMContentLoaded', window.enhanceLettersOnlyInputs);
+    document.addEventListener('DOMContentLoaded', window.enhanceDigitsOnlyInputs);
+    document.addEventListener('DOMContentLoaded', window.guardDoubleSubmit);
 })();

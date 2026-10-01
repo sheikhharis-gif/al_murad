@@ -338,11 +338,18 @@ class VendorForm(forms.ModelForm):
         }
         for field in uppercase_fields:
             widgets[field].attrs["data-uppercase"] = "1"
+        # A Point of Contact's name is a name, not a phone number typed into the wrong box;
+        # its phone box is the opposite - digits (plus + - ( ) spacing) only, no letters.
+        for field in ("poc1_name", "poc2_name"):
+            widgets[field].attrs["data-letters-only"] = "1"
+        for field in ("poc1_phone", "poc2_phone"):
+            widgets[field].attrs.pop("data-uppercase", None)
+            widgets[field].attrs["data-digits-only"] = "1"
         widgets["name"].attrs["autofocus"] = "autofocus"
         widgets.update({
             "supplier_type": SupplierTypeSelect(attrs={"class": "form-select", "id": "id_supplier_type"}),
-            "poc1_email": forms.EmailInput(attrs={"class": "form-control text-uppercase", "data-uppercase": "1"}),
-            "poc2_email": forms.EmailInput(attrs={"class": "form-control text-uppercase", "data-uppercase": "1"}),
+            "poc1_email": forms.EmailInput(attrs={"class": "form-control", "data-lowercase": "1"}),
+            "poc2_email": forms.EmailInput(attrs={"class": "form-control", "data-lowercase": "1"}),
             "address": forms.Textarea(attrs={"class": "form-control text-uppercase", "rows": 3, "data-uppercase": "1"}),
             "is_active": forms.CheckboxInput(attrs={"class": "form-check-input"}),
         })
@@ -350,6 +357,39 @@ class VendorForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["supplier_type"].empty_label = "--- Select Supplier Type ---"
+
+    def _clean_letters_only(self, field):
+        value = (self.cleaned_data.get(field) or "").strip()
+        if any(ch.isdigit() for ch in value):
+            raise forms.ValidationError("No numbers here - this is a name.")
+        return value
+
+    def clean_poc1_name(self):
+        return self._clean_letters_only("poc1_name")
+
+    def clean_poc2_name(self):
+        return self._clean_letters_only("poc2_name")
+
+    def _clean_digits_only(self, field):
+        value = (self.cleaned_data.get(field) or "").strip()
+        if any(ch.isalpha() for ch in value):
+            raise forms.ValidationError("No letters here - this is a phone number.")
+        return value
+
+    def clean_poc1_phone(self):
+        return self._clean_digits_only("poc1_phone")
+
+    def clean_poc2_phone(self):
+        return self._clean_digits_only("poc2_phone")
+
+    def _clean_lower_email(self, field):
+        return (self.cleaned_data.get(field) or "").strip().lower()
+
+    def clean_poc1_email(self):
+        return self._clean_lower_email("poc1_email")
+
+    def clean_poc2_email(self):
+        return self._clean_lower_email("poc2_email")
 
 
 class FuelProductForm(forms.ModelForm):
@@ -421,7 +461,7 @@ VendorFuelPriceFormSet = inlineformset_factory(
     widgets={
         "product": forms.Select(attrs={"class": "form-select form-select-sm"}),
         "fuel_price": forms.NumberInput(attrs={"class": "form-control form-control-sm", "step": "0.01", "placeholder": "Fuel Price"}),
-        "effective_date": forms.DateInput(attrs={"class": "form-control form-control-sm datepicker"}),
+        "effective_date": forms.DateInput(attrs={"class": "form-control form-control-sm datepicker", "data-no-default": "1"}),
     },
     extra=1,
     can_delete=True,

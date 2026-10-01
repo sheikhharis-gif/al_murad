@@ -5,10 +5,11 @@
     <form method="post" novalidate>
         {% csrf_token %}
 
-        {% if form.errors %}
+        {% if form.errors or fuel_formset.errors|length or fuel_formset.non_form_errors %}
         <div class="alert alert-danger border-0 shadow-sm rounded-3 mb-4">
             <i class="bi bi-exclamation-triangle-fill me-2"></i>
             <strong>Supplier could not be saved.</strong> Please fix the highlighted field(s) below.
+            {% for err in fuel_formset.non_form_errors %}<div>{{ err }}</div>{% endfor %}
         </div>
         {% endif %}
 
@@ -43,12 +44,12 @@
 
                     <div class="col-md-3"><label class="form-label small">Terms of Service</label>{{ form.term_of_service }}</div>
                     <div class="col-md-3"><label class="form-label small">Billing Period</label>{{ form.billing_period }}</div>
-                    <div class="col-md-3"><label class="form-label small">Point of Contact 1</label>{{ form.poc1_name }}</div>
-                    <div class="col-md-3"><label class="form-label small">Phone / Mobile Number</label>{{ form.poc1_phone }}</div>
+                    <div class="col-md-3"><label class="form-label small">Point of Contact 1</label>{{ form.poc1_name }}{{ form.poc1_name.errors }}</div>
+                    <div class="col-md-3"><label class="form-label small">Phone / Mobile Number</label>{{ form.poc1_phone }}{{ form.poc1_phone.errors }}</div>
 
                     <div class="col-md-3"><label class="form-label small">Email</label>{{ form.poc1_email }}{{ form.poc1_email.errors }}</div>
-                    <div class="col-md-3"><label class="form-label small">Point of Contact 2</label>{{ form.poc2_name }}</div>
-                    <div class="col-md-3"><label class="form-label small">Phone / Mobile Number</label>{{ form.poc2_phone }}</div>
+                    <div class="col-md-3"><label class="form-label small">Point of Contact 2</label>{{ form.poc2_name }}{{ form.poc2_name.errors }}</div>
+                    <div class="col-md-3"><label class="form-label small">Phone / Mobile Number</label>{{ form.poc2_phone }}{{ form.poc2_phone.errors }}</div>
                     <div class="col-md-3"><label class="form-label small">Email</label>{{ form.poc2_email }}{{ form.poc2_email.errors }}</div>
 
                 </div>

@@ -7,6 +7,7 @@ from urllib.parse import urlencode
 from django.contrib import messages
 from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse
+from django.db import transaction
 from django.db.models import Sum, Count
 from django.db.models.deletion import ProtectedError
 from django.utils import timezone
@@ -684,14 +685,16 @@ def vendor_list(request):
 def vendor_add(request):
     if request.method == "POST":
         form = VendorForm(request.POST)
-        if form.is_valid():
-            vendor = form.save()
-            fuel_formset = VendorFuelPriceFormSet(request.POST, instance=vendor)
-            if fuel_formset.is_valid():
+        # Validate both the supplier and its (usually still-blank) Fuel Prices rows before
+        # saving either - saving the supplier first and only then finding the formset invalid
+        # used to leave a half-created, invisible duplicate behind on every retry.
+        fuel_formset = VendorFuelPriceFormSet(request.POST, instance=form.instance)
+        if form.is_valid() and fuel_formset.is_valid():
+            with transaction.atomic():
+                vendor = form.save()
                 fuel_formset.save()
-                return redirect("vendor_list")
-        else:
-            fuel_formset = VendorFuelPriceFormSet(request.POST)
+            messages.success(request, f"Supplier \"{vendor.name}\" registered.")
+            return redirect("vendor_list")
     else:
         form = VendorForm()
         fuel_formset = VendorFuelPriceFormSet()
@@ -704,8 +707,10 @@ def vendor_edit(request, vendor_id):
         form = VendorForm(request.POST, instance=vendor)
         fuel_formset = VendorFuelPriceFormSet(request.POST, instance=vendor)
         if form.is_valid() and fuel_formset.is_valid():
-            form.save()
-            fuel_formset.save()
+            with transaction.atomic():
+                form.save()
+                fuel_formset.save()
+            messages.success(request, f"Supplier \"{vendor.name}\" updated.")
             return redirect("vendor_list")
     else:
         form = VendorForm(instance=vendor)
@@ -716,7 +721,9 @@ def vendor_edit(request, vendor_id):
 def vendor_delete(request, vendor_id):
     vendor = get_object_or_404(Vendor, id=vendor_id)
     if request.method == "POST":
+        name = vendor.name
         vendor.delete()
+        messages.success(request, f"Supplier \"{name}\" deleted.")
         return redirect("vendor_list")
     # Agar galti se GET request aaye toh wapas list pe bhej do
     return redirect("vendor_list")
