@@ -606,6 +606,66 @@
 
         wireAddRow('add-trip-row', 'trip-formset', 'trip-block', 'id_trips-TOTAL_FORMS');
 
+        // Weight (Tons): a dropdown of the tonnages that have a Client Rate for the trip's
+        // client + route (its own vehicle type's tonnages first; narrowed by sub-category). Typing
+        // any other weight still works - e.g. for a route with no rate yet.
+        var RATE_TONNAGES = JSON.parse('{{ rate_tonnages_json|default:"[]"|escapejs }}');
+        var tonSeq = 0;
+        function syncTonnages(blk) {
+            var weight = blk.querySelector('input[name$="-weight"]');
+            if (!weight) return;
+            var pick = function (sel) { var el = blk.querySelector(sel); return el ? el.value : ''; };
+            var client = pick('select[name$="-client"]'), route = pick('select[name$="-route"]');
+            var vt = pick('select[name$="-vehicle_type"]'), sub = pick('select[name$="-sub_category"]');
+            // tonnage -> the vehicle types it is rated for (on this client + route)
+            var types = {};
+            RATE_TONNAGES.forEach(function (r) {
+                if (String(r[0]) !== client || String(r[2]) !== route) return;
+                if (sub && String(r[1] === null ? '' : r[1]) !== sub) return;
+                (types[r[4]] = types[r[4]] || []).push(String(r[3]));
+            });
+            var vtSelect = blk.querySelector('select[name$="-vehicle_type"]');
+            var vtName = function (id) {
+                var opt = vtSelect && Array.prototype.filter.call(vtSelect.options, function (o) { return o.value === id; })[0];
+                return opt ? opt.textContent.trim() : '';
+            };
+            // the trip's own vehicle type first, then the rest, each lightest to heaviest
+            var tons = Object.keys(types).sort(function (a, b) {
+                var mine = function (t) { return vt && types[t].indexOf(vt) > -1 ? 0 : 1; };
+                return mine(a) - mine(b) || parseFloat(a) - parseFloat(b);
+            });
+            var list = blk.querySelector('datalist.trip-tonnages');
+            if (!list) {
+                list = document.createElement('datalist');
+                list.className = 'trip-tonnages';
+                weight.insertAdjacentElement('afterend', list);
+            }
+            list.id = 'trip-tonnages-' + (++tonSeq);  // unique per row (rows are cloned by Add Trip)
+            weight.setAttribute('list', list.id);
+            list.innerHTML = '';
+            tons.forEach(function (t) {
+                var o = document.createElement('option');
+                o.value = t;
+                var names = types[t].map(vtName).filter(Boolean).filter(function (n, i, all) { return all.indexOf(n) === i; });
+                o.label = t + ' tons' + (names.length ? ' - ' + names.join(', ') : '');
+                list.appendChild(o);
+            });
+            weight.placeholder = tons.length ? 'Select tons (' + tons.length + ')' : 'Weight (Tons)';
+            weight.title = tons.length ? 'Rated tonnages for this client + route: ' + tons.join(', ') : '';
+        }
+        var tonForm = document.getElementById('trip-formset');
+        tonForm.addEventListener('change', function (e) {
+            if (e.target.matches('select[name$="-client"], select[name$="-route"], select[name$="-vehicle_type"], select[name$="-sub_category"]')) {
+                syncTonnages(e.target.closest('.trip-block'));
+            }
+        });
+        document.querySelectorAll('.trip-block').forEach(syncTonnages);
+        document.getElementById('add-trip-row').addEventListener('click', function () {
+            // runs after wireAddRow's own click handler has added the new row
+            var blocks = document.querySelectorAll('.trip-block');
+            syncTonnages(blocks[blocks.length - 1]);
+        });
+
         // After a Save the page jumps back to the trip, so the message at the very top of the
         // page is out of sight - repeat it as an alert pinned to the corner of the screen.
         document.querySelectorAll('main.content-area > .alert').forEach(function (alert, i) {

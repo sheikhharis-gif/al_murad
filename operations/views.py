@@ -30,6 +30,7 @@ from .models import Job, Trip, JobExpense, JobFuelEntry
 from masters.models import (
     City,
     Client,
+    ClientRate,
     Staff,
     Expense,
     Route,
@@ -241,6 +242,16 @@ def job_add(request):
     return render(request, "operations/job_form.html", {"form": form})
 
 
+def _rate_tonnages_json():
+    """Every tonnage that has a Client Rate, as [client, sub-category, route, vehicle type, tons] rows -
+    the Job Sheet uses it to offer a trip's Weight (Tons) as a dropdown of the rated tonnages."""
+    rows = set()
+    for client_id, sub_id, route_id, vt_id, weight in ClientRate.objects.exclude(weight_tons__isnull=True).values_list(
+            "client_id", "sub_category_id", "route_id", "vehicle_type_id", "weight_tons"):
+        rows.add((client_id, sub_id, route_id, vt_id, format(weight.normalize(), "f")))
+    return json.dumps(sorted(rows, key=lambda r: (r[0], r[2], float(r[4]))))
+
+
 # ================= JOB SHEET (the full multi-section page: header + trips + expense + fuel) =================
 def job_edit(request, job_id):
     job = get_object_or_404(Job, job_number=job_id)
@@ -276,6 +287,7 @@ def job_edit(request, job_id):
                 "trip_formset": trip_formset,
                 "expense_form": JobExpenseForm(instance=expense, rental=is_rental, pool=job.rental_pool),
                 "fuel_formset": JobFuelEntryFormSet(instance=job, prefix="fuel"),
+                "rate_tonnages_json": _rate_tonnages_json(),
             })
 
         if "save_expense" in request.POST:
@@ -307,6 +319,7 @@ def job_edit(request, job_id):
         "trip_formset": trip_formset,
         "expense_form": expense_form,
         "fuel_formset": fuel_formset,
+        "rate_tonnages_json": _rate_tonnages_json(),
     })
 
 def job_delete(request, job_id):
