@@ -430,6 +430,11 @@
     .x-small { font-size: 0.7rem; text-transform: uppercase; font-weight: bold; color: #64748b; }
     .trip-block .form-control, .trip-block .form-select { font-size: 0.85rem; }
     .trip-block .trip-exp-row { background: #fff7e6; }
+    /* Save alert: stays in the corner of the screen wherever the page is scrolled to */
+    .save-toast { position: fixed; top: 84px; right: 24px; z-index: 2000; min-width: 260px; max-width: 420px;
+                  box-shadow: 0 10px 30px rgba(15, 23, 42, .25); font-weight: 600; transition: opacity .4s; }
+    .save-toast.alert-success { border-left: 6px solid #198754; }
+    .save-toast.alert-danger { border-left: 6px solid #dc3545; }
     .trip-block .trip-readonly { background: #eef2f6; font-weight: 600; min-height: 31px; }
 </style>
 
@@ -594,6 +599,26 @@
         }
 
         wireAddRow('add-trip-row', 'trip-formset', 'trip-block', 'id_trips-TOTAL_FORMS');
+
+        // After a Save the page jumps back to the trip, so the message at the very top of the
+        // page is out of sight - repeat it as an alert pinned to the corner of the screen.
+        document.querySelectorAll('main.content-area > .alert').forEach(function (alert, i) {
+            var ok = alert.classList.contains('alert-success');
+            var failed = alert.classList.contains('alert-danger') || alert.classList.contains('alert-error');
+            if (!ok && !failed) return;
+            var toast = document.createElement('div');
+            toast.className = 'alert save-toast ' + (ok ? 'alert-success' : 'alert-danger');
+            toast.style.top = (84 + i * 64) + 'px';
+            toast.setAttribute('role', 'alert');
+            var icon = document.createElement('i');
+            icon.className = 'bi me-2 ' + (ok ? 'bi-check-circle-fill' : 'bi-exclamation-triangle-fill');
+            toast.appendChild(icon);
+            toast.appendChild(document.createTextNode(alert.firstChild.textContent.trim()));
+            document.body.appendChild(toast);
+            // a success fades by itself; a failure stays until clicked
+            if (ok) setTimeout(function () { toast.style.opacity = '0'; setTimeout(function () { toast.remove(); }, 450); }, 4000);
+            toast.addEventListener('click', function () { toast.remove(); });
+        });
 
         // "Auto" on a trip: Reached / Departure / Arrival / Delivery all follow the
         // trip Date at 00:00 and are locked while it's ticked.

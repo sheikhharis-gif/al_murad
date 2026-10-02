@@ -252,7 +252,7 @@ def job_edit(request, job_id):
             job_form = JobForm(request.POST, instance=job)
             if job_form.is_valid():
                 job_form.save()
-                messages.success(request, "Job details updated.")
+                messages.success(request, "Saved - job details updated.")
             else:
                 messages.error(request, "Could not update job details - check the highlighted field(s).")
             return redirect("job_edit", job_id=job.job_number)
@@ -261,7 +261,7 @@ def job_edit(request, job_id):
             trip_formset = TripFormSet(request.POST, instance=job, prefix="trips")
             if trip_formset.is_valid():
                 trip_formset.save()
-                messages.success(request, "Trips updated.")
+                messages.success(request, "Saved - trips updated.")
                 # Saved from a trip's own Save button -> come back to that trip
                 anchor = request.POST.get("save_trips", "")
                 url = reverse("job_edit", kwargs={"job_id": job.job_number})
@@ -282,7 +282,7 @@ def job_edit(request, job_id):
             expense_form = JobExpenseForm(request.POST, instance=expense, rental=is_rental, pool=job.rental_pool)
             if expense_form.is_valid():
                 expense_form.save()
-                messages.success(request, "Expense breakdown updated.")
+                messages.success(request, "Saved - expense updated.")
             else:
                 messages.error(request, "Could not save expense breakdown - check the highlighted field(s).")
             return redirect("job_edit", job_id=job.job_number)
@@ -291,7 +291,7 @@ def job_edit(request, job_id):
             fuel_formset = JobFuelEntryFormSet(request.POST, instance=job, prefix="fuel")
             if fuel_formset.is_valid():
                 fuel_formset.save()
-                messages.success(request, "Fuel entries updated.")
+                messages.success(request, "Saved - fuel entries updated.")
             else:
                 messages.error(request, "Could not save fuel entries - check the highlighted field(s).")
             return redirect("job_edit", job_id=job.job_number)
