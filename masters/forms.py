@@ -527,6 +527,14 @@ class ClientForm(forms.ModelForm):
             choices=[("", "--- Select Service Provider ---")] + [(n, n) for n in names],
             attrs={"class": "form-select dropdown-search-select", "data-match": "contains", "data-theme": "light",
                    "data-placeholder": "Type company name to search...", "data-empty-text": "No matching company"})
+        self.fields["stn"].label = "STRN #"
+        # A failed save marks every field at fault in red (the page lists them too) -
+        # before, only some fields showed their error, so a blank NTN looked like nothing was wrong.
+        if self.is_bound:
+            for name in self.errors:
+                if name in self.fields:
+                    widget = self.fields[name].widget
+                    widget.attrs["class"] = (widget.attrs.get("class", "") + " is-invalid").strip()
 
 
 class CompanyForm(forms.ModelForm):

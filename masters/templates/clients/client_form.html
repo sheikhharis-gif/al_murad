@@ -8,7 +8,11 @@
         {% if form.errors %}
         <div class="alert alert-danger border-0 shadow-sm rounded-3 mb-4">
             <i class="bi bi-exclamation-triangle-fill me-2"></i>
-            <strong>Client could not be saved.</strong> Please fix the highlighted field(s) below.
+            <strong>Client could not be saved.</strong> Please fix the field(s) marked in red:
+            <ul class="mb-0 mt-1 small">
+                {% for field in form %}{% for error in field.errors %}<li><b>{{ field.label }}</b> - {{ error }}</li>{% endfor %}{% endfor %}
+                {% for error in form.non_field_errors %}<li>{{ error }}</li>{% endfor %}
+            </ul>
         </div>
         {% endif %}
 
@@ -28,7 +32,7 @@
             <div class="card-body p-3 pb-2">
                 <div class="row g-2">
                     <div class="col-md-3">
-                        <label class="form-label small">Client Name</label>
+                        <label class="form-label small">Client Name <span class="text-danger">*</span></label>
                         {{ form.name }}{{ form.name.errors }}
                     </div>
                     <div class="col-md-3">
@@ -38,24 +42,24 @@
                             <a href="{% url 'client_type_config' %}">+ Add New Client Type</a>
                         </div>
                     </div>
-                    <div class="col-md-3"><label class="form-label small">NTN #</label>{{ form.ntn }}</div>
-                    <div class="col-md-3"><label class="form-label small">STRN #</label>{{ form.stn }}</div>
+                    <div class="col-md-3"><label class="form-label small">NTN # <span class="text-danger">*</span></label>{{ form.ntn }}{{ form.ntn.errors }}</div>
+                    <div class="col-md-3"><label class="form-label small">STRN #</label>{{ form.stn }}{{ form.stn.errors }}</div>
 
-                    <div class="col-md-3"><label class="form-label small">Terms of Service</label>{{ form.term_of_service }}</div>
-                    <div class="col-md-3"><label class="form-label small">Billing Period</label>{{ form.billing_period }}</div>
-                    <div class="col-md-3"><label class="form-label small">Service Provider <a href="{% url 'company_add' %}" target="_blank" class="ms-1 fw-normal">+ Add Company</a></label>{{ form.billing_company }}</div>
-                    <div class="col-md-3"><label class="form-label small">Point of Contact 1</label>{{ form.poc1_name }}</div>
+                    <div class="col-md-3"><label class="form-label small">Terms of Service</label>{{ form.term_of_service }}{{ form.term_of_service.errors }}</div>
+                    <div class="col-md-3"><label class="form-label small">Billing Period</label>{{ form.billing_period }}{{ form.billing_period.errors }}</div>
+                    <div class="col-md-3"><label class="form-label small">Service Provider <a href="{% url 'company_add' %}" target="_blank" class="ms-1 fw-normal">+ Add Company</a></label>{{ form.billing_company }}{{ form.billing_company.errors }}</div>
+                    <div class="col-md-3"><label class="form-label small">Point of Contact 1</label>{{ form.poc1_name }}{{ form.poc1_name.errors }}</div>
 
-                    <div class="col-md-3"><label class="form-label small">Phone / Mobile Number</label>{{ form.poc1_phone }}</div>
+                    <div class="col-md-3"><label class="form-label small">Phone / Mobile Number</label>{{ form.poc1_phone }}{{ form.poc1_phone.errors }}</div>
                     <div class="col-md-3"><label class="form-label small">Email</label>{{ form.poc1_email }}{{ form.poc1_email.errors }}</div>
-                    <div class="col-md-3"><label class="form-label small">Point of Contact 2</label>{{ form.poc2_name }}</div>
-                    <div class="col-md-3"><label class="form-label small">Phone / Mobile Number</label>{{ form.poc2_phone }}</div>
+                    <div class="col-md-3"><label class="form-label small">Point of Contact 2</label>{{ form.poc2_name }}{{ form.poc2_name.errors }}</div>
+                    <div class="col-md-3"><label class="form-label small">Phone / Mobile Number</label>{{ form.poc2_phone }}{{ form.poc2_phone.errors }}</div>
 
                     <div class="col-md-3"><label class="form-label small">Email</label>{{ form.poc2_email }}{{ form.poc2_email.errors }}</div>
                 </div>
 
                 <div class="row g-2 mt-1">
-                    <div class="col-md-9"><label class="form-label small">Head Office / Billing Address</label>{{ form.address }}</div>
+                    <div class="col-md-9"><label class="form-label small">Head Office / Billing Address <span class="text-danger">*</span></label>{{ form.address }}{{ form.address.errors }}</div>
                 </div>
 
                 <div class="row g-2 mt-1">
@@ -80,6 +84,7 @@
     input, select, textarea { display: block; width: 100%; padding: 0.5rem 0.75rem; border: 1px solid #e2e8f0; border-radius: 8px; margin-bottom: 5px; }
     .form-label { font-weight: 600; color: #64748b; font-size: 0.85rem; margin-bottom: 0.2rem; }
     .x-small { font-size: 0.7rem; }
+    .is-invalid, .is-invalid + .dropdown-search-wrapper .dropdown-search-input { border-color: #dc3545 !important; background-color: #fff5f5; }
     .errorlist {
         list-style: none;
         color: #dc3545;
