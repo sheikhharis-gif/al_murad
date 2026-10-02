@@ -275,11 +275,18 @@
             form.addEventListener('submit', function (e) {
                 if (e.defaultPrevented) return;
                 var buttons = form.querySelectorAll('button[type="submit"]:not([disabled]), input[type="submit"]:not([disabled])');
-                buttons.forEach(function (btn) {
-                    btn.disabled = true;
-                    btn.classList.add('disabled');
-                    setTimeout(function () { btn.disabled = false; btn.classList.remove('disabled'); }, 3000);
-                });
+                // Disable them a moment AFTER this event, not during it: the browser builds
+                // the form's data right after the submit event, and leaves out a disabled
+                // button - so the clicked button's own name/value (save_trips, save_job,
+                // action=generate, format=pdf...) never reached the server and pages that
+                // tell their Save buttons apart by name saved nothing.
+                setTimeout(function () {
+                    buttons.forEach(function (btn) {
+                        btn.disabled = true;
+                        btn.classList.add('disabled');
+                        setTimeout(function () { btn.disabled = false; btn.classList.remove('disabled'); }, 3000);
+                    });
+                }, 0);
             });
         });
     };
