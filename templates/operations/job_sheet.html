@@ -178,13 +178,14 @@
                                 <label class="form-label x-small fw-bold mb-1">Bilty #</label>
                                 {{ tf.bilty_number }}
                             </div>
-                            <div class="col-md-2">
-                                <label class="form-label x-small fw-bold mb-1">Weight (Tons)</label>
-                                {{ tf.weight }}
-                            </div>
+                            {# Route before Weight: the Weight dropdown lists the chosen route's rated tonnages #}
                             <div class="col-md-2">
                                 <label class="form-label x-small fw-bold mb-1">Route</label>
                                 {{ tf.route }}
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label x-small fw-bold mb-1">Weight (Tons)</label>
+                                {{ tf.weight }}
                             </div>
                             <div class="col-md-2">
                                 <label class="form-label x-small fw-bold mb-1">Vehicle Type</label>
