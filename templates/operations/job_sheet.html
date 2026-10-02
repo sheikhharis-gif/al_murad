@@ -431,10 +431,11 @@
     .trip-block .form-control, .trip-block .form-select { font-size: 0.85rem; }
     .trip-block .trip-exp-row { background: #fff7e6; }
     /* Save alert: stays in the corner of the screen wherever the page is scrolled to */
-    .save-toast { position: fixed; top: 84px; right: 24px; z-index: 2000; min-width: 260px; max-width: 420px;
-                  box-shadow: 0 10px 30px rgba(15, 23, 42, .25); font-weight: 600; transition: opacity .4s; }
-    .save-toast.alert-success { border-left: 6px solid #198754; }
-    .save-toast.alert-danger { border-left: 6px solid #dc3545; }
+    .save-toast { position: fixed; left: 50%; transform: translateX(-50%); z-index: 2000; min-width: 340px; max-width: 90vw;
+                  padding: 14px 28px; font-size: 1.15rem; font-weight: 700; text-align: center; border-radius: 12px;
+                  box-shadow: 0 14px 40px rgba(15, 23, 42, .35); transition: opacity .5s; cursor: pointer; }
+    .save-toast.alert-success { background: #198754; color: #fff; border: 0; }
+    .save-toast.alert-danger { background: #dc3545; color: #fff; border: 0; }
     .trip-block .trip-readonly { background: #eef2f6; font-weight: 600; min-height: 31px; }
 </style>
 
@@ -608,7 +609,9 @@
             if (!ok && !failed) return;
             var toast = document.createElement('div');
             toast.className = 'alert save-toast ' + (ok ? 'alert-success' : 'alert-danger');
-            toast.style.top = (84 + i * 64) + 'px';
+            // just under the sticky navbar, in the middle of the screen
+            var nav = document.querySelector('.app-navbar');
+            toast.style.top = ((nav ? nav.offsetHeight : 80) + 14 + i * 70) + 'px';
             toast.setAttribute('role', 'alert');
             var icon = document.createElement('i');
             icon.className = 'bi me-2 ' + (ok ? 'bi-check-circle-fill' : 'bi-exclamation-triangle-fill');
@@ -616,7 +619,7 @@
             toast.appendChild(document.createTextNode(alert.firstChild.textContent.trim()));
             document.body.appendChild(toast);
             // a success fades by itself; a failure stays until clicked
-            if (ok) setTimeout(function () { toast.style.opacity = '0'; setTimeout(function () { toast.remove(); }, 450); }, 4000);
+            if (ok) setTimeout(function () { toast.style.opacity = '0'; setTimeout(function () { toast.remove(); }, 550); }, 6000);
             toast.addEventListener('click', function () { toast.remove(); });
         });
 
