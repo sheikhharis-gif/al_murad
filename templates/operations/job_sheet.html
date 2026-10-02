@@ -48,6 +48,8 @@
                         {{ job_form.rental_month }}
                     </div>
                     <div class="d-none">{{ job_form.is_rental }}</div>
+                    {# Date / Trip Advance / Difference are for own-vehicle jobs; a monthly rental job has none #}
+                    {% if not job.rental_pool %}
                     <div class="col-md-2">
                         <label class="form-label small fw-bold text-muted">Date</label>
                         {{ job_form.job_date }}
@@ -56,14 +58,17 @@
                         <label class="form-label small fw-bold text-muted">Trip Advance</label>
                         {{ job_form.trip_advance }}
                     </div>
+                    {% endif %}
                     <div class="col-md-2">
                         <label class="form-label small fw-bold text-muted">Expense</label>
                         <div class="fw-bold">{{ job.expense_total|floatformat:2 }}</div>
                     </div>
+                    {% if not job.rental_pool %}
                     <div class="col-md-2">
                         <label class="form-label small fw-bold text-muted">Difference</label>
                         <div class="fw-bold {% if job.difference < 0 %}text-danger{% endif %}">{{ job.difference|floatformat:2 }}</div>
                     </div>
+                    {% endif %}
 
                     <div class="col-md-2">
                         <label class="form-label small fw-bold text-muted">Meter Out</label>

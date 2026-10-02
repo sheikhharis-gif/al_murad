@@ -93,6 +93,10 @@ class JobForm(forms.ModelForm):
             providers | Q(pk=self.instance.rental_supplier_id)).order_by("name")
         self.fields["rental_supplier"].empty_label = "--- Select Supplier ---"
         self.fields["rental_month"].input_formats = ["%Y-%m", "%Y-%m-%d"]
+        # A monthly rental job is just supplier + month: it has no job Date / Trip Advance
+        # boxes (the date is taken as the 1st of its month). Own-vehicle jobs still need a Date.
+        self.fields["job_date"].required = False
+        self.fields["trip_advance"].required = False
         if not self.instance.pk and not self.initial.get("rental_month"):
             self.initial["rental_month"] = timezone.localdate(timezone=ZoneInfo("Asia/Karachi")).replace(day=1)
         if self.instance.pk and self.instance.rental_pool:
@@ -117,9 +121,16 @@ class JobForm(forms.ModelForm):
                 self.add_error("rental_month", "Choose the month.")
             else:
                 cleaned["rental_month"] = cleaned["rental_month"].replace(day=1)
+                cleaned["job_date"] = cleaned["rental_month"]
+            if cleaned.get("trip_advance") is None:
+                cleaned["trip_advance"] = self.instance.trip_advance or Decimal(0)
             cleaned["vehicle"] = None
             self.instance.rental_pool = True
             return cleaned
+        if not cleaned.get("job_date") and "job_date" not in self.errors:
+            self.add_error("job_date", "Date is required.")
+        if cleaned.get("trip_advance") is None and "trip_advance" not in self.errors:
+            cleaned["trip_advance"] = Decimal(0)
         if cleaned.get("is_rental"):
             number = (cleaned.get("rental_vehicle_number") or "").strip().upper()
             if not number:

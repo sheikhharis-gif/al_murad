@@ -64,7 +64,8 @@
                             <div class="form-text small">Is supplier ki is mahine ki ek hi Job banegi - har trip mein gari ka number alag daalein. KMs ki zaroorat nahi.</div>
                         </div>
 
-                        <div class="row g-3 mb-4">
+                        {# Own-vehicle jobs only - a monthly rental job is just supplier + month #}
+                        <div class="row g-3 mb-4" id="date-advance-block">
                             <div class="col-md-6">
                                 <label class="form-label fw-bold text-secondary small text-uppercase tracking-wider">
                                     <i class="bi bi-calendar3 me-1"></i> Date
@@ -158,6 +159,8 @@
                 ownBlock.classList.remove('d-none');
                 rentalBlock.classList.add('d-none');
             }
+            // Date / Trip Advance: not needed for a rental (monthly) job
+            document.getElementById('date-advance-block').classList.toggle('d-none', rentalToggle.checked);
         }
 
         rentalToggle.addEventListener('change', syncRentalFields);
