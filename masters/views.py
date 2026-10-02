@@ -934,9 +934,20 @@ def client_list(request):
 def client_add(request):
     form = ClientForm(request.POST or None)
     if form.is_valid():
-        form.save()
+        client = form.save()
+        _client_saved_message(request, client, form, "saved")
         return redirect("client_list")
     return render(request, "clients/client_form.html", {"form": form})
+
+
+def _client_saved_message(request, client, form, verb):
+    """Green note after saving a client; names the details still blank so they can be added later."""
+    missing = form.missing_fields()
+    if missing:
+        messages.success(request, f"Client {client.name} {verb} with missing field(s): {', '.join(missing)}. "
+                                  "You can update them later from Edit.")
+    else:
+        messages.success(request, f"Client {client.name} {verb}.")
 
 # ✅ NAYA: Client Edit function (Iske bagair error aa raha tha)
 def client_edit(request, client_id):
@@ -944,7 +955,8 @@ def client_edit(request, client_id):
     if request.method == "POST":
         form = ClientForm(request.POST, instance=client)
         if form.is_valid():
-            form.save()
+            client = form.save()
+            _client_saved_message(request, client, form, "updated")
             return redirect("client_list")
     else:
         form = ClientForm(instance=client)

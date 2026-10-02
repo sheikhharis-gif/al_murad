@@ -516,6 +516,7 @@ class ClientForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["client_type"].empty_label = "--- Select Client Type ---"
+        self.fields["client_type"].label = "Client Type"
         # Billing Company = the client's Service Provider: picked from the registered
         # companies (Invoicing > Add Company), same list as on Generate Invoice.
         names = list(Company.objects.filter(is_active=True).order_by("name").values_list("name", flat=True))
@@ -528,6 +529,7 @@ class ClientForm(forms.ModelForm):
             attrs={"class": "form-select dropdown-search-select", "data-match": "contains", "data-theme": "light",
                    "data-placeholder": "Type company name to search...", "data-empty-text": "No matching company"})
         self.fields["stn"].label = "STRN #"
+        self.fields["address"].label = "Head Office / Billing Address"
         # A failed save marks every field at fault in red (the page lists them too) -
         # before, only some fields showed their error, so a blank NTN looked like nothing was wrong.
         if self.is_bound:
@@ -535,6 +537,18 @@ class ClientForm(forms.ModelForm):
                 if name in self.fields:
                     widget = self.fields[name].widget
                     widget.attrs["class"] = (widget.attrs.get("class", "") + " is-invalid").strip()
+
+
+    def clean_ntn(self):
+        # blank -> NULL (unique allows many NULLs, not many empty strings)
+        return (self.cleaned_data.get("ntn") or "").strip().upper() or None
+
+    # Details worth having on a client - listed in the "saved with missing fields" note.
+    WANTED_FIELDS = ["client_type", "ntn", "stn", "billing_company", "poc1_name", "poc1_phone", "address"]
+
+    def missing_fields(self):
+        """Labels of the wanted details left blank on the client just saved."""
+        return [self.fields[f].label for f in self.WANTED_FIELDS if not self.cleaned_data.get(f)]
 
 
 class CompanyForm(forms.ModelForm):

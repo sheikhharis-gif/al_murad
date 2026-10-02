@@ -460,11 +460,13 @@ class Client(models.Model):
     poc2_name = models.CharField("Point of Contact 2", max_length=100, blank=True)
     poc2_phone = models.CharField("Phone / Mobile Number", max_length=20, blank=True)
     poc2_email = models.EmailField("Email", blank=True)
-    ntn = models.CharField("NTN #", max_length=20, unique=True)
+    # Only the name is needed to register a client - the rest can be filled in later.
+    # A blank NTN is stored as NULL so several clients without one don't clash on unique.
+    ntn = models.CharField("NTN #", max_length=20, unique=True, null=True, blank=True)
     stn = models.CharField("STN #", max_length=30, blank=True)
     term_of_service = models.CharField("Terms of Service", max_length=100, blank=True)
     billing_period = models.CharField("Billing Period", max_length=50, blank=True)
-    address = models.TextField()
+    address = models.TextField(blank=True)
     billing_company = models.CharField(max_length=150, blank=True)
     is_active = models.BooleanField(default=True)
     # Some clients have separate units billed on different rates (e.g. Five
