@@ -37,6 +37,7 @@ urlpatterns = [
 
     # SUPPLIERS (Vendor model)
     path("vendors/", views.vendor_list, name="vendor_list"),
+    path("vendors/excel/", views.vendor_excel, name="vendor_excel"),
     path("vendors/add/", views.vendor_add, name="vendor_add"),
     path("vendors/edit/<int:vendor_id>/", views.vendor_edit, name="vendor_edit"),
     path("vendors/delete/<int:vendor_id>/", views.vendor_delete, name="vendor_delete"),

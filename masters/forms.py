@@ -358,6 +358,24 @@ class VendorForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         self.fields["supplier_type"].empty_label = "--- Select Supplier Type ---"
 
+    def clean(self):
+        cleaned = super().clean()
+        # The same supplier can't be registered twice: same name + same Supplier Type
+        # (a name may repeat under a different type, e.g. a pump that also rents vehicles).
+        name = " ".join((cleaned.get("name") or "").split()).upper()
+        # Editing a supplier without touching its name / type is always allowed, so
+        # duplicates made before this rule can still be opened, fixed or removed.
+        unchanged = bool(self.instance.pk) and not ({"name", "supplier_type"} & set(self.changed_data))
+        if name and not unchanged:
+            twin = Vendor.objects.filter(name__iexact=name, supplier_type=cleaned.get("supplier_type"))
+            if self.instance.pk:
+                twin = twin.exclude(pk=self.instance.pk)
+            if twin.exists():
+                kind = cleaned.get("supplier_type") or "no Supplier Type"
+                self.add_error("name", f'Supplier "{name}" ({kind}) is already registered - open it from the '
+                                       "Supplier Directory instead of adding it again.")
+        return cleaned
+
     def _clean_letters_only(self, field):
         value = (self.cleaned_data.get(field) or "").strip()
         if any(ch.isdigit() for ch in value):

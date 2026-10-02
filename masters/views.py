@@ -683,6 +683,45 @@ def vendor_list(request):
         "order": order,
     })
 
+def vendor_excel(request):
+    """Supplier Directory as an Excel sheet (same order and Partner IDs as the page's default)."""
+    from openpyxl import Workbook
+    from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
+    from django.http import HttpResponse
+
+    vendors, _, _ = _sorted_queryset(
+        request, Vendor.objects.select_related("supplier_type").annotate(vehicle_count=Count("vehicles")),
+        VENDOR_SORT_FIELDS, "id")
+    headers = ["Partner ID", "Supplier Name", "Supplier Type", "Vehicles", "Point of Contact 1", "Phone 1", "Email 1",
+               "Point of Contact 2", "Phone 2", "Email 2", "NTN #", "STN #", "Terms of Service", "Billing Period",
+               "Address", "Status"]
+    widths = [11, 32, 20, 9, 22, 16, 28, 22, 16, 28, 16, 16, 18, 16, 40, 10]
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Suppliers"
+    thin = Side(style="thin", color="A6A6A6")
+    border = Border(left=thin, right=thin, top=thin, bottom=thin)
+    for c, (h, w) in enumerate(zip(headers, widths), start=1):
+        cell = ws.cell(row=1, column=c, value=h)
+        cell.font, cell.fill, cell.border = Font(bold=True, color="FFFFFF"), PatternFill("solid", fgColor="1F4E78"), border
+        cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+        ws.column_dimensions[cell.column_letter].width = w
+    count = 0
+    for count, v in enumerate(vendors, start=1):
+        row = [f"VND-{count}", v.name, v.supplier_type.name if v.supplier_type_id else "", v.vehicle_count,
+               v.poc1_name, v.poc1_phone, v.poc1_email, v.poc2_name, v.poc2_phone, v.poc2_email,
+               v.ntn, v.stn, v.term_of_service, v.billing_period, v.address, "Active" if v.is_active else "Inactive"]
+        for c, value in enumerate(row, start=1):
+            ws.cell(row=count + 1, column=c, value=value if value != "" else None).border = border
+    ws.freeze_panes = "C2"
+    ws.auto_filter.ref = f"A1:{ws.cell(row=1, column=len(headers)).column_letter}{count + 1}"
+
+    response = HttpResponse(content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    response["Content-Disposition"] = f'attachment; filename="Supplier Directory {date.today():%Y-%m-%d}.xlsx"'
+    wb.save(response)
+    return response
+
+
 def vendor_add(request):
     if request.method == "POST":
         form = VendorForm(request.POST)
