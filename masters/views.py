@@ -931,6 +931,67 @@ def fuel_rates(request):
     })
 
 
+def fuel_rates_excel(request):
+    """Present Fuel Rates as an Excel sheet: PSO's own dated price history, then
+    the live-feed snapshot shown alongside it (one page each)."""
+    from openpyxl import Workbook
+    from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
+    from django.http import HttpResponse
+
+    pso_vendor = Vendor.objects.filter(name__iexact="PSO").first()
+    premier_product = FuelProduct.objects.filter(name="PREMIER EURO5").first()
+    hi_cetane_product = FuelProduct.objects.filter(name="HI-CETANE DIESEL EURO5").first()
+    pso_products = [p for p in (premier_product, hi_cetane_product) if p]
+    by_date = {}
+    if pso_vendor and pso_products:
+        for r in VendorFuelPrice.objects.filter(vendor=pso_vendor, product__in=pso_products).order_by("-effective_date", "-id"):
+            row = by_date.setdefault(r.effective_date, {})
+            row.setdefault(r.product_id, r.fuel_price)
+    pso_rows = sorted(by_date.items(), reverse=True)
+    live_prices = _present_live_prices(_fetch_live_fuel_prices())
+
+    thin = Side(style="thin", color="A6A6A6")
+    border = Border(left=thin, right=thin, top=thin, bottom=thin)
+    header_font, header_fill = Font(bold=True, color="FFFFFF"), PatternFill("solid", fgColor="1F4E78")
+    header_align = Alignment(horizontal="center", vertical="center", wrap_text=True)
+
+    def _header(ws, headers, widths):
+        for c, (h, w) in enumerate(zip(headers, widths), start=1):
+            cell = ws.cell(row=1, column=c, value=h)
+            cell.font, cell.fill, cell.border, cell.alignment = header_font, header_fill, border, header_align
+            ws.column_dimensions[cell.column_letter].width = w
+
+    wb = Workbook()
+    ws1 = wb.active
+    ws1.title = "PSO Fuel Prices"
+    _header(ws1, ["Effective Date", "Premier Euro5", "Hi-Cetane Diesel Euro5 (HSD)"], [16, 18, 26])
+    r = 1
+    for r, (eff_date, row) in enumerate(pso_rows, start=2):
+        values = [eff_date, row.get(premier_product.id if premier_product else None),
+                  row.get(hi_cetane_product.id if hi_cetane_product else None)]
+        for c, value in enumerate(values, start=1):
+            cell = ws1.cell(row=r, column=c, value=value)
+            cell.border = border
+            if c == 1 and value:
+                cell.number_format = "DD-MMM-YY"
+    ws1.freeze_panes = "A2"
+
+    ws2 = wb.create_sheet("Live Fuel Rates")
+    _header(ws2, ["Product", "Source", "City", "Rate (PKR)", "Unit", "Effective Date"], [12, 14, 14, 14, 10, 20])
+    r = 1
+    for r, p in enumerate(live_prices, start=2):
+        values = [(p.get("product") or "").upper(), (p.get("source") or "").upper(), p.get("city") or "",
+                   p.get("price_pkr"), p.get("unit") or "", p.get("effective_date") or "Latest available"]
+        for c, value in enumerate(values, start=1):
+            ws2.cell(row=r, column=c, value=value).border = border
+    ws2.freeze_panes = "A2"
+
+    response = HttpResponse(content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    response["Content-Disposition"] = f'attachment; filename="Present Fuel Rates {date.today():%Y-%m-%d}.xlsx"'
+    wb.save(response)
+    return response
+
+
 def pso_fuel_price_delete(request, effective_date):
     if request.method == "POST":
         pso_vendor = Vendor.objects.filter(name__iexact="PSO").first()

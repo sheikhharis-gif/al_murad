@@ -7,9 +7,14 @@
             <h3 class="fw-bold text-dark mb-1"><i class="bi bi-fuel-pump text-primary me-2"></i>Present Fuel Rates</h3>
             <p class="text-muted small mb-0">The newest effective date is automatically treated as the present rate.</p>
         </div>
-        <a href="{% url 'fuel_product_config' %}" class="btn btn-outline-primary fw-bold">
-            <i class="bi bi-plus-circle me-1"></i>Add Fuel Product
-        </a>
+        <div class="d-flex gap-2">
+            <a href="{% url 'fuel_rates_excel' %}" class="btn btn-success fw-bold">
+                <i class="bi bi-file-earmark-excel me-1"></i>Download Excel
+            </a>
+            <a href="{% url 'fuel_product_config' %}" class="btn btn-outline-primary fw-bold">
+                <i class="bi bi-plus-circle me-1"></i>Add Fuel Product
+            </a>
+        </div>
     </div>
 
     {% if pso_form.errors %}
@@ -34,7 +39,7 @@
                             {{ pso_form.premier_price }}
                         </div>
                         <div class="col-md-3">
-                            <label class="form-label small fw-bold">Hi-Cetane Diesel Euro5</label>
+                            <label class="form-label small fw-bold">Hi-Cetane Diesel Euro5 <span class="text-muted fw-normal">(HSD)</span></label>
                             {{ pso_form.hi_cetane_price }}
                         </div>
                         <div class="col-12">
@@ -48,7 +53,7 @@
                             <tr>
                                 <th>Effective Date</th>
                                 <th class="text-center">Premier Euro5</th>
-                                <th class="text-center">Hi-Cetane Diesel Euro5</th>
+                                <th class="text-center">Hi-Cetane Diesel Euro5 (HSD)</th>
                                 <th style="width:70px"></th>
                             </tr>
                         </thead>
