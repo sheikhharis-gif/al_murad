@@ -20,6 +20,14 @@
                     <form method="post" novalidate>
                         {% csrf_token %}
 
+                        {% if form.errors or formset.errors|length or formset.non_form_errors %}
+                        <div class="alert alert-danger border-0 shadow-sm rounded-3 mb-4">
+                            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                            <strong>Could not be saved.</strong> Please fix the highlighted field(s) below.
+                            {% for err in formset.non_form_errors %}<div>{{ err }}</div>{% endfor %}
+                        </div>
+                        {% endif %}
+
                         <h6 class="fw-bold text-uppercase text-muted small mb-3">Job Details</h6>
                         <div class="row g-4">
                             <div class="col-md-4">

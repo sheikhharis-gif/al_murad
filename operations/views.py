@@ -24,6 +24,7 @@ from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.platypus import Image as RLImage, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
 from django.contrib import messages
+from django.db import transaction
 from .forms import JobForm, TripForm, TripFormSet, JobExpenseForm, JobFuelEntryFormSet
 from .models import Job, Trip, JobExpense, JobFuelEntry
 
@@ -808,14 +809,17 @@ def maintenance_list(request):
 def maintenance_add(request):
     if request.method == "POST":
         form = MaintenanceJobForm(request.POST)
-        if form.is_valid():
-            job = form.save()
-            formset = MaintenancePartFormSet(request.POST, instance=job)
-            if formset.is_valid():
+        # Validate the job AND its Parts Used rows before saving either - saving the job
+        # first and only then finding the parts formset invalid used to leave a half-created,
+        # invisible duplicate job behind on every retry (same bug as Add Supplier had).
+        formset = MaintenancePartFormSet(request.POST, instance=form.instance)
+        if form.is_valid() and formset.is_valid():
+            with transaction.atomic():
+                job = form.save()
                 formset.save()
-                return redirect("maintenance_list")
-        else:
-            formset = MaintenancePartFormSet(request.POST)
+            messages.success(request, "Maintenance job saved.")
+            return redirect("maintenance_list")
+        messages.error(request, "Maintenance job NOT saved - fix the highlighted field(s) below.")
     else:
         form = MaintenanceJobForm()
         formset = MaintenancePartFormSet()
@@ -828,9 +832,12 @@ def maintenance_edit(request, job_id):
         form = MaintenanceJobForm(request.POST, instance=job)
         formset = MaintenancePartFormSet(request.POST, instance=job)
         if form.is_valid() and formset.is_valid():
-            form.save()
-            formset.save()
+            with transaction.atomic():
+                form.save()
+                formset.save()
+            messages.success(request, "Maintenance job updated.")
             return redirect("maintenance_list")
+        messages.error(request, "Maintenance job NOT saved - fix the highlighted field(s) below.")
     else:
         form = MaintenanceJobForm(instance=job)
         formset = MaintenancePartFormSet(instance=job)
