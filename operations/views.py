@@ -227,18 +227,22 @@ def job_add(request):
             messages.success(request, f"Rental Job #{job.job_code} created for {supplier} ({month:%b-%Y}) - "
                                       "add each trip with its vehicle #.")
             return redirect("job_edit", job_id=job.job_number)
-        vehicle = form.cleaned_data["vehicle"]
-        open_job = (
-            Job.objects.filter(vehicle=vehicle)
-            .exclude(status__in=["completed", "cancelled"])
-            .order_by("-job_number")
-            .first()
-        )
-        if open_job:
-            messages.info(request, f"{vehicle.vehicle_number} already has an open Job #{open_job.job_code} - continuing that job.")
-            return redirect("job_edit", job_id=open_job.job_number)
+        vehicle = form.cleaned_data.get("vehicle")
+        if vehicle:
+            open_job = (
+                Job.objects.filter(vehicle=vehicle)
+                .exclude(status__in=["completed", "cancelled"])
+                .order_by("-job_number")
+                .first()
+            )
+            if open_job:
+                messages.info(request, f"{vehicle.vehicle_number} already has an open Job #{open_job.job_code} - continuing that job.")
+                return redirect("job_edit", job_id=open_job.job_number)
         job = form.save()
-        messages.success(request, f"Job #{job.job_code} created - now add its trips, expenses and fuel entries.")
+        if vehicle:
+            messages.success(request, f"Job #{job.job_code} created - now add its trips, expenses and fuel entries.")
+        else:
+            messages.success(request, f"Job #{job.job_code} created - add each trip with its own Vehicle # below.")
         return redirect("job_edit", job_id=job.job_number)
     return render(request, "operations/job_form.html", {"form": form})
 
@@ -496,7 +500,7 @@ def trips_excel(request):
             set_cell(14, label_col, 'Bilty #', bold=True)
             set_cell(14, value_col, trip.bilty_number)
             set_cell(15, label_col, 'Client', bold=True)
-            set_cell(15, value_col, trip.client.name)
+            set_cell(15, value_col, trip.client.name if trip.client_id else "Empty Trip")
             set_cell(16, label_col, 'Route', bold=True)
             set_cell(16, value_col, str(trip.route))
             set_cell(18, label_col, 'Freight', bold=True)
@@ -768,7 +772,7 @@ def quick_open_suggest(request):
                 results.append({
                     "url": reverse("job_edit", kwargs={"job_id": trip.job_id}) + f"#trip-{trip.id}",
                     "title": f"Trip #{trip.trip_no} - {trip.vehicle.vehicle_number}",
-                    "sub": f"Job #{trip.job_id} | {trip.client.name} | {trip.route.route_code} | {trip.trip_date:%d-%b-%y}",
+                    "sub": f"Job #{trip.job_id} | {trip.client.name if trip.client_id else 'Empty Trip'} | {trip.route.route_code} | {trip.trip_date:%d-%b-%y}",
                 })
     return JsonResponse({"results": results})
 
@@ -892,7 +896,7 @@ def parts_inventory_delete(request, part_id):
 
 
 def job_view_trips(request, job_id):
-    job = get_object_or_404(Job, id=job_id)
+    job = get_object_or_404(Job, job_number=job_id)
     trips = Trip.objects.filter(job=job).order_by("-trip_date")
     return render(request, "operations/trip_list.html", {"trips": trips, "job": job})
 

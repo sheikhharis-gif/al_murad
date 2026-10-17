@@ -10,7 +10,7 @@
                 </div>
                 <div>
                     <h3 class="fw-bold mb-0">Create Job</h3>
-                    <p class="text-muted small mb-0">Select a vehicle - if it already has an open Job, you'll continue that one; otherwise a new Job # is assigned.</p>
+                    <p class="text-muted small mb-0">Select a vehicle - if it already has an open Job, you'll continue that one; otherwise a new Job # is assigned. Or leave it blank and pick each trip's own vehicle on the Job Sheet instead.</p>
                 </div>
             </div>
 
@@ -39,7 +39,7 @@
                             {% if form.vehicle.errors %}
                                 <div class="text-danger small mt-1">{{ form.vehicle.errors }}</div>
                             {% endif %}
-                            <div class="form-text small">Chassis number aur plate dekh kar gari select karein.</div>
+                            <div class="form-text small">Chassis number aur plate dekh kar gari select karein - ya khali chor dein, har trip apni gari khud select karegi.</div>
                         </div>
 
                         {# Rental = one job per supplier per month; each trip carries its own hired vehicle #}

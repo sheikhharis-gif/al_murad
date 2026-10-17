@@ -133,7 +133,7 @@ def build_mis(request):
                 job.job_code, t.trip_no if t else "", vehicle.vehicle_number if vehicle else job.vehicle_label,
                 str((t.vehicle_type if t else None) or (vehicle.vehicle_type if vehicle else "") or ""),
                 t.trip_date if t else job.job_date,
-                t.client.name if t else "",
+                (t.client.name if t.client_id else "Empty Trip") if t else "",
                 (t.sub_category.name if t and t.sub_category_id else ""),
                 t.bilty_number if t else "",
                 t.weight if t else None, t.route.route_code if t else "",
@@ -229,6 +229,8 @@ def build_mis(request):
     # ---- Breakdowns
     by_client = OrderedDict()
     for t in trips:
+        if not t.client_id:  # Empty Trip - nothing billed to any client
+            continue
         c = by_client.setdefault(t.client.name, {"trips": 0, "weight": Decimal(0), "kms": Decimal(0), "freight": Decimal(0)})
         c["trips"] += 1
         c["weight"] += _d(t.weight)
@@ -256,6 +258,20 @@ def build_mis(request):
             v = vehicle_entry(job.vehicle_label, "RENTAL")
             v["jobs"] += 1
             v["expense"] += _d(expenses[job_id].total) if job_id in expenses else 0
+            continue
+        if not job.vehicle_id:
+            # No fixed vehicle - each trip's own vehicle gets its own line (like a
+            # rental job), the job's shared costs go on a line of their own.
+            for t in job_trips:
+                v = vehicle_entry(t.vehicle.vehicle_number, str(t.vehicle_type or t.vehicle.vehicle_type or ""))
+                v["trips"] += 1
+                v["kms"] += _d(t.route.distance_km)
+                v["freight"] += _d(t.freight)
+            v = vehicle_entry(f"Job #{job.job_code}", "MULTI-VEHICLE")
+            v["jobs"] += 1
+            v["expense"] += _d(expenses[job_id].total) if job_id in expenses else 0
+            v["liters"] += _d(fuel_by_job.get(job_id, {}).get("liters"))
+            v["fuel"] += _d(fuel_by_job.get(job_id, {}).get("amount"))
             continue
         v = vehicle_entry(job.vehicle.vehicle_number, str(job.vehicle.vehicle_type or ""))
         v["jobs"] += 1

@@ -140,8 +140,8 @@ class JobForm(forms.ModelForm):
                     vehicle_number=number, defaults={"vehicle_mode": "RENTAL"}
                 )
                 cleaned["vehicle"] = vehicle
-        elif not cleaned.get("vehicle"):
-            self.add_error("vehicle", "Please select a vehicle.")
+        # else: a vehicle here is now optional - left blank, each trip picks its own
+        # (Vehicle # dropdown on the trip row) instead of one fixed for the whole Job.
         if not cleaned.get("is_rental"):
             cleaned["rental_supplier"] = None  # only rental jobs have a supplier
         cleaned["rental_month"] = None
@@ -179,7 +179,7 @@ class TripForm(forms.ModelForm):
     class Meta:
         model = Trip
         fields = [
-            "trip_date", "auto_times", "client", "sub_category", "bilty_number", "weight", "route", "vehicle_type",
+            "trip_date", "auto_times", "client", "empty_trip", "sub_category", "bilty_number", "weight", "route", "vehicle_type",
             "reached_at", "departed_at", "arrived_at", "delivered_at",
             "stopover_city", "stopover_charges", "additional_charges", "remarks",
             "trip_fare", "trip_fuel", "trip_weighbridge", "trip_loading", "trip_offloading",
@@ -189,10 +189,11 @@ class TripForm(forms.ModelForm):
                for f in ("trip_fare", "trip_fuel", "trip_weighbridge", "trip_loading", "trip_offloading")},
             "trip_date": forms.DateInput(attrs={"class": "form-control form-control-sm trip-date", "type": "date"}),
             "auto_times": forms.CheckboxInput(attrs={"class": "form-check-input trip-auto-times"}),
-            "client": ClientSelect(attrs={"class": "form-select form-select-sm"}),
+            "client": ClientSelect(attrs={"class": "form-select form-select-sm trip-client"}),
+            "empty_trip": forms.CheckboxInput(attrs={"class": "form-check-input trip-empty"}),
             "sub_category": SubCategorySelect(attrs={"class": "form-select form-select-sm trip-subcategory"}),
             "bilty_number": forms.TextInput(attrs={"class": "form-control form-control-sm", "placeholder": "Bilty #"}),
-            "weight": forms.NumberInput(attrs={"class": "form-control form-control-sm", "step": "0.01", "placeholder": "Weight (Tons)"}),
+            "weight": forms.NumberInput(attrs={"class": "form-control form-control-sm trip-weight", "step": "0.01", "placeholder": "Weight (Tons)"}),
             "route": forms.Select(attrs={"class": "form-select form-select-sm"}),
             "vehicle_type": forms.Select(attrs={
                 "class": "form-select form-select-sm dropdown-search-select",
@@ -225,6 +226,16 @@ class TripForm(forms.ModelForm):
         required=False, label="Vehicle #",
         widget=forms.TextInput(attrs={"class": "form-control form-control-sm", "placeholder": "e.g. TLH-985", "data-uppercase": "1"}))
 
+    # A Job started without its own fixed vehicle: each trip picks one here instead
+    # (BaseTripFormSet drops this field again on a Job that already has one).
+    vehicle = forms.ModelChoiceField(
+        queryset=Vehicle.objects.none(), required=False, label="Vehicle #",
+        widget=forms.Select(attrs={
+            "class": "form-select form-select-sm dropdown-search-select",
+            "data-match": "contains", "data-theme": "light",
+            "data-placeholder": "Type vehicle number...", "data-empty-text": "No matching vehicle",
+        }))
+
     rental_pool = False  # set by the formset for a monthly rental job
 
     def __init__(self, *args, **kwargs):
@@ -233,6 +244,9 @@ class TripForm(forms.ModelForm):
             self.fields[f].required = False
         if self.instance.pk and self.instance.vehicle_id:
             self.initial.setdefault("rental_vehicle_number", self.instance.vehicle.vehicle_number)
+            self.initial.setdefault("vehicle", self.instance.vehicle_id)
+        self.fields["vehicle"].queryset = Vehicle.objects.filter(is_active=True).order_by("vehicle_number")
+        self.fields["vehicle"].empty_label = "--- Select Vehicle ---"
         # Active clients, plus this trip's own client even if it's since been
         # deactivated - otherwise the trip could never be saved again.
         self.fields["client"].queryset = Client.objects.filter(
@@ -294,11 +308,30 @@ class TripForm(forms.ModelForm):
                 self.instance.vehicle = vehicle
                 if not cleaned.get("vehicle_type") and not vehicle.vehicle_type_id:
                     self.add_error("vehicle_type", "Choose the vehicle type (it sets the rate).")
-        client, sub = cleaned.get("client"), cleaned.get("sub_category")
-        if sub and client and sub.client_id != client.pk:
-            self.add_error("sub_category", f"{sub.name} doesn't belong to {client.name}.")
-        elif client and not sub and client.has_sub_categories and client.sub_categories.exists():
-            self.add_error("sub_category", f"{client.name} has sub-categories ({', '.join(s.name for s in client.sub_categories.all())}) - please choose one.")
+        elif "vehicle" in self.fields:
+            # This Job has no fixed vehicle - this trip must choose its own.
+            vehicle = cleaned.get("vehicle")
+            if not vehicle:
+                self.add_error("vehicle", "Choose this trip's vehicle.")
+            else:
+                self.instance.vehicle = vehicle
+                if not cleaned.get("vehicle_type") and not vehicle.vehicle_type_id:
+                    self.add_error("vehicle_type", "Choose the vehicle type (it sets the rate).")
+
+        client = sub = None
+        if cleaned.get("empty_trip"):
+            # No cargo, no customer - Client / Sub-Category / Weight don't apply.
+            cleaned["client"] = cleaned["sub_category"] = cleaned["weight"] = None
+            for f in ("client", "sub_category", "weight"):
+                self.errors.pop(f, None)
+        else:
+            client, sub = cleaned.get("client"), cleaned.get("sub_category")
+            if not client and "client" not in self.errors:
+                self.add_error("client", "Please select a client.")
+            elif sub and client and sub.client_id != client.pk:
+                self.add_error("sub_category", f"{sub.name} doesn't belong to {client.name}.")
+            elif client and not sub and client.has_sub_categories and client.sub_categories.exists():
+                self.add_error("sub_category", f"{client.name} has sub-categories ({', '.join(s.name for s in client.sub_categories.all())}) - please choose one.")
 
         city, charges = cleaned.get("stopover_city"), cleaned.get("stopover_charges")
         if "stopover_charges" not in self.errors:
@@ -332,6 +365,10 @@ class BaseTripFormSet(forms.BaseInlineFormSet):
             del form.fields["rental_vehicle_number"]
             for f in Trip.TRIP_EXPENSE_FIELDS:
                 del form.fields[f]
+        # A per-trip Vehicle # dropdown only shows up when this Job has no fixed vehicle
+        # of its own (rental_pool already has rental_vehicle_number for that instead).
+        if form.rental_pool or self.instance.vehicle_id:
+            del form.fields["vehicle"]
         # Trip rows without a vehicle type yet (new rows) pre-select the job
         # vehicle's type; the user can change it per trip. Done here because
         # the job isn't attached to the form's instance until after __init__.

@@ -6,7 +6,7 @@
     <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
         <div>
             <h3 class="fw-bold text-dark mb-1"><i class="bi bi-journal-richtext text-primary me-2"></i>Job Sheet - #{{ job.job_code }}</h3>
-            <p class="text-muted small mb-0">{% if job.rental_pool %}Rental - {{ job.rental_supplier|default:"" }} - {{ job.rental_month|date:"F Y" }} - add each trip with its vehicle # below.{% else %}Vehicle {{ job.vehicle_label }} - add trips, expenses and fuel entries below.{% endif %}</p>
+            <p class="text-muted small mb-0">{% if job.rental_pool %}Rental - {{ job.rental_supplier|default:"" }} - {{ job.rental_month|date:"F Y" }} - add each trip with its vehicle # below.{% elif job.vehicle_id %}Vehicle {{ job.vehicle_label }} - add trips, expenses and fuel entries below.{% else %}No fixed vehicle - add each trip with its own Vehicle # below.{% endif %}</p>
         </div>
         <div class="d-flex gap-2 flex-wrap">
             <a href="{% url 'job_list' %}" class="btn btn-light border px-3">
@@ -168,10 +168,15 @@
                             <div class="col-md-3">
                                 <label class="form-label x-small fw-bold mb-1">Client</label>
                                 {{ tf.client }}
+                                <div class="form-check mt-1" title="No cargo / customer - this leg ran empty">
+                                    {{ tf.empty_trip }}
+                                    <label class="form-check-label small fw-bold" for="{{ tf.empty_trip.id_for_label }}">Empty Trip</label>
+                                </div>
                                 <div class="subcat-wrap mt-1" style="display:none;">
                                     <label class="form-label x-small fw-bold mb-1">Sub-Category</label>
                                     {{ tf.sub_category }}
                                 </div>
+                                {% if tf.client.errors %}<div class="text-danger small mt-1">{{ tf.client.errors.0 }}</div>{% endif %}
                                 {% if tf.sub_category.errors %}<div class="text-danger small mt-1">{{ tf.sub_category.errors.0 }}</div>{% endif %}
                             </div>
                             <div class="col-md-1">
@@ -208,7 +213,15 @@
                                 {% if tf.rental_vehicle_number.errors %}<div class="text-danger small mt-1">{{ tf.rental_vehicle_number.errors.0 }}</div>{% endif %}
                             </div>
                             {% else %}
+                            {% if not job.vehicle_id %}
+                            <div class="col-md-2">
+                                <label class="form-label x-small fw-bold mb-1">Vehicle #</label>
+                                {{ tf.vehicle }}
+                                {% if tf.vehicle.errors %}<div class="text-danger small mt-1">{{ tf.vehicle.errors.0 }}</div>{% endif %}
+                            </div>
+                            {% else %}
                             <div class="col-md-1"></div>
+                            {% endif %}
                             <div class="col-md-2">
                                 <label class="form-label x-small fw-bold mb-1">Departure Meter</label>
                                 <div class="form-control form-control-sm trip-readonly trip-computed">{% if tf.instance.pk %}{{ tf.instance.departure_meter|default_if_none:"--" }}{% else %}--{% endif %}</div>
@@ -476,6 +489,33 @@
             if (e.target.matches('select[name$="-client"]')) syncSubCategory(e.target.closest('.trip-block'));
         });
 
+        // Empty Trip: no cargo / customer on this leg - Client (and so Sub-Category) and
+        // Weight don't apply; greyed out and cleared while it's ticked.
+        function syncEmptyTrip(block) {
+            var box = block.querySelector('input.trip-empty');
+            var client = block.querySelector('select.trip-client');
+            var weight = block.querySelector('input.trip-weight');
+            var tonSelect = block.querySelector('select.trip-ton-select');
+            if (!box || !client) return;
+            var empty = box.checked;
+            if (empty) client.value = '';
+            client.disabled = empty;
+            if (weight) {
+                if (empty) weight.value = '';
+                weight.disabled = empty;
+            }
+            if (tonSelect) {
+                if (empty) tonSelect.value = '';
+                tonSelect.disabled = empty;
+            }
+            syncSubCategory(block);
+            syncStopoverVisibility(block);
+        }
+        document.querySelectorAll('.trip-block').forEach(syncEmptyTrip);
+        document.getElementById('trip-formset').addEventListener('change', function (e) {
+            if (e.target.matches('input.trip-empty')) syncEmptyTrip(e.target.closest('.trip-block'));
+        });
+
         // Stopover Charges: filled in from the Stopover Rates table (vehicle
         // type x city band) when the stopover city / vehicle type is chosen.
         // Typing a value yourself overrides it for that trip.
@@ -596,6 +636,7 @@
                 container.appendChild(newRow);
                 totalForms.value = formNum + 1;
                 if (rowClass === 'trip-block') {
+                    syncEmptyTrip(newRow);
                     syncSubCategory(newRow);
                     newRow.querySelectorAll('.trip-stopover-charges').forEach(function (el) { delete el.dataset.manual; });
                     syncStopoverVisibility(newRow);

@@ -46,8 +46,8 @@
     <table class="info-table">
         <tr>
             <td class="label">Job #</td><td class="value">{{ job.job_number }}</td>
-            <td class="label">Vehicle No</td><td class="value">{{ vehicle.vehicle_number }}</td>
-            <td class="label">Vehicle Type</td><td class="value">{{ vehicle.vehicle_type }}</td>
+            <td class="label">Vehicle No</td><td class="value">{{ vehicle.vehicle_number|default:job.vehicle_label }}</td>
+            <td class="label">Vehicle Type</td><td class="value">{{ vehicle.vehicle_type|default:"---" }}</td>
         </tr>
         <tr>
             <td class="label">Driver</td><td class="value">{{ vehicle.driver.name|default:"---" }}</td>
@@ -85,7 +85,7 @@
             <tr>
                 <td>{{ trip.trip_no }}</td>
                 <td>{{ trip.bilty_number|default:"---" }}</td>
-                <td>{{ trip.client.name }}</td>
+                <td>{{ trip.client.name|default:"Empty Trip" }}</td>
                 <td>{{ trip.route }}</td>
                 <td>{{ trip.weight|default:"---" }} T</td>
                 <td>Rs {{ trip.freight|floatformat:0 }}</td>

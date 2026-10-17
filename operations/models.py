@@ -50,10 +50,18 @@ class Job(models.Model):
 
     @property
     def vehicle_label(self):
-        """The job's vehicle number, or for a monthly rental job its supplier + month."""
+        """The job's vehicle number, or for a monthly rental job its supplier + month. A job
+        started without picking a vehicle (each trip carries its own instead) shows the
+        vehicle(s) its trips have actually used so far."""
         if self.rental_pool:
             return f"RENTAL - {self.rental_supplier or 'SUPPLIER'} - {self.rental_month:%b-%y}" if self.rental_month else "RENTAL"
-        return self.vehicle.vehicle_number if self.vehicle_id else ""
+        if self.vehicle_id:
+            return self.vehicle.vehicle_number
+        numbers = list(self.trips.exclude(vehicle__isnull=True).values_list(
+            "vehicle__vehicle_number", flat=True).distinct().order_by("vehicle__vehicle_number"))
+        if not numbers:
+            return "No Vehicle Yet"
+        return numbers[0] if len(numbers) == 1 else f"{len(numbers)} Vehicles"
 
     @property
     def is_rental(self):
@@ -94,7 +102,9 @@ class Job(models.Model):
 
     @property
     def running_kms(self):
-        if self.meter_in is None or self.meter_out is None:
+        # A single odometer run only means something when every trip shares one vehicle -
+        # a Job whose trips used different vehicles has no one meter to subtract.
+        if self.vehicle_count > 1 or self.meter_in is None or self.meter_out is None:
             return None
         return self.meter_in - self.meter_out
 
@@ -163,11 +173,16 @@ class Job(models.Model):
 # -----------------------
 class Trip(models.Model):
     job = models.ForeignKey(Job, on_delete=models.CASCADE, related_name="trips")
-    client = models.ForeignKey("masters.Client", on_delete=models.PROTECT, related_name="trips")
+    # Blank only for an Empty Trip (the truck ran with no cargo / customer, so there's
+    # nothing to bill and nothing to invoice).
+    client = models.ForeignKey("masters.Client", on_delete=models.PROTECT, related_name="trips", null=True, blank=True)
+    # An empty leg - no client, no tonnage, no freight. Still has its own vehicle, route and dates.
+    empty_trip = models.BooleanField("Empty Trip", default=False)
 
-    # Same vehicle as the parent Job throughout - meter chaining across trips
-    # (Departure Meter -> Arrival Meter -> next trip's Departure Meter) only
-    # makes sense for one continuous vehicle.
+    # Normally the same vehicle as the parent Job throughout - meter chaining across
+    # trips (Departure Meter -> Arrival Meter -> next trip's Departure Meter) chains
+    # trips that share a vehicle; a Job started without one (or a monthly rental job)
+    # lets each trip pick its own, and the chain follows that vehicle instead.
     vehicle = models.ForeignKey("masters.Vehicle", on_delete=models.PROTECT, editable=False)
     trip_no = models.CharField(max_length=50, blank=True, editable=False)
     trip_date = models.DateField()
@@ -230,13 +245,18 @@ class Trip(models.Model):
                 super().save(update_fields=["trip_no"])
             return
 
-        self.vehicle = self.job.vehicle
+        # A Job with its own fixed vehicle: every trip uses it, as always. A Job started
+        # without one picks its vehicle per trip instead (the form already set it).
+        if not self.vehicle_id:
+            self.vehicle = self.job.vehicle
         if not self.vehicle_type_id:
             self.vehicle_type_id = self.vehicle.vehicle_type_id
 
-        # Departure meter chains from the previous trip's arrival meter in
-        # this same job, else the vehicle's current KM (first leg).
-        previous = Trip.objects.filter(job=self.job).exclude(pk=self.pk).order_by("id").last()
+        # Departure meter chains from the previous trip ON THIS SAME VEHICLE in this
+        # job, else that vehicle's current KM (its first leg here) - so a Job whose
+        # trips use different vehicles chains each vehicle's own run separately
+        # instead of handing one vehicle's meter to another.
+        previous = Trip.objects.filter(job=self.job, vehicle=self.vehicle_id).exclude(pk=self.pk).order_by("id").last()
         if previous and previous.arrival_meter is not None:
             self.departure_meter = previous.arrival_meter
         else:
@@ -279,7 +299,10 @@ class Trip(models.Model):
         """Freight = Updated Trip Cost of the Client Rate in force on the trip's
         date + Additional Charges. Must match vehicle type AND weight exactly -
         a rate for a different tonnage on the same route/vehicle type must
-        never be substituted in, even if it's the only one on file."""
+        never be substituted in, even if it's the only one on file.
+        An Empty Trip has no client/tonnage to rate - nothing to bill."""
+        if self.empty_trip:
+            return (self.additional_charges or 0) + (self.stopover_charges or 0)
         rate = matching_trip_cost(self.client_id, self.route_id, self.vehicle_type_id, self.weight, self.trip_date,
                                   sub_category_id=self.sub_category_id)
         return (rate or 0) + (self.additional_charges or 0) + (self.stopover_charges or 0)
