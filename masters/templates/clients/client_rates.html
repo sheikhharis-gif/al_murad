@@ -857,12 +857,13 @@ document.addEventListener('DOMContentLoaded', function () {
         // Same fuel product first; else an older entry saved with no fuel
         // product (same as the server does when the entry is saved).
         var info = lastByRoute[rateCategoryKey()] || lastByRoute[rateCategoryKey('')];
+        var latestFuelPrice = fuelProductSelect && latestFuelPrices[fuelProductSelect.value];
         if (info) {
             curFuel.value = info.fuel_price;
             curRate.value = info.trip_cost;
             if (effPct && !effPct.dataset.touched) effPct.value = info.effective_percent;
+            if (updatedFuel && !updatedFuel.dataset.touched) updatedFuel.value = latestFuelPrice || info.fuel_price;
         } else {
-            var latestFuelPrice = fuelProductSelect && latestFuelPrices[fuelProductSelect.value];
             curFuel.value = latestFuelPrice || '';
             if (updatedFuel && !updatedFuel.dataset.touched) updatedFuel.value = latestFuelPrice || '';
         }

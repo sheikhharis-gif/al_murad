@@ -131,10 +131,18 @@ def invoice_select(request):
                 cells.append((key, str(value) if value not in (None, "") else "--", False))
         trip_rows.append({"id": t.id, "total": t.freight, "cells": cells})
 
+    companies = Company.objects.filter(is_active=True).order_by("name")
+    client_provider_id = None
+    if client and client.billing_company:
+        match = companies.filter(name__iexact=client.billing_company).first()
+        if match:
+            client_provider_id = match.pk
+
     return render(request, "operations/invoice_select.html", {
         "clients": Client.objects.order_by("name"),
-        "companies": Company.objects.filter(is_active=True).order_by("name"),
+        "companies": companies,
         "client": client,
+        "client_provider_id": client_provider_id,
         "start_date": start_date, "end_date": end_date,
         "sub_category": sub_category,
         # every client's sub-categories; the page shows the chosen client's (if it has them on)

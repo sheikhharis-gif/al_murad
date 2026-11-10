@@ -31,7 +31,7 @@
                         <label class="form-label small fw-bold text-muted">Job #</label>
                         <div class="fw-bold fs-6">{{ job.job_code }}</div>
                     </div>
-                    <div class="col-md-2 {% if job.is_rental %}d-none{% endif %}" id="own-vehicle-block">
+                    <div class="col-md-2 {% if job.is_rental or not job.vehicle_id %}d-none{% endif %}" id="own-vehicle-block">
                         <label class="form-label small fw-bold text-muted">Vehicle</label>
                         {{ job_form.vehicle }}
                     </div>
@@ -70,6 +70,7 @@
                     </div>
                     {% endif %}
 
+                    {% if job.vehicle_id or job.rental_pool %}
                     <div class="col-md-2">
                         <label class="form-label small fw-bold text-muted">Meter Out</label>
                         <div class="fw-bold">{{ job.meter_out|default_if_none:"--" }}</div>
@@ -82,6 +83,7 @@
                         <label class="form-label small fw-bold text-muted">Running KMs</label>
                         <div class="fw-bold">{{ job.running_kms|default_if_none:"--" }}</div>
                     </div>
+                    {% endif %}
                     <div class="col-md-2">
                         <label class="form-label small fw-bold text-muted">Fuel In Liters</label>
                         <div class="fw-bold">{{ job.fuel_in_liters|floatformat:2 }}</div>
@@ -514,6 +516,26 @@
         document.querySelectorAll('.trip-block').forEach(syncEmptyTrip);
         document.getElementById('trip-formset').addEventListener('change', function (e) {
             if (e.target.matches('input.trip-empty')) syncEmptyTrip(e.target.closest('.trip-block'));
+        });
+
+        // Vehicle Type auto-fill: when a per-trip vehicle is selected, set
+        // the Vehicle Type dropdown to that vehicle's type (unless the user
+        // already chose a different type for this trip).
+        function syncVehicleType(block) {
+            var vehSel = block.querySelector('select[name$="-vehicle"]');
+            if (!vehSel) return;
+            var vtSel = block.querySelector('select[name$="-vehicle_type"]');
+            if (!vtSel) return;
+            var opt = vehSel.options[vehSel.selectedIndex];
+            if (!opt || !opt.value) return;
+            var vtId = opt.getAttribute('data-vehicle-type');
+            if (vtId) {
+                vtSel.value = vtId;
+                vtSel.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+        }
+        document.getElementById('trip-formset').addEventListener('change', function (e) {
+            if (e.target.matches('select[name$="-vehicle"]')) syncVehicleType(e.target.closest('.trip-block'));
         });
 
         // Stopover Charges: filled in from the Stopover Rates table (vehicle

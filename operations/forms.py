@@ -47,7 +47,15 @@ class VehicleJobChoiceField(forms.ModelChoiceField):
 
 
 class JobForm(forms.ModelForm):
-    vehicle = VehicleJobChoiceField(queryset=Vehicle.objects.none(), required=False)
+    vehicle = VehicleJobChoiceField(
+        queryset=Vehicle.objects.none(), required=False,
+        widget=forms.Select(attrs={
+            "class": "form-select dropdown-search-select",
+            "data-match": "contains", "data-theme": "light",
+            "data-placeholder": "Type vehicle number or job # ...",
+            "data-empty-text": "No matching vehicle",
+        }),
+    )
 
     # Not Job model fields - "Rental" just picks/creates a Vehicle record
     # (vehicle_mode="RENTAL") on the fly from a typed-in number instead of
@@ -71,7 +79,6 @@ class JobForm(forms.ModelForm):
         model = Job
         fields = ["vehicle", "rental_supplier", "rental_month", "job_date", "trip_advance", "remarks"]
         widgets = {
-            "vehicle": forms.Select(attrs={"class": "form-select searchable-select", "autofocus": "autofocus"}),
             "rental_month": forms.DateInput(attrs={"class": "form-control", "type": "month"}, format="%Y-%m"),
             "rental_supplier": forms.Select(attrs={
                 "class": "form-select dropdown-search-select", "data-match": "contains", "data-theme": "light",
@@ -175,6 +182,18 @@ class StopoverCitySelect(forms.Select):
         return option
 
 
+class VehicleSelect(forms.Select):
+    """Vehicle dropdown whose options carry the vehicle's type (data-vehicle-type),
+    so JS can auto-fill Vehicle Type when a vehicle is selected on a trip."""
+
+    def create_option(self, name, value, label, selected, index, subindex=None, attrs=None):
+        option = super().create_option(name, value, label, selected, index, subindex, attrs)
+        instance = getattr(value, "instance", None)
+        if instance is not None and instance.vehicle_type_id:
+            option["attrs"]["data-vehicle-type"] = instance.vehicle_type_id
+        return option
+
+
 class TripForm(forms.ModelForm):
     class Meta:
         model = Trip
@@ -230,7 +249,7 @@ class TripForm(forms.ModelForm):
     # (BaseTripFormSet drops this field again on a Job that already has one).
     vehicle = forms.ModelChoiceField(
         queryset=Vehicle.objects.none(), required=False, label="Vehicle #",
-        widget=forms.Select(attrs={
+        widget=VehicleSelect(attrs={
             "class": "form-select form-select-sm dropdown-search-select",
             "data-match": "contains", "data-theme": "light",
             "data-placeholder": "Type vehicle number...", "data-empty-text": "No matching vehicle",
