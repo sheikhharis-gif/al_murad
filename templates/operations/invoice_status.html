@@ -49,6 +49,7 @@
                         <th class="text-end">Tax</th>
                         <th class="text-end">Grand Total</th>
                         <th>Status</th>
+                        <th title="Withholding Tax % - 7% by default, change it per invoice">WHT %</th>
                         <th class="text-end pe-3">Action</th>
                     </tr>
                 </thead>
@@ -78,6 +79,15 @@
                                 </select>
                             </form>
                         </td>
+                        <td>
+                            {# belongs to the payment form below (form= attribute); saves as soon as it is changed #}
+                            <div class="input-group input-group-sm wht-box" title="Withholding Tax % - 7% by default, change it and press Enter">
+                                <input type="number" name="wht_percent" form="pay-{{ inv.id }}" class="form-control wht-input"
+                                       step="0.01" min="0" max="100" value="{{ inv.wht_percent|stringformat:'s' }}"
+                                       {% if inv.is_cancelled %}disabled{% endif %}>
+                                <span class="input-group-text">%</span>
+                            </div>
+                        </td>
                         <td class="text-end pe-3 text-nowrap">
                             <a href="{% url 'invoice_redownload' inv.id %}?format=pdf" class="btn btn-sm btn-outline-danger fw-bold" title="Download PDF">
                                 <i class="bi bi-file-earmark-pdf"></i> PDF
@@ -88,8 +98,8 @@
                         </td>
                     </tr>
                     <tr class="inv-detail">
-                        <td colspan="10" class="ps-3 pe-3 pt-0">
-                            <form method="post" action="{% url 'invoice_payment_update' inv.id %}" class="pay-form"
+                        <td colspan="11" class="ps-3 pe-3 pt-0">
+                            <form method="post" action="{% url 'invoice_payment_update' inv.id %}" class="pay-form" id="pay-{{ inv.id }}"
                                   data-grand="{{ inv.grand_total|stringformat:'s' }}" data-gst="{{ inv.gst_withheld|stringformat:'s' }}">
                                 {% csrf_token %}
                                 <input type="hidden" name="sort_by" value="{{ sort_by }}">
@@ -113,11 +123,6 @@
                                               title="{% if inv.is_paid %}Due Date minus Cheque Date{% else %}Days left until the Due Date (negative = overdue){% endif %}">
                                             {% if d is None %}-{% else %}{{ d }}{% endif %}</span>
                                         {% endwith %}
-                                    </div>
-                                    <div class="pay-field pay-narrow">
-                                        <label>WHT %</label>
-                                        <input type="number" name="wht_percent" class="form-control form-control-sm wht-input" step="0.01" min="0" max="100"
-                                               value="{{ inv.wht_percent|stringformat:'s' }}" {% if inv.is_cancelled %}disabled{% endif %}>
                                     </div>
                                     <div class="pay-field pay-read">
                                         <label>WHT</label>
@@ -170,9 +175,9 @@
                     </tr>
                 </tbody>
                 {% empty %}
-                <tbody><tr><td colspan="10" class="text-center py-5 text-muted">No invoices generated yet.</td></tr></tbody>
+                <tbody><tr><td colspan="11" class="text-center py-5 text-muted">No invoices generated yet.</td></tr></tbody>
                 {% endfor %}
-                <tbody><tr id="invoiceNoMatch" style="display:none;"><td colspan="10" class="text-center py-4 text-muted">No matching invoice.</td></tr></tbody>
+                <tbody><tr id="invoiceNoMatch" style="display:none;"><td colspan="11" class="text-center py-4 text-muted">No matching invoice.</td></tr></tbody>
             </table>
         </div>
     </div>
@@ -231,7 +236,8 @@
         var fmt = function (n) { return Math.round(n).toLocaleString('en-US'); };
         document.querySelectorAll('form.pay-form').forEach(function (form) {
             var grand = parseFloat(form.dataset.grand) || 0, gst = parseFloat(form.dataset.gst) || 0;
-            var wht = form.querySelector('.wht-input'), cheque = form.querySelector('.cheque-input');
+            // the WHT % box sits in the invoice's main row, linked to this form by form="pay-<id>"
+            var wht = form.elements['wht_percent'], cheque = form.querySelector('.cheque-input');
             var save = form.querySelector('.pay-save');
             function recalc() {
                 var whtAmt = Math.round(grand * (parseFloat(wht.value) || 0)) / 100;
@@ -242,6 +248,11 @@
                 form.querySelector('.diff-amount').textContent = c === null || isNaN(c) ? '-' : fmt(c - net);
             }
             form.addEventListener('input', function () { recalc(); if (save) save.classList.add('btn-warning'); });
+            if (wht && !wht.disabled) {
+                wht.addEventListener('input', recalc);
+                // a changed WHT % saves on its own (Enter or clicking away) - no need to press Save
+                wht.addEventListener('change', function () { if (wht.checkValidity()) form.submit(); });
+            }
         });
     });
 
@@ -294,7 +305,8 @@
     .pay-field { display: flex; flex-direction: column; min-width: 95px; }
     .pay-field label { font-size: .68rem; text-transform: uppercase; letter-spacing: .03em; color: #64748b; font-weight: 600; margin-bottom: 2px; }
     .pay-field input { min-width: 120px; }
-    .pay-narrow input { min-width: 75px; width: 75px; }
+    .wht-box { width: 95px; }
+    .wht-box input { min-width: 0; }
     .pay-read span { padding: .25rem 0; font-variant-numeric: tabular-nums; }
     .pay-sep { width: 1px; align-self: stretch; background: #cbd5e1; margin: 0 .25rem; }
     .pay-locked:disabled { background: #eef2f7; cursor: not-allowed; }
