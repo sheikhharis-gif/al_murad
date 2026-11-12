@@ -503,8 +503,12 @@ class GeneratedInvoice(models.Model):
         ("DRAFT", "Generated (Draft)"),
         ("SENT", "Submitted"),
         ("PAID", "Payment Received"),
+        ("ST_DONE", "Sales Tax Submitted"),
+        ("ST_PENDING", "Sales Tax Not Submitted"),
         ("CANCELLED", "Cancelled"),
     ]
+    # The sales tax stages come after the payment, so they count as paid: cheque details stay open.
+    PAID_STATUSES = ("PAID", "ST_DONE", "ST_PENDING")
     TAX_MODE_CHOICES = [("FULL", "Full"), ("PARTIAL", "Partial")]
     # Invoices Status: the GST withheld by the client is a fixed 20% of the invoice's sales tax.
     GST_WITHHELD_PERCENT = Decimal(20)
@@ -561,7 +565,7 @@ class GeneratedInvoice(models.Model):
         due = self.due_date
         if not due or self.status == "CANCELLED":
             return None
-        if self.status == "PAID":
+        if self.is_paid:
             return (due - self.cheque_date).days if self.cheque_date else None
         return (due - pk_today()).days
 
@@ -571,7 +575,7 @@ class GeneratedInvoice(models.Model):
 
     @property
     def is_paid(self):
-        return self.status == "PAID"
+        return self.status in self.PAID_STATUSES
 
     @property
     def is_overdue(self):

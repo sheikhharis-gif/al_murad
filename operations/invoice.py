@@ -466,12 +466,12 @@ def invoice_status_update(request, invoice_id):
         elif status in dict(GeneratedInvoice.STATUS_CHOICES):
             invoice.status = status
             fields = ["status"]
-            if status in ("SENT", "PAID") and not invoice.submission_date:
+            if status != "DRAFT" and status != "CANCELLED" and not invoice.submission_date:
                 # Submitted today unless a different date is typed in afterwards.
                 invoice.submission_date = pk_today()
                 fields.append("submission_date")
             invoice.save(update_fields=fields)
-            if status == "PAID":
+            if invoice.is_paid and not invoice.cheque_amount:
                 messages.info(request, f"{invoice.invoice_no} marked Payment Received - "
                                        "enter its Cheque # / IBAN, Bank, Cheque Date and Amount below it and press Save.")
     return redirect(_back_to_list(request))
@@ -503,9 +503,9 @@ def invoice_payment_update(request, invoice_id):
     except InvalidOperation:
         errors.append("WHT % must be a number from 0 to 100")
 
-    if invoice.status in ("SENT", "PAID") and "submission_date" in post:
+    if invoice.status != "DRAFT" and "submission_date" in post:
         invoice.submission_date = _parse_date(post.get("submission_date"))
-    if invoice.status == "PAID":
+    if invoice.is_paid:
         invoice.cheque_no = (post.get("cheque_no") or "").strip()[:60]
         invoice.bank_name = (post.get("bank_name") or "").strip()[:80]
         invoice.cheque_date = _parse_date(post.get("cheque_date"))

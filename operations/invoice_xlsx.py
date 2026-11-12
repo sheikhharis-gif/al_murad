@@ -447,7 +447,8 @@ STATUS_COLUMNS = [
     ("Net\nReceivable", 11, RED), ("Cheque # / IBAN", 14, RED), ("Bank Name", 14, RED),
     ("Cheque Date", 10, RED), ("Cheque Amount", 11, RED), ("Difference", 10, RED),
 ]
-STATUS_FILLS = {"Over Due": "FFFF0000", "Payment Received": "FF92D050"}
+STATUS_FILLS = {"Over Due": "FFFF0000", "Payment Received": "FF92D050",
+                "Sales Tax Submitted": "FF00B050", "Sales Tax Not Submitted": "FFFFC000"}
 PROVINCE_CODES = ["SINDH", "PUNJAB", "ICT", "KPK", "BALOCHISTAN"]   # columns L..P
 
 
@@ -472,7 +473,7 @@ def build_status(rows):
     for inv, taxes in rows:
         status = inv.display_status
         cancelled = inv.status == "CANCELLED"
-        paid = inv.status == "PAID"
+        paid = inv.is_paid
         if inv.submission_date and not cancelled:
             days = f"=IF(X{r}=\"\",\"\",F{r}-X{r})" if paid else f'=IFERROR(F{r}-TODAY(),"")'
         else:
