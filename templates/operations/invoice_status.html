@@ -5,7 +5,9 @@
 
     <div class="mb-4">
         <h3 class="fw-bold text-dark mb-1"><i class="bi bi-list-check text-primary me-2"></i>Invoices Status</h3>
-        <p class="text-muted small mb-0">Every invoice generated from Generate Invoice, with its own status you can update as it moves along.</p>
+        <p class="text-muted small mb-0">Every invoice generated from Generate Invoice, with its own status you can update as it moves along.
+            A <b>Submitted</b> invoice turns <b class="text-danger">Over Due</b> by itself once its Due Date (Submission Date + Payment Terms) passes.
+            Cheque # / IBAN, Bank Name, Cheque Date and Cheque Amount open up once the status is <b>Payment Received</b>.</p>
     </div>
 
     <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
@@ -28,14 +30,14 @@
                 <div class="input-group w-auto">
                     <span class="input-group-text bg-light border-0"><i class="bi bi-search"></i></span>
                     <input type="text" id="invoiceSearch" class="form-control bg-light border-0 small" style="min-width:260px;"
-                           placeholder="Search invoice #, client, service provider, status..." autocomplete="off" value="{{ q }}">
+                           placeholder="Search invoice #, client, service provider, status, cheque..." autocomplete="off" value="{{ q }}">
                 </div>
                 <a id="invoiceExcel" href="{% url 'invoice_status_excel' %}?sort_by={{ sort_by }}&order={{ order }}&q={{ q|urlencode }}"
                    class="btn btn-success btn-sm fw-bold px-3"><i class="bi bi-file-earmark-excel me-1"></i>Download Excel</a>
             </div>
         </div>
         <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0 small">
+            <table class="table align-middle mb-0 small invoice-table">
                 <thead class="bg-light text-muted text-uppercase">
                     <tr>
                         <th class="ps-3">Invoice #</th>
@@ -50,30 +52,33 @@
                         <th class="text-end pe-3">Action</th>
                     </tr>
                 </thead>
-                <tbody id="invoiceTableBody">
-                    {% for inv in invoices %}
-                    <tr {% if inv.status == "CANCELLED" %}class="text-muted" style="opacity:.6"{% endif %}>
+                {% for inv in invoices %}
+                <tbody class="inv-group{% if inv.is_cancelled %} inv-cancelled{% endif %}">
+                    <tr class="inv-main">
                         <td class="ps-3 fw-bold">{{ inv.invoice_no }}</td>
                         <td>{{ inv.created_at|date:"d-M-y" }}</td>
                         <td>{{ inv.client.name }}</td>
                         <td>{{ inv.provider_name }}</td>
-                        <td class="text-center">{{ inv.trips.count }}</td>
-                        <td class="text-end">{{ inv.subtotal|floatformat:0 }}</td>
-                        <td class="text-end">{{ inv.tax_amount|floatformat:0 }}</td>
-                        <td class="text-end fw-bold">{{ inv.grand_total|floatformat:0 }}</td>
+                        <td class="text-center">{{ inv.trips.all|length }}</td>
+                        <td class="text-end">{{ inv.subtotal|floatformat:"0g" }}</td>
+                        <td class="text-end">{{ inv.tax_amount|floatformat:"0g" }}</td>
+                        <td class="text-end fw-bold">{{ inv.grand_total|floatformat:"0g" }}</td>
                         <td>
                             <form method="post" action="{% url 'invoice_status_update' inv.id %}" class="d-inline">
                                 {% csrf_token %}
-                                <select name="status" class="form-select form-select-sm status-select status-{{ inv.status|lower }}"
-                                        data-invoice="{{ inv.invoice_no }}" data-trips="{{ inv.trips.count }}"
-                                        data-url="{% url 'invoice_status_update' inv.id %}" {% if inv.status == "CANCELLED" %}disabled title="Cancelled invoices can't be changed"{% endif %}>
+                                <input type="hidden" name="sort_by" value="{{ sort_by }}">
+                                <input type="hidden" name="order" value="{{ order }}">
+                                <input type="hidden" name="q" value="{{ q }}" class="keep-q">
+                                <select name="status" class="form-select form-select-sm status-select status-{% if inv.is_overdue %}overdue{% else %}{{ inv.status|lower }}{% endif %}"
+                                        data-invoice="{{ inv.invoice_no }}" data-trips="{{ inv.trips.all|length }}"
+                                        data-url="{% url 'invoice_status_update' inv.id %}" {% if inv.is_cancelled %}disabled title="Cancelled invoices can't be changed"{% endif %}>
                                     {% for code, label in status_choices %}
-                                    <option value="{{ code }}" {% if inv.status == code %}selected{% endif %}>{{ label }}</option>
+                                    <option value="{{ code }}" {% if inv.status == code %}selected{% endif %}>{% if code == "SENT" and inv.is_overdue %}Over Due{% else %}{{ label }}{% endif %}</option>
                                     {% endfor %}
                                 </select>
                             </form>
                         </td>
-                        <td class="text-end pe-3">
+                        <td class="text-end pe-3 text-nowrap">
                             <a href="{% url 'invoice_redownload' inv.id %}?format=pdf" class="btn btn-sm btn-outline-danger fw-bold" title="Download PDF">
                                 <i class="bi bi-file-earmark-pdf"></i> PDF
                             </a>
@@ -82,11 +87,92 @@
                             </a>
                         </td>
                     </tr>
-                    {% empty %}
-                    <tr><td colspan="10" class="text-center py-5 text-muted">No invoices generated yet.</td></tr>
-                    {% endfor %}
-                    <tr id="invoiceNoMatch" style="display:none;"><td colspan="10" class="text-center py-4 text-muted">No matching invoice.</td></tr>
+                    <tr class="inv-detail">
+                        <td colspan="10" class="ps-3 pe-3 pt-0">
+                            <form method="post" action="{% url 'invoice_payment_update' inv.id %}" class="pay-form"
+                                  data-grand="{{ inv.grand_total|stringformat:'s' }}" data-gst="{{ inv.gst_withheld|stringformat:'s' }}">
+                                {% csrf_token %}
+                                <input type="hidden" name="sort_by" value="{{ sort_by }}">
+                                <input type="hidden" name="order" value="{{ order }}">
+                                <input type="hidden" name="q" value="{{ q }}" class="keep-q">
+                                <div class="pay-strip">
+                                    <div class="pay-field">
+                                        <label>Submission Date</label>
+                                        <input type="date" name="submission_date" class="form-control form-control-sm"
+                                               value="{{ inv.submission_date|date:'Y-m-d' }}"
+                                               {% if inv.is_cancelled or inv.status == "DRAFT" %}disabled title="Set once the invoice is Submitted"{% endif %}>
+                                    </div>
+                                    <div class="pay-field pay-read">
+                                        <label>Due Date</label>
+                                        <span>{{ inv.due_date|date:"d-M-y"|default:"-" }}</span>
+                                    </div>
+                                    <div class="pay-field pay-read">
+                                        <label>Days</label>
+                                        {% with d=inv.days_count %}
+                                        <span class="{% if d is not None and d < 0 %}text-danger fw-bold{% elif d is not None %}text-success fw-bold{% endif %}"
+                                              title="{% if inv.is_paid %}Due Date minus Cheque Date{% else %}Days left until the Due Date (negative = overdue){% endif %}">
+                                            {% if d is None %}-{% else %}{{ d }}{% endif %}</span>
+                                        {% endwith %}
+                                    </div>
+                                    <div class="pay-field pay-narrow">
+                                        <label>WHT %</label>
+                                        <input type="number" name="wht_percent" class="form-control form-control-sm wht-input" step="0.01" min="0" max="100"
+                                               value="{{ inv.wht_percent|stringformat:'s' }}" {% if inv.is_cancelled %}disabled{% endif %}>
+                                    </div>
+                                    <div class="pay-field pay-read">
+                                        <label>WHT</label>
+                                        <span class="wht-amount">{{ inv.wht_amount|floatformat:"0g" }}</span>
+                                    </div>
+                                    <div class="pay-field pay-read">
+                                        <label>GST 20%</label>
+                                        <span>{{ inv.gst_withheld|floatformat:"0g" }}</span>
+                                    </div>
+                                    <div class="pay-field pay-read">
+                                        <label>Net Receivable</label>
+                                        <span class="net-amount fw-bold text-primary">{{ inv.net_receivable|floatformat:"0g" }}</span>
+                                    </div>
+                                    <div class="pay-sep"></div>
+                                    <div class="pay-field">
+                                        <label>Cheque # / IBAN</label>
+                                        <input type="text" name="cheque_no" class="form-control form-control-sm pay-locked" maxlength="60"
+                                               value="{{ inv.cheque_no }}" {% if not inv.is_paid %}disabled{% endif %}>
+                                    </div>
+                                    <div class="pay-field">
+                                        <label>Bank Name</label>
+                                        <input type="text" name="bank_name" class="form-control form-control-sm pay-locked" maxlength="80"
+                                               value="{{ inv.bank_name }}" {% if not inv.is_paid %}disabled{% endif %}>
+                                    </div>
+                                    <div class="pay-field">
+                                        <label>Cheque Date</label>
+                                        <input type="date" name="cheque_date" class="form-control form-control-sm pay-locked"
+                                               value="{{ inv.cheque_date|date:'Y-m-d' }}" {% if not inv.is_paid %}disabled{% endif %}>
+                                    </div>
+                                    <div class="pay-field">
+                                        <label>Cheque Amount</label>
+                                        <input type="number" name="cheque_amount" class="form-control form-control-sm pay-locked cheque-input" step="0.01"
+                                               value="{% if inv.cheque_amount is not None %}{{ inv.cheque_amount|stringformat:'s' }}{% endif %}" {% if not inv.is_paid %}disabled{% endif %}>
+                                    </div>
+                                    <div class="pay-field pay-read">
+                                        <label>Difference</label>
+                                        <span class="diff-amount">{% if inv.difference is not None %}{{ inv.difference|floatformat:"0g" }}{% else %}-{% endif %}</span>
+                                    </div>
+                                    {% if not inv.is_cancelled %}
+                                    <div class="pay-field align-self-end">
+                                        <button type="submit" class="btn btn-sm btn-primary fw-bold px-3 pay-save"><i class="bi bi-check2 me-1"></i>Save</button>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                                {% if not inv.is_paid and not inv.is_cancelled %}
+                                <div class="pay-hint">Cheque details open up once the status is Payment Received.</div>
+                                {% endif %}
+                            </form>
+                        </td>
+                    </tr>
                 </tbody>
+                {% empty %}
+                <tbody><tr><td colspan="10" class="text-center py-5 text-muted">No invoices generated yet.</td></tr></tbody>
+                {% endfor %}
+                <tbody><tr id="invoiceNoMatch" style="display:none;"><td colspan="10" class="text-center py-4 text-muted">No matching invoice.</td></tr></tbody>
             </table>
         </div>
     </div>
@@ -97,6 +183,9 @@
         <form method="post" id="cancelForm" class="modal-content rounded-4 border-0 shadow">
             {% csrf_token %}
             <input type="hidden" name="status" value="CANCELLED">
+            <input type="hidden" name="sort_by" value="{{ sort_by }}">
+            <input type="hidden" name="order" value="{{ order }}">
+            <input type="hidden" name="q" value="{{ q }}" class="keep-q">
             <div class="modal-header border-0 pb-0">
                 <h5 class="modal-title fw-bold text-danger"><i class="bi bi-exclamation-octagon me-2"></i>Cancel invoice?</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
@@ -137,9 +226,26 @@
         });
         input.addEventListener('input', function () { go.disabled = input.value.trim().toUpperCase() !== need.toUpperCase(); });
         document.getElementById('cancelModal').addEventListener('shown.bs.modal', function () { input.focus(); });
+
+        // Payment strip: WHT, Net Receivable and Difference follow what is typed, before Save.
+        var fmt = function (n) { return Math.round(n).toLocaleString('en-US'); };
+        document.querySelectorAll('form.pay-form').forEach(function (form) {
+            var grand = parseFloat(form.dataset.grand) || 0, gst = parseFloat(form.dataset.gst) || 0;
+            var wht = form.querySelector('.wht-input'), cheque = form.querySelector('.cheque-input');
+            var save = form.querySelector('.pay-save');
+            function recalc() {
+                var whtAmt = Math.round(grand * (parseFloat(wht.value) || 0)) / 100;
+                var net = grand - gst - whtAmt;
+                form.querySelector('.wht-amount').textContent = fmt(whtAmt);
+                form.querySelector('.net-amount').textContent = fmt(net);
+                var c = cheque.value === '' ? null : parseFloat(cheque.value);
+                form.querySelector('.diff-amount').textContent = c === null || isNaN(c) ? '-' : fmt(c - net);
+            }
+            form.addEventListener('input', function () { recalc(); if (save) save.classList.add('btn-warning'); });
+        });
     });
 
-    // Live search: type any part of an invoice #, client, service provider or status.
+    // Live search: type any part of an invoice #, client, service provider, status or cheque detail.
     // Changing Sort by / order keeps whatever is typed in the search box.
     function sortSubmit() {
         document.getElementById('sortQ').value = document.getElementById('invoiceSearch').value.trim();
@@ -148,18 +254,21 @@
     var excelLink = document.getElementById('invoiceExcel');
     var excelBase = excelLink.href.split('&q=')[0];
     document.getElementById('invoiceSearch').addEventListener('input', function () {
+        var typed = this.value.trim();
         // the Excel download follows the search box (and the Sort by choice already in the link)
-        excelLink.href = excelBase + '&q=' + encodeURIComponent(this.value.trim());
-        var q = this.value.trim().toLowerCase();
+        excelLink.href = excelBase + '&q=' + encodeURIComponent(typed);
+        // saving a row comes back to the same search
+        document.querySelectorAll('input.keep-q').forEach(function (h) { h.value = typed; });
+        var q = typed.toLowerCase();
         var shown = 0;
-        document.querySelectorAll('#invoiceTableBody tr:not(#invoiceNoMatch)').forEach(function (row) {
-            if (row.cells.length < 3) return;   // the "No invoices generated yet" row
-            var text = row.innerText.toLowerCase();
-            // the Status cell is a <select>: include its chosen option's text too
-            var sel = row.querySelector('select');
+        document.querySelectorAll('tbody.inv-group').forEach(function (group) {
+            var text = group.querySelector('tr.inv-main').innerText.toLowerCase();
+            // the Status cell is a <select>: include its chosen option's text too, and the cheque details
+            var sel = group.querySelector('select.status-select');
             if (sel) text += ' ' + sel.options[sel.selectedIndex].text.toLowerCase();
+            group.querySelectorAll('input[name=cheque_no], input[name=bank_name]').forEach(function (i) { text += ' ' + i.value.toLowerCase(); });
             var match = !q || text.indexOf(q) > -1;
-            row.style.display = match ? '' : 'none';
+            group.style.display = match ? '' : 'none';
             if (match) shown += 1;
         });
         document.getElementById('invoiceNoMatch').style.display = (q && !shown) ? '' : 'none';
@@ -167,10 +276,28 @@
 </script>
 
 <style>
-    .status-select { min-width: 120px; font-weight: 600; }
+    .status-select { min-width: 160px; font-weight: 600; }
     .status-draft { color: #64748b; }
     .status-sent { color: #2563eb; }
-    .status-paid { color: #16a34a; }
+    .status-overdue { color: #fff; background-color: #dc2626; }
+    .status-paid { color: #fff; background-color: #16a34a; }
     .status-cancelled { color: #dc2626; }
+
+    .invoice-table tbody.inv-group { border-bottom: 2px solid #e2e8f0; }
+    .invoice-table tbody.inv-group:hover tr.inv-main { background: #f8fafc; }
+    .invoice-table tr.inv-main td { border-bottom: 0; }
+    .invoice-table tr.inv-detail td { background: #f8fafc; }
+    .inv-cancelled { opacity: .6; }
+    .inv-cancelled td { color: #94a3b8; }
+
+    .pay-strip { display: flex; flex-wrap: wrap; gap: .5rem .9rem; align-items: flex-end; padding: .5rem .25rem .25rem; }
+    .pay-field { display: flex; flex-direction: column; min-width: 95px; }
+    .pay-field label { font-size: .68rem; text-transform: uppercase; letter-spacing: .03em; color: #64748b; font-weight: 600; margin-bottom: 2px; }
+    .pay-field input { min-width: 120px; }
+    .pay-narrow input { min-width: 75px; width: 75px; }
+    .pay-read span { padding: .25rem 0; font-variant-numeric: tabular-nums; }
+    .pay-sep { width: 1px; align-self: stretch; background: #cbd5e1; margin: 0 .25rem; }
+    .pay-locked:disabled { background: #eef2f7; cursor: not-allowed; }
+    .pay-hint { font-size: .7rem; color: #94a3b8; padding: 0 .25rem .25rem; }
 </style>
 {% endblock %}

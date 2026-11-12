@@ -1,6 +1,15 @@
+from datetime import timedelta
+from decimal import Decimal
+from zoneinfo import ZoneInfo
+
 from django.db import models
 from django.utils import timezone
 from masters.models import Vehicle, VehicleType
+
+
+def pk_today():
+    """Today's date in Pakistan (the server runs on UTC)."""
+    return timezone.now().astimezone(ZoneInfo("Asia/Karachi")).date()
 
 
 def _format_duration(start, end):
@@ -488,13 +497,18 @@ class Invoice(models.Model):
 # it originally.
 # -----------------------
 class GeneratedInvoice(models.Model):
+    # "Over Due" is not stored: a Submitted invoice whose Due Date has passed shows as Over Due
+    # on its own (see display_status), and goes back to normal once marked Payment Received.
     STATUS_CHOICES = [
-        ("DRAFT", "Draft"),
-        ("SENT", "Sent"),
-        ("PAID", "Paid"),
+        ("DRAFT", "Generated (Draft)"),
+        ("SENT", "Submitted"),
+        ("PAID", "Payment Received"),
         ("CANCELLED", "Cancelled"),
     ]
     TAX_MODE_CHOICES = [("FULL", "Full"), ("PARTIAL", "Partial")]
+    # Invoices Status: the GST withheld by the client is a fixed 20% of the invoice's sales tax.
+    GST_WITHHELD_PERCENT = Decimal(20)
+    DEFAULT_WHT_PERCENT = Decimal(7)
 
     invoice_no = models.CharField(max_length=30, unique=True, editable=False)
     client = models.ForeignKey("masters.Client", on_delete=models.PROTECT, related_name="generated_invoices")
@@ -523,8 +537,65 @@ class GeneratedInvoice(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     created_by = models.ForeignKey("auth.User", on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
 
+    # Invoices Status tracking. Due Date = Submission Date + payment_days.
+    submission_date = models.DateField(null=True, blank=True)
+    wht_percent = models.DecimalField("WHT %", max_digits=5, decimal_places=2, default=DEFAULT_WHT_PERCENT)
+    # Filled in once the payment is received.
+    cheque_no = models.CharField("Cheque # / IBAN", max_length=60, blank=True)
+    bank_name = models.CharField(max_length=80, blank=True)
+    cheque_date = models.DateField(null=True, blank=True)
+    cheque_amount = models.DecimalField(max_digits=14, decimal_places=2, null=True, blank=True)
+
     class Meta:
         ordering = ["-created_at", "-id"]
+
+    # ---- Invoices Status figures (the same sums the Excel download writes as formulas)
+    @property
+    def due_date(self):
+        return self.submission_date + timedelta(days=self.payment_days) if self.submission_date else None
+
+    @property
+    def days_count(self):
+        """Days left until the Due Date (negative = days overdue). Once paid, it is counted
+        to the Cheque Date instead of today, so it shows how early/late the payment came."""
+        due = self.due_date
+        if not due or self.status == "CANCELLED":
+            return None
+        if self.status == "PAID":
+            return (due - self.cheque_date).days if self.cheque_date else None
+        return (due - pk_today()).days
+
+    @property
+    def is_cancelled(self):
+        return self.status == "CANCELLED"
+
+    @property
+    def is_paid(self):
+        return self.status == "PAID"
+
+    @property
+    def is_overdue(self):
+        return self.status == "SENT" and self.due_date is not None and self.due_date < pk_today()
+
+    @property
+    def display_status(self):
+        return "Over Due" if self.is_overdue else self.get_status_display()
+
+    @property
+    def gst_withheld(self):
+        return (self.tax_amount * self.GST_WITHHELD_PERCENT / 100).quantize(Decimal("0.01"))
+
+    @property
+    def wht_amount(self):
+        return (self.grand_total * (self.wht_percent or 0) / 100).quantize(Decimal("0.01"))
+
+    @property
+    def net_receivable(self):
+        return self.grand_total - self.gst_withheld - self.wht_amount
+
+    @property
+    def difference(self):
+        return self.cheque_amount - self.net_receivable if self.cheque_amount is not None else None
 
     def save(self, *args, **kwargs):
         if not self.invoice_no:

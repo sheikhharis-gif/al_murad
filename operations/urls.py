@@ -25,6 +25,7 @@ urlpatterns = [
     path("reports/invoice/status/", invoice.invoice_status, name="invoice_status"),
     path("reports/invoice/status/excel/", invoice.invoice_status_excel, name="invoice_status_excel"),
     path("reports/invoice/status/<int:invoice_id>/update/", invoice.invoice_status_update, name="invoice_status_update"),
+    path("reports/invoice/status/<int:invoice_id>/payment/", invoice.invoice_payment_update, name="invoice_payment_update"),
     path("reports/invoice/<int:invoice_id>/download/", invoice.invoice_redownload, name="invoice_redownload"),
 
     # --- JOBS ---

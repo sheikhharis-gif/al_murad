@@ -16,7 +16,7 @@ from zoneinfo import ZoneInfo
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.db.models import CharField, Value
+from django.db.models import CharField, Prefetch, Value
 from django.db.models.functions import Coalesce
 from django.http import HttpResponse
 from django.utils import timezone
@@ -25,7 +25,7 @@ from django.urls import reverse
 
 from masters.models import DEFAULT_INVOICE_NOTES, Client, ClientSubCategory, Company, TaxSettings
 from . import invoice_pdf, invoice_xlsx
-from .models import GeneratedInvoice, Trip
+from .models import GeneratedInvoice, Trip, pk_today
 
 TRIP_RELATED = ("route__origin", "route__destination", "vehicle__vehicle_type", "vehicle_type",
                 "sub_category", "stopover_city")
@@ -423,6 +423,7 @@ def _invoice_list(request):
     default_provider = Value(TaxSettings.current().provider_name, output_field=CharField())
     invoices = list(
         GeneratedInvoice.objects.select_related("client", "provider_company")
+        .prefetch_related(Prefetch("trips", queryset=Trip.objects.select_related("route__origin", "route__destination")))
         .annotate(provider_sort=Coalesce("provider_company__name", default_provider))
         .order_by(f"{'' if order == 'asc' else '-'}{field}", "-id"))
     q = (request.GET.get("q") or "").strip()
@@ -430,8 +431,8 @@ def _invoice_list(request):
         needle = q.lower()
         invoices = [
             inv for inv in invoices
-            if needle in " ".join((inv.invoice_no, inv.client.name, inv.provider_name, inv.get_status_display(),
-                                   f"{inv.created_at:%d-%b-%y}")).lower()]
+            if needle in " ".join((inv.invoice_no, inv.client.name, inv.provider_name, inv.display_status,
+                                   f"{inv.created_at:%d-%b-%y}", inv.cheque_no, inv.bank_name)).lower()]
     return invoices, sort_by, order, q
 
 
@@ -440,7 +441,7 @@ def invoice_status_excel(request):
     """The Invoices Status list (same sort and search as on screen) as an Excel file."""
     invoices, _, _, _ = _invoice_list(request)
     response = HttpResponse(
-        invoice_xlsx.build_status(invoices),
+        invoice_xlsx.build_status([(inv, province_taxes(inv)) for inv in invoices]),
         content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
     response["Content-Disposition"] = 'attachment; filename="Invoices Status.xlsx"'
     return response
@@ -464,8 +465,74 @@ def invoice_status_update(request, invoice_id):
                 messages.success(request, f"{invoice.invoice_no} cancelled. Its {invoice.trips.count()} trip(s) can be invoiced again.")
         elif status in dict(GeneratedInvoice.STATUS_CHOICES):
             invoice.status = status
-            invoice.save(update_fields=["status"])
-    return redirect("invoice_status")
+            fields = ["status"]
+            if status in ("SENT", "PAID") and not invoice.submission_date:
+                # Submitted today unless a different date is typed in afterwards.
+                invoice.submission_date = pk_today()
+                fields.append("submission_date")
+            invoice.save(update_fields=fields)
+            if status == "PAID":
+                messages.info(request, f"{invoice.invoice_no} marked Payment Received - "
+                                       "enter its Cheque # / IBAN, Bank, Cheque Date and Amount below it and press Save.")
+    return redirect(_back_to_list(request))
+
+
+def _back_to_list(request):
+    """Invoices Status again, keeping the Sort by / search the change was made from."""
+    keep = {k: request.POST.get(k) for k in ("sort_by", "order", "q") if request.POST.get(k)}
+    return f"{reverse('invoice_status')}?{urlencode(keep)}" if keep else reverse("invoice_status")
+
+
+@login_required
+def invoice_payment_update(request, invoice_id):
+    """Saves an invoice's Submission Date, WHT % and - only once it is Payment Received -
+    its Cheque # / IBAN, Bank Name, Cheque Date and Cheque Amount."""
+    invoice = get_object_or_404(GeneratedInvoice, pk=invoice_id)
+    if request.method != "POST":
+        return redirect("invoice_status")
+    if invoice.status == "CANCELLED":
+        messages.error(request, f"{invoice.invoice_no} is cancelled - it can't be changed.")
+        return redirect(_back_to_list(request))
+
+    post, errors = request.POST, []
+    try:
+        wht = Decimal((post.get("wht_percent") or "").strip() or "0")
+        if not Decimal(0) <= wht <= Decimal(100):
+            raise InvalidOperation
+        invoice.wht_percent = wht.quantize(Decimal("0.01"))
+    except InvalidOperation:
+        errors.append("WHT % must be a number from 0 to 100")
+
+    if invoice.status in ("SENT", "PAID") and "submission_date" in post:
+        invoice.submission_date = _parse_date(post.get("submission_date"))
+    if invoice.status == "PAID":
+        invoice.cheque_no = (post.get("cheque_no") or "").strip()[:60]
+        invoice.bank_name = (post.get("bank_name") or "").strip()[:80]
+        invoice.cheque_date = _parse_date(post.get("cheque_date"))
+        amount = (post.get("cheque_amount") or "").replace(",", "").strip()
+        try:
+            invoice.cheque_amount = Decimal(amount).quantize(Decimal("0.01")) if amount else None
+        except InvalidOperation:
+            errors.append("Cheque Amount must be a number")
+
+    if errors:
+        messages.error(request, f"{invoice.invoice_no} not saved: {'; '.join(errors)}.")
+    else:
+        invoice.save(update_fields=["wht_percent", "submission_date", "cheque_no", "bank_name",
+                                    "cheque_date", "cheque_amount"])
+        messages.success(request, f"{invoice.invoice_no} saved.")
+    return redirect(_back_to_list(request))
+
+
+def province_taxes(invoice):
+    """{province code: tax amount} for one saved invoice, worked out from its own trips and
+    the tax settings it was generated with (the same breakdown printed on the invoice)."""
+    if not invoice.tax_enabled:
+        return {}
+    trips = list(invoice.trips.all())
+    _, _, breakdown = _compute_tax(trips, True, invoice.tax_mode, invoice.tax_rates)
+    by_label = {label: amount for label, _, _, amount in breakdown}
+    return {code: by_label.get(label, Decimal(0)) for code, label in TAX_PROVINCES}
 
 
 # ---------------------------------------------------------------- formatting

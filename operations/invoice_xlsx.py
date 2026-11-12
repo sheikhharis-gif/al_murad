@@ -434,37 +434,75 @@ def _nontax_workbook(data):
     return wb
 
 
-def build_status(invoices):
-    """Invoices Status as a sheet in the invoices' own look: blue header row, thin grey borders."""
+# Invoices Status sheet ("Invoices Status.xlsx"): (header, width, header colour). Red headers are
+# the tracking/money columns, blue the invoice's own details - as in the template.
+RED = "FFC00000"
+STATUS_COLUMNS = [
+    ("Status", 16.5, RED), ("Invoice #", 22, BLUE), ("Invoice \nGenerated On", 13.4, BLUE),
+    ("Payment Terms", 8.8, RED), ("Submission Date", 11.1, RED), ("Due Date", 10, RED), ("Days\nCount", 7, RED),
+    ("Client", 29.5, BLUE), ("Service Provider", 28.9, BLUE), ("Trips", 6, BLUE),
+    ("Invoice \nAmount", 11, RED), ("Sindh %", 9, RED), ("Punjab %", 9.3, RED), ("ICT %", 7, RED),
+    ("KPK %", 7, RED), ("Balochistan %", 11, RED), ("Total TAX\nvalue", 10, RED),
+    ("Invoice Amount\nInclusive of TAX", 15.3, RED), ("GST 20%", 9, RED), ("WHT", 9, RED),
+    ("Net\nReceivable", 11, RED), ("Cheque # / IBAN", 14, RED), ("Bank Name", 14, RED),
+    ("Cheque Date", 10, RED), ("Cheque Amount", 11, RED), ("Difference", 10, RED),
+]
+STATUS_FILLS = {"Over Due": "FFFF0000", "Payment Received": "FF92D050"}
+PROVINCE_CODES = ["SINDH", "PUNJAB", "ICT", "KPK", "BALOCHISTAN"]   # columns L..P
+
+
+def build_status(rows):
+    """Invoices Status in the "Invoices Status.xlsx" layout. `rows` is [(invoice, {province: tax})].
+    Due Date, Days Count, Total TAX, GST 20%, WHT, Net Receivable and Difference are live Excel
+    formulas, exactly as in the template; everything else is the invoice's saved data."""
     wb = Workbook()
     ws = wb.active
     ws.title = "Invoices Status"
-    headers = ["Invoice #", "Date", "Client", "Service Provider", "Trips", "Subtotal", "Tax", "Grand Total", "Status"]
-    widths = [22, 13, 32, 32, 8, 16, 14, 16, 12]
-    right = {"Subtotal", "Tax", "Grand Total"}
-    _put(ws, f"A1:{get_column_letter(len(headers))}1", "INVOICES STATUS", _font(16, True, color=WHITE), _fill(BLUE), A_LEFT)
-    ws.row_dimensions[1].height = 28
-    for i, (h, w) in enumerate(zip(headers, widths), start=1):
+    last = get_column_letter(len(STATUS_COLUMNS))
+    for i in range(1, len(STATUS_COLUMNS) + 1):
+        ws.cell(1, i).fill = _fill(BLUE)
+    _put(ws, "B1", "INVOICES STATUS", _font(14, True, color=WHITE), None, A_LEFT)
+    ws.row_dimensions[1].height = 26
+    for i, (h, w, colour) in enumerate(STATUS_COLUMNS, start=1):
         ws.column_dimensions[get_column_letter(i)].width = w
-        _put(ws, f"{get_column_letter(i)}3", h, _font(10, True, color=WHITE), _fill(BLUE),
-             A_RIGHT if h in right else A_LEFT, **_box())
-    ws.row_dimensions[3].height = 22
+        _put(ws, f"{get_column_letter(i)}3", h, _font(9, True, color=WHITE), _fill(colour), A_HEAD, **_box())
+    ws.row_dimensions[3].height = 40
+
     r = 4
-    for inv in invoices:
-        values = [inv.invoice_no, inv.created_at.date(), inv.client.name, inv.provider_name, inv.trips.count(),
-                  float(inv.subtotal), float(inv.tax_amount), float(inv.grand_total), inv.get_status_display()]
-        for i, (h, v) in enumerate(zip(headers, values), start=1):
-            _put(ws, f"{get_column_letter(i)}{r}", v, _font(10), None, A_RIGHT if h in right else A_LEFT,
-                 nf=DATE_FMT if h == "Date" else ("#,##0" if h in right else None), **_box())
+    for inv, taxes in rows:
+        status = inv.display_status
+        cancelled = inv.status == "CANCELLED"
+        paid = inv.status == "PAID"
+        if inv.submission_date and not cancelled:
+            days = f"=IF(X{r}=\"\",\"\",F{r}-X{r})" if paid else f'=IFERROR(F{r}-TODAY(),"")'
+        else:
+            days = None
+        wht = format((inv.wht_percent or Decimal(0)).normalize(), "f")
+        values = [
+            (status, None), (inv.invoice_no, None), (inv.created_at.date(), DATE_FMT), (inv.payment_days, None),
+            (inv.submission_date, DATE_FMT), (f"=E{r}+D{r}" if inv.submission_date else None, DATE_FMT),
+            (days, ACCOUNTING0), (inv.client.name, None), (inv.provider_name, None), (len(inv.trips.all()), None),
+            (float(inv.subtotal), ACCOUNTING0),
+            *[(float(taxes.get(code, 0)), ACCOUNTING0) for code in PROVINCE_CODES],
+            (f"=SUM(L{r}:P{r})", ACCOUNTING0), (float(inv.grand_total), ACCOUNTING0),
+            (f"=Q{r}*20%", ACCOUNTING0), (f"=R{r}*{wht}%", ACCOUNTING0), (f"=R{r}-SUM(S{r}:T{r})", ACCOUNTING0),
+            (inv.cheque_no or None, None), (inv.bank_name or None, None), (inv.cheque_date, DATE_FMT),
+            (float(inv.cheque_amount) if inv.cheque_amount is not None else None, ACCOUNTING0),
+            (f'=IF(Y{r}="","",Y{r}-U{r})', ACCOUNTING0),
+        ]
+        colour = "FF9CA3AF" if cancelled else TEXT
+        for i, (v, nf) in enumerate(values, start=1):
+            col = get_column_letter(i)
+            fill, font = None, _font(9, color=colour)
+            if col == "A" and status in STATUS_FILLS:
+                fill = _fill(STATUS_FILLS[status])
+            elif col == "U":   # Net Receivable stands out, as in the template
+                fill, font = _fill(BLUE), _font(9, True, color=WHITE)
+            _put(ws, f"{col}{r}", v, font, fill, A_RIGHT if nf == ACCOUNTING0 else A_LEFT, nf=nf, **_box())
         r += 1
-    if invoices:
-        edge = dict(left=THIN, right=THIN, top=MEDIUM, bottom=MEDIUM)
-        _put(ws, f"A{r}:E{r}", f"TOTAL ({len(invoices)} invoices)", _font(11, True), _fill(LIGHT), A_V, **edge)
-        for col in "FGH":
-            _put(ws, f"{col}{r}", f"=SUM({col}4:{col}{r - 1})", _font(11, True), _fill(LIGHT), A_RIGHT, nf="#,##0", **edge)
-        _put(ws, f"I{r}", None, None, _fill(LIGHT), None, top=MEDIUM, bottom=MEDIUM)
     ws.freeze_panes = "A4"
-    _page(ws, "landscape", max(r, 4), len(headers), letterhead=False)
+    ws.auto_filter.ref = f"A3:{last}{max(r - 1, 3)}"
+    _page(ws, "landscape", max(r, 4), len(STATUS_COLUMNS), letterhead=False)
     out = io.BytesIO()
     wb.save(out)
     return out.getvalue()
