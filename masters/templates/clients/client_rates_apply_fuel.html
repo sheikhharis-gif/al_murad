@@ -49,7 +49,7 @@
                     <h6 class="fw-bold mb-0">{{ to_update }} of {{ rows|length }} rate{{ rows|length|pluralize }} will be updated</h6>
                     {% if client.fuel_revision_threshold %}
                     <div class="small mt-1 text-warning-emphasis">
-                        <i class="bi bi-funnel-fill me-1"></i>{{ client.name }} has a <b>{{ client.fuel_revision_threshold.normalize }}%</b> fuel revision threshold:
+                        <i class="bi bi-funnel-fill me-1"></i>{{ client.name }} has a <b>{{ client.fuel_revision_threshold|floatformat:"-2" }}%</b> fuel revision threshold:
                         a rate changes only if fuel has moved at least that much (up or down) since it was last revised - then the full change applies.
                         Rates below it keep their price, and the small moves add up for next time.
                     </div>

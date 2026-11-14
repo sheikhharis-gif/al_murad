@@ -1261,7 +1261,13 @@ def client_rate_options(request, client_id):
             except InvalidOperation:
                 messages.error(request, "Fuel revision threshold must be a number from 0 to 100 (or blank).")
         client.save(update_fields=fields)
-        messages.success(request, f"Options updated for {client.name}.")
+        if "fuel_revision_threshold" in fields:
+            t = client.fuel_revision_threshold
+            messages.success(request, f"Options updated for {client.name}. Fuel revision threshold: "
+                             + (f"{t.normalize():f}% - rates change only on a fuel move of {t.normalize():f}% or more." if t
+                                else "off - every fuel price change is applied."))
+        else:
+            messages.success(request, f"Options updated for {client.name}.")
     return redirect("client_rates", client_id=client.id)
 
 
