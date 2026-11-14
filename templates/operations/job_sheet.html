@@ -167,7 +167,9 @@
                                     <label class="form-check-label small fw-bold" for="{{ tf.auto_times.id_for_label }}">Auto</label>
                                 </div>
                             </div>
-                            <div class="col-md-3">
+                            {# a per-trip Vehicle # sits in this row (before Vehicle Type), so Client / Weight make room #}
+                            {% if not job.vehicle_id and not job.rental_pool %}{% firstof "1" as own_vehicle_pick %}{% endif %}
+                            <div class="{% if own_vehicle_pick %}col-md-2{% else %}col-md-3{% endif %}">
                                 <label class="form-label x-small fw-bold mb-1">Client</label>
                                 {{ tf.client }}
                                 <div class="form-check mt-1" title="No cargo / customer - this leg ran empty">
@@ -190,10 +192,18 @@
                                 <label class="form-label x-small fw-bold mb-1">Route</label>
                                 {{ tf.route }}
                             </div>
-                            <div class="col-md-2">
+                            <div class="{% if own_vehicle_pick %}col-md-1{% else %}col-md-2{% endif %}">
                                 <label class="form-label x-small fw-bold mb-1">Weight (Tons)</label>
                                 {{ tf.weight }}
                             </div>
+                            {% if own_vehicle_pick %}
+                            {# Vehicle # first: picking it fills Vehicle Type next to it #}
+                            <div class="col-md-2">
+                                <label class="form-label x-small fw-bold mb-1">Vehicle #</label>
+                                {{ tf.vehicle }}
+                                {% if tf.vehicle.errors %}<div class="text-danger small mt-1">{{ tf.vehicle.errors.0 }}</div>{% endif %}
+                            </div>
+                            {% endif %}
                             <div class="col-md-2">
                                 <label class="form-label x-small fw-bold mb-1">Vehicle Type</label>
                                 {{ tf.vehicle_type }}
@@ -215,15 +225,7 @@
                                 {% if tf.rental_vehicle_number.errors %}<div class="text-danger small mt-1">{{ tf.rental_vehicle_number.errors.0 }}</div>{% endif %}
                             </div>
                             {% else %}
-                            {% if not job.vehicle_id %}
-                            <div class="col-md-2">
-                                <label class="form-label x-small fw-bold mb-1">Vehicle #</label>
-                                {{ tf.vehicle }}
-                                {% if tf.vehicle.errors %}<div class="text-danger small mt-1">{{ tf.vehicle.errors.0 }}</div>{% endif %}
-                            </div>
-                            {% else %}
                             <div class="col-md-1"></div>
-                            {% endif %}
                             <div class="col-md-2">
                                 <label class="form-label x-small fw-bold mb-1">Departure Meter</label>
                                 <div class="form-control form-control-sm trip-readonly trip-computed">{% if tf.instance.pk %}{{ tf.instance.departure_meter|default_if_none:"--" }}{% else %}--{% endif %}</div>
@@ -796,6 +798,8 @@
                     if (fp) fp.setDate(value, false); else el.value = value;
                 }
                 visible.readOnly = box.checked;
+                // locked boxes are skipped by Tab - the cursor jumps to the next field you can type in
+                if (box.checked) visible.tabIndex = -1; else visible.removeAttribute('tabindex');
                 visible.classList.toggle('bg-light', box.checked);
             });
         }

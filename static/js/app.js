@@ -213,6 +213,19 @@
             }
         }
 
+        // Another script setting the hidden <select> (e.g. picking a Vehicle # fills its
+        // Vehicle Type) fires 'change' on it - show that choice in the visible box too.
+        // Without this the value was set but the box still looked empty.
+        select.addEventListener('change', function () {
+            var opt = select.options[select.selectedIndex];
+            textInput.value = opt && opt.value ? opt.textContent.trim() : '';
+        });
+        // ...and lock the visible box along with the <select> (skipped by Tab when disabled).
+        new MutationObserver(function () {
+            textInput.disabled = select.disabled;
+        }).observe(select, { attributes: true, attributeFilter: ['disabled'] });
+        textInput.disabled = select.disabled;
+
         textInput.addEventListener('input', function () {
             // Route codes are always uppercase - force it live instead of
             // just at commit time, so the box never shows lowercase while

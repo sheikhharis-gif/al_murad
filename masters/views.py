@@ -1194,16 +1194,19 @@ def client_rates(request, client_id):
                 "fuel_price": str(r.updated_fuel_price),
                 "trip_cost": str(r.updated_trip_cost),
                 "effective_percent": str(r.effective_percent),
+                # shown under the box so it's clear where the auto value came from
+                "date": f"{r.effective_date:%d-%b-%y}" if r.effective_date else "",
             }
 
     # PSO prices (Suppliers > Fuel Rates) only - a supplier's own purchase
     # prices aren't the index client rates run on.
-    latest_fuel_prices = {}
+    latest_fuel_prices, latest_fuel_dates = {}, {}
     for fuel_rate in rate_fuel.pso_fuel_prices().select_related("product").order_by(
         "product_id", "-effective_date", "-id"
     ):
         if fuel_rate.product_id not in latest_fuel_prices:
             latest_fuel_prices[fuel_rate.product_id] = str(fuel_rate.fuel_price)
+            latest_fuel_dates[fuel_rate.product_id] = f"{fuel_rate.effective_date:%d-%b-%y}"
 
     dedicated_rates = DedicatedRate.objects.filter(client=client).select_related("vehicle", "route", "vehicle_type")
     dedicated_form = DedicatedRateForm(auto_id="id_ded_%s")
@@ -1218,6 +1221,7 @@ def client_rates(request, client_id):
         "stopover_zones": StopoverRate.ZONE_CHOICES,
         "last_by_route_json": json.dumps(last_by_route),
         "latest_fuel_prices_json": json.dumps(latest_fuel_prices),
+        "latest_fuel_dates_json": json.dumps(latest_fuel_dates),
         "dedicated_rates": dedicated_rates,
         "dedicated_form": dedicated_form,
         "routes_distance_json": json.dumps(routes_distance),
@@ -1228,6 +1232,13 @@ def client_rates(request, client_id):
             for vt in VehicleType.objects.filter(client_rates__client=client).distinct().order_by("name")
         ],
         "all_vehicle_types": VehicleType.objects.order_by("name"),
+        # Copy Sub-Category Rates window: client default + each sub-category, with its rate count
+        "subcat_copy_choices": [
+            (value, name, len({(r.vehicle_type_id, r.route_id, r.fuel_product_id, r.weight_tons)
+                               for r in rates if r.sub_category_id == sid}))
+            for value, name, sid in [("default", "Client default (no sub-category)", None)]
+            + [(str(sc.pk), sc.name, sc.pk) for sc in ClientSubCategory.objects.filter(client=client).order_by("name")]
+        ] if client.has_sub_categories else [],
         **rate_fuel.fuel_price_choices(client),
     })
 

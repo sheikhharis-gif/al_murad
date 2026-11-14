@@ -60,6 +60,11 @@
             <button type="button" class="btn btn-sm btn-outline-primary fw-bold px-3" data-bs-toggle="modal" data-bs-target="#rateCopyModal">
                 <i class="bi bi-copy me-1"></i>Copy Rates
             </button>
+            {% if client.has_sub_categories %}
+            <button type="button" class="btn btn-sm btn-outline-primary fw-bold px-3" data-bs-toggle="modal" data-bs-target="#subcatCopyModal">
+                <i class="bi bi-diagram-3 me-1"></i>Copy Sub-Category Rates
+            </button>
+            {% endif %}
             <div class="mode-tabs">
                 <button type="button" class="mode-tab active" data-pane="tripPane" id="tripTabBtn">Trip</button>
                 <button type="button" class="mode-tab" data-pane="dedicatedPane" id="dedicatedTabBtn">Dedicated</button>
@@ -233,7 +238,7 @@
                         {{ form.effective_date }}
                     </div>
                 </div>
-                <div class="row g-2 align-items-end mt-1">
+                <div class="row g-2 align-items-start mt-1">
                     <div class="col-md-3 auto-only">
                         <label class="form-label small fw-bold">
                             Current Fuel Price
@@ -241,6 +246,7 @@
                                title="Auto-filled from the previous entry for this route/vehicle type/weight, or the latest known fuel price - still fully editable."></i>
                         </label>
                         {{ form.current_fuel_price }}
+                        <div class="fuel-source" id="curFuelSource"></div>
                     </div>
                     <div class="col-md-3">
                         <label class="form-label small fw-bold"><span class="cur-rate-label">Current Rate</span></label>
@@ -253,6 +259,7 @@
                     <div class="col-md-3 auto-only">
                         <label class="form-label small fw-bold">Updated Fuel Price</label>
                         {{ form.updated_fuel_price }}{{ form.updated_fuel_price.errors }}
+                        <div class="fuel-source" id="updFuelSource"></div>
                     </div>
                 </div>
                 <div class="row g-2 mt-1">
@@ -624,6 +631,64 @@
     </div>
 </div>
 
+{% if client.has_sub_categories %}
+<!-- Copy Sub-Category Rates: same rates for several units (e.g. ASSIA -> REVO) -->
+<div class="modal fade" id="subcatCopyModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-4">
+            <form method="post" action="{% url 'client_rate_copy_subcategory' client.id %}" id="subcatCopyForm">
+                {% csrf_token %}
+                <div class="modal-header border-0 pb-0">
+                    <h5 class="modal-title fw-bold"><i class="bi bi-diagram-3 text-primary me-2"></i>Copy Sub-Category Rates</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="small text-muted mb-3">
+                        Copies the <b>latest</b> rate of every route, vehicle type &amp; tonnage from one sub-category to others, exactly as it is.
+                        Ones that already have the same or a newer rate are left alone, so copying twice never duplicates.
+                        <b>After revising the source rates, copy again</b> to bring the new rates across.
+                    </p>
+                    <label class="form-label small fw-bold">Copy FROM</label>
+                    <select name="from_sub" class="form-select mb-3" id="subcatCopyFrom" required>
+                        <option value="">--- Select sub-category ---</option>
+                        {% for value, name, count in subcat_copy_choices %}
+                        <option value="{{ value }}" {% if not count %}disabled{% endif %}>{{ name }} ({{ count }} rate{{ count|pluralize }})</option>
+                        {% endfor %}
+                    </select>
+                    <label class="form-label small fw-bold">Copy TO <span class="text-muted fw-normal">(tick one or more)</span></label>
+                    <div class="border rounded-3 p-2">
+                        {% for value, name, count in subcat_copy_choices %}
+                        <div class="form-check subcat-copy-to" data-value="{{ value }}">
+                            <input class="form-check-input" type="checkbox" name="to_subs" value="{{ value }}" id="subcatTo{{ value }}">
+                            <label class="form-check-label small" for="subcatTo{{ value }}">{{ name }}</label>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-light border" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary fw-bold px-4"><i class="bi bi-copy me-1"></i>Copy</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+<script>
+    // the FROM sub-category can't also be a target
+    document.addEventListener('DOMContentLoaded', function () {
+        var from = document.getElementById('subcatCopyFrom');
+        if (!from) return;
+        from.addEventListener('change', function () {
+            document.querySelectorAll('.subcat-copy-to').forEach(function (row) {
+                var same = row.dataset.value === from.value;
+                row.style.display = same ? 'none' : '';
+                if (same) row.querySelector('input').checked = false;
+            });
+        });
+    });
+</script>
+{% endif %}
+
 <div class="modal fade" id="rateEditModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content rounded-4">
@@ -819,6 +884,7 @@
         cursor: pointer; margin-bottom: 0;
     }
     .distance-mode-pill input { margin: 0; }
+    .fuel-source { font-size: .7rem; color: #b45309; margin-top: 3px; line-height: 1.25; }
     .distance-mode-pill:has(input:checked) { background: #fff3e8; border-color: #ed7d31; color: #ed7d31; }
 </style>
 
@@ -858,16 +924,36 @@ document.addEventListener('DOMContentLoaded', function () {
         // product (same as the server does when the entry is saved).
         var info = lastByRoute[rateCategoryKey()] || lastByRoute[rateCategoryKey('')];
         var latestFuelPrice = fuelProductSelect && latestFuelPrices[fuelProductSelect.value];
+        var latestFuelDate = fuelProductSelect && latestFuelDates[fuelProductSelect.value];
+        var psoNote = latestFuelPrice ? 'Latest PSO price (Suppliers > Fuel Rates, ' + latestFuelDate + ')' : '';
         if (info) {
             curFuel.value = info.fuel_price;
             curRate.value = info.trip_cost;
             if (effPct && !effPct.dataset.touched) effPct.value = info.effective_percent;
             if (updatedFuel && !updatedFuel.dataset.touched) updatedFuel.value = latestFuelPrice || info.fuel_price;
+            setSource(curFuelSource, 'from this rate\'s last entry' + (info.date ? ' (' + info.date + ')' : ''));
+            if (!updatedFuel || !updatedFuel.dataset.touched)
+                setSource(updFuelSource, psoNote || 'same as last entry - no PSO price for this fuel');
         } else {
             curFuel.value = latestFuelPrice || '';
-            if (updatedFuel && !updatedFuel.dataset.touched) updatedFuel.value = latestFuelPrice || '';
+            setSource(curFuelSource, psoNote ? psoNote + ' - no earlier entry for this rate' : '');
+            if (updatedFuel && !updatedFuel.dataset.touched) {
+                updatedFuel.value = latestFuelPrice || '';
+                setSource(updFuelSource, psoNote);
+            }
         }
     }
+    // Small note under the auto-filled fuel boxes saying where the number came from.
+    var latestFuelDates = JSON.parse('{{ latest_fuel_dates_json|default:"{}"|escapejs }}');
+    var curFuelSource = document.getElementById('curFuelSource');
+    var updFuelSource = document.getElementById('updFuelSource');
+    function setSource(el, text) {
+        if (!el) return;
+        el.textContent = text ? 'Auto: ' + text + ' - you can change it' : '';
+    }
+    [[curFuel, curFuelSource], [updatedFuel, updFuelSource]].forEach(function (pair) {
+        if (pair[0]) pair[0].addEventListener('input', function () { setSource(pair[1], ''); });
+    });
     [curFuel, curRate, effPct, updatedFuel].forEach(function (el) {
         if (!el) return;
         el.addEventListener('input', function () { el.dataset.touched = '1'; });

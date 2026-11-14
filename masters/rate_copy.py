@@ -78,3 +78,69 @@ def client_rate_copy(request, client_id):
     else:
         messages.warning(request, f"{source.name} has no rates for {client.name} to copy.")
     return redirect("client_rates", client_id=client.id)
+
+
+# ---------------------------------------------------------------- sub-category -> sub-category
+# A client with Sub-Categories (e.g. Five Star -> ASSIA / REVO) whose units are billed on
+# the same rates: enter them once on one sub-category, copy them across in one go.
+# "default" stands for the client's own rates with no sub-category.
+SUBCAT_COPY_FIELDS = [f for f in COPY_FIELDS if f != "sub_category_id"] + ["vehicle_type_id"]
+
+
+def _sub_id(value):
+    return None if value == "default" else int(value)
+
+
+def _latest_by_type_key(rates):
+    """Latest entry per (vehicle type, route, fuel product, weight) - rates ordered newest first."""
+    latest = {}
+    for r in rates:
+        latest.setdefault((r.vehicle_type_id, r.route_id, r.fuel_product_id, r.weight_tons), r)
+    return latest
+
+
+def copy_subcategory_rates(client, source_sub_id, target_sub_ids):
+    """Copies every latest rate of one sub-category onto others, as-is. Returns (copied, skipped)."""
+    by_sub = lambda sid: ClientRate.objects.filter(client=client, sub_category_id=sid).order_by("-effective_date", "-id")
+    source = _latest_by_type_key(by_sub(source_sub_id))
+    to_create, skipped = [], 0
+    for target in target_sub_ids:
+        existing = _latest_by_type_key(by_sub(target))
+        for key, rate in source.items():
+            current = existing.get(key)
+            if current and current.effective_date >= rate.effective_date:
+                skipped += 1
+                continue
+            copy = ClientRate(client=client, sub_category_id=target)
+            for field in SUBCAT_COPY_FIELDS:
+                setattr(copy, field, getattr(rate, field))
+            to_create.append(copy)
+    ClientRate.objects.bulk_create(to_create)   # as-is: no re-basing in ClientRate.save()
+    from operations.models import refresh_trip_freight
+    for key in {(c.client_id, c.route_id, c.vehicle_type_id, c.weight_tons, c.sub_category_id) for c in to_create}:
+        refresh_trip_freight(*key)
+    return len(to_create), skipped
+
+
+def client_rate_copy_subcategory(request, client_id):
+    client = get_object_or_404(Client, id=client_id)
+    if request.method != "POST":
+        return redirect("client_rates", client_id=client.id)
+    valid = {"default"} | {str(pk) for pk in client.sub_categories.values_list("pk", flat=True)}
+    names = {"default": "Client default", **{str(s.pk): s.name for s in client.sub_categories.all()}}
+    source = request.POST.get("from_sub")
+    targets = [t for t in dict.fromkeys(request.POST.getlist("to_subs")) if t in valid and t != source]
+    if source not in valid or not targets:
+        messages.error(request, "Copy Sub-Category Rates: choose the sub-category to copy FROM and at least one to copy TO.")
+        return redirect("client_rates", client_id=client.id)
+
+    copied, skipped = copy_subcategory_rates(client, _sub_id(source), [_sub_id(t) for t in targets])
+    to_names = ", ".join(names[t] for t in targets)
+    if copied:
+        messages.success(request, f"Copied {copied} rate(s) from {names[source]} to {to_names}."
+                         + (f" {skipped} already up to date, left as is." if skipped else ""))
+    elif skipped:
+        messages.info(request, f"Nothing to copy - {to_names} already has the latest {names[source]} rates.")
+    else:
+        messages.warning(request, f"{names[source]} has no rates to copy.")
+    return redirect("client_rates", client_id=client.id)

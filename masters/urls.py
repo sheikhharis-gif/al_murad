@@ -59,6 +59,8 @@ urlpatterns = [
     path("clients/<int:client_id>/rates/apply-fuel/", rate_fuel.client_rate_apply_fuel, name="client_rate_apply_fuel"),
     path("clients/<int:client_id>/rates/fuel-update/<int:batch_id>/undo/", rate_fuel.client_rate_fuel_undo, name="client_rate_fuel_undo"),
     path("clients/<int:client_id>/rates/copy/", rate_copy.client_rate_copy, name="client_rate_copy"),
+    path("clients/<int:client_id>/rates/copy-subcategory/", rate_copy.client_rate_copy_subcategory,
+         name="client_rate_copy_subcategory"),
     path("clients/<int:client_id>/options/", views.client_rate_options, name="client_rate_options"),
     path("clients/<int:client_id>/stopover/save/", views.client_stopover_save, name="client_stopover_save"),
     path("clients/<int:client_id>/stopover/<int:rate_id>/delete/", views.client_stopover_delete, name="client_stopover_delete"),
