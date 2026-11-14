@@ -83,12 +83,21 @@ def _revise(base, new_price, pct=None, current_fuel=None):
 def _plan(client, price, include_blank, pcts=None):
     """pcts: Effective % typed on the preview for some rates (else each rate's own)."""
     pcts = pcts or {}
+    threshold = client.fuel_revision_threshold
     rows = []
     for base in _latest_rates(client, price.product, include_blank):
         row = {"base": base, "skip": "", "base_fuel": _base_fuel(base, price.product)}
         row["pct"] = pcts.get(base.id, base.effective_percent)
+        # Fuel move since the price this rate was LAST REVISED on. A move below the client's
+        # threshold creates no entry, so the base stays put and small moves add up until
+        # together they cross it - then the full change is applied.
+        move = ((price.fuel_price - row["base_fuel"]) / row["base_fuel"] * 100) if row["base_fuel"] else Decimal(0)
         if base.effective_date >= price.effective_date:
             row["skip"] = f"Already revised on {base.effective_date:%d-%b-%y}"
+        elif threshold and abs(move) < threshold:
+            row["skip"] = (f"Fuel moved {move:+.2f}% since {row['base_fuel']} - "
+                           f"below this client's {threshold.normalize():f}% threshold")
+            row["below_threshold"] = True
         else:
             row["new"] = _revise(base, price.fuel_price, row["pct"], row["base_fuel"])
             row["diff"] = row["new"]["updated_trip_cost"] - base.updated_trip_cost

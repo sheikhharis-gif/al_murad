@@ -476,6 +476,11 @@ class Client(models.Model):
     # Clients billed a charge for stops on the way: shows the Stopover Charges
     # table on their Client Rates page and the Stopover fields on their trips.
     has_stopover = models.BooleanField("Has Stopover Charges", default=False)
+    # Some clients only accept a rate revision once fuel has moved this much (e.g. 5%, up or
+    # down) since the rate was last revised; Apply Fuel Price leaves smaller moves alone.
+    # Once crossed, the FULL change applies. Blank = every fuel change is applied.
+    fuel_revision_threshold = models.DecimalField(
+        "Fuel revision threshold %", max_digits=5, decimal_places=2, null=True, blank=True)
 
     def save(self, *args, **kwargs):
         for field in (

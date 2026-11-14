@@ -1249,7 +1249,18 @@ def client_rate_options(request, client_id):
     if request.method == "POST":
         client.has_sub_categories = "has_sub_categories" in request.POST
         client.has_stopover = "has_stopover" in request.POST
-        client.save(update_fields=["has_sub_categories", "has_stopover"])
+        fields = ["has_sub_categories", "has_stopover"]
+        if "fuel_revision_threshold" in request.POST:
+            raw = (request.POST.get("fuel_revision_threshold") or "").strip()
+            try:
+                value = Decimal(raw).quantize(Decimal("0.01")) if raw else None
+                if value is not None and not Decimal(0) <= value <= Decimal(100):
+                    raise InvalidOperation
+                client.fuel_revision_threshold = value or None
+                fields.append("fuel_revision_threshold")
+            except InvalidOperation:
+                messages.error(request, "Fuel revision threshold must be a number from 0 to 100 (or blank).")
+        client.save(update_fields=fields)
         messages.success(request, f"Options updated for {client.name}.")
     return redirect("client_rates", client_id=client.id)
 

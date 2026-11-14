@@ -45,7 +45,16 @@
     <div class="card border-0 shadow-sm rounded-4">
         <div class="card-body">
             <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
-                <h6 class="fw-bold mb-0">{{ to_update }} of {{ rows|length }} rate{{ rows|length|pluralize }} will be updated</h6>
+                <div>
+                    <h6 class="fw-bold mb-0">{{ to_update }} of {{ rows|length }} rate{{ rows|length|pluralize }} will be updated</h6>
+                    {% if client.fuel_revision_threshold %}
+                    <div class="small mt-1 text-warning-emphasis">
+                        <i class="bi bi-funnel-fill me-1"></i>{{ client.name }} has a <b>{{ client.fuel_revision_threshold.normalize }}%</b> fuel revision threshold:
+                        a rate changes only if fuel has moved at least that much (up or down) since it was last revised - then the full change applies.
+                        Rates below it keep their price, and the small moves add up for next time.
+                    </div>
+                    {% endif %}
+                </div>
                 {% if to_update %}
                 <div class="d-flex align-items-center gap-2 flex-wrap">
                     {# Effective % is editable per rate below; this sets it on every rate at once #}
@@ -74,7 +83,7 @@
                     </thead>
                     <tbody>
                         {% for row in rows %}
-                        <tr class="{% if row.skip %}text-muted{% else %}pct-row{% endif %}" data-fuel="{{ row.base_fuel }}"
+                        <tr class="{% if row.skip %}text-muted{% else %}pct-row{% endif %}{% if row.below_threshold %} below-threshold{% endif %}" data-fuel="{{ row.base_fuel }}"
                             data-new-fuel="{{ price.fuel_price }}" data-cost="{{ row.base.updated_trip_cost }}">
                             <td class="fw-bold">{{ row.base.route.route_code|upper }}</td>
                             <td>{{ row.base.vehicle_type.name|default:"--" }}</td>
@@ -141,4 +150,7 @@
         });
     })();
 </script>
+<style>
+    tr.below-threshold td { background: #f1f5f9; }
+</style>
 {% endblock %}
