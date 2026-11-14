@@ -602,9 +602,21 @@
                     <select name="price" class="form-select mb-3" id="applyFuelPrice" required>
                         <option value="">--- Select fuel price ---</option>
                         {% for fp in fuel_prices %}
-                        <option value="{{ fp.id }}" data-product="{{ fp.product_id }}" {% if fp.already_applied %}disabled{% endif %}>{{ fp.effective_date|date:"j-M-y" }} &mdash; {{ fp.fuel_price }}{% if fp.already_applied %} (applied){% endif %}</option>
+                        <option value="{{ fp.id }}" data-product="{{ fp.product_id }}" {% if fp.is_due %}data-due="1"{% endif %} {% if fp.already_applied %}disabled{% endif %}>{{ fp.effective_date|date:"j-M-y" }} &mdash; {{ fp.fuel_price }}{% if fp.move is not None %} ({% if fp.move >= 0 %}+{% endif %}{{ fp.move|floatformat:1 }}%{% if fp.is_due %} &#9733; first to cross {{ client.fuel_revision_threshold|floatformat:"-2" }}%{% elif fp.crosses %} &#10003;{% endif %}){% endif %}{% if fp.already_applied %} (applied){% endif %}</option>
                         {% endfor %}
                     </select>
+                    {% for d in fuel_due %}
+                    <div class="fuel-due small rounded-3 px-3 py-2 mb-3 d-none {% if d.due %}bg-success-subtle text-success-emphasis{% else %}bg-light text-muted{% endif %}" data-product="{{ d.product_id }}">
+                        <i class="bi bi-info-circle me-1"></i>Rates are on <b>{{ d.base }}</b> (since {{ d.base_date|date:"j-M-y" }}). The % next to each price is its move from {{ d.base }}.
+                        {% if client.fuel_revision_threshold %}
+                            {% if d.due %}
+                            <br><b>&#9733; {{ d.due.effective_date|date:"j-M-y" }} &mdash; {{ d.due.fuel_price }}</b> is the first date fuel moved {{ client.fuel_revision_threshold|floatformat:"-2" }}% or more &mdash; it is selected for you.
+                            {% else %}
+                            <br>No newer price has moved {{ client.fuel_revision_threshold|floatformat:"-2" }}% yet &mdash; nothing to apply for now.
+                            {% endif %}
+                        {% endif %}
+                    </div>
+                    {% endfor %}
                     {% if blank_product_rates %}
                     <div class="form-check">
                         <input class="form-check-input" type="checkbox" name="include_blank" value="1" id="applyFuelBlank" checked>
@@ -1150,6 +1162,10 @@ document.addEventListener('DOMContentLoaded', function () {
             // Placeholder first and selected - never pick a price by default
             all.filter(function (o) { return !o.value || o.dataset.product === product.value; }).forEach(function (o) { price.appendChild(o); });
             price.selectedIndex = 0;
+            // Threshold client: pre-select the first date that crosses it (★)
+            var due = price.querySelector('option[data-due="1"]');
+            if (due) due.selected = true;
+            document.querySelectorAll('.fuel-due').forEach(function (d) { d.classList.toggle('d-none', d.dataset.product !== product.value); });
         }
         product.addEventListener('change', refresh);
         refresh();

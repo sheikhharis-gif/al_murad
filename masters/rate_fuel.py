@@ -205,6 +205,37 @@ def pso_fuel_prices():
     return VendorFuelPrice.objects.filter(vendor__name__iexact="PSO")
 
 
+def _annotate_moves(client, prices, products):
+    """So nobody has to preview date by date: for each product, the fuel price the
+    client's rates are on now (the most common base), and on every newer PSO price
+    its move % from that base. With a threshold, `crosses` marks prices at/over it
+    and the EARLIEST such date is returned per product as the one to apply next.
+    Returns [{"product_id", "base", "base_date", "due" (price obj or None)}]."""
+    threshold = client.fuel_revision_threshold
+    out = []
+    for product in products:
+        rates = _latest_rates(client, product, include_blank=True)
+        if not rates:
+            continue
+        counts = {}
+        for r in rates:
+            b = _base_fuel(r, product)
+            counts[b] = counts.get(b, 0) + 1
+        base = max(counts.items(), key=lambda kv: kv[1])[0]
+        base_date = max(r.effective_date for r in rates)
+        due = None
+        for p in sorted((p for p in prices if p.product_id == product.id), key=lambda p: (p.effective_date, p.id)):
+            if p.effective_date <= base_date or not base:
+                continue
+            p.move = (p.fuel_price - base) / base * 100
+            p.crosses = bool(threshold) and abs(p.move) >= threshold
+            if p.crosses and due is None and not p.already_applied:
+                due = p
+                p.is_due = True
+        out.append({"product_id": product.id, "base": base, "base_date": base_date, "due": due})
+    return out
+
+
 def fuel_price_choices(client):
     """For the Apply Fuel Price window: every PSO fuel price (newest first) by
     product, plus how many of the client's rates have no fuel product set."""
@@ -216,7 +247,10 @@ def fuel_price_choices(client):
                   .values_list("fuel_product_id", "effective_date"))
     for p in prices:
         p.already_applied = (p.product_id, p.effective_date) in applied
+        p.move, p.crosses, p.is_due = None, False, False
+    fuel_due = _annotate_moves(client, prices, products)
     return {
+        "fuel_due": fuel_due,
         "fuel_products": products,
         "fuel_prices": prices,
         "fuel_batches": FuelRateBatch.objects.filter(client=client).select_related("product", "created_by")[:5],
