@@ -39,6 +39,10 @@ class Command(BaseCommand):
             help="Rate effective date in YYYY-MM-DD format (default: 2026-10-01).",
         )
         parser.add_argument(
+            "--vehicle-type-suffix", choices=("DRY", "REEFER"), required=True,
+            help="Vehicle type to use for sheet values such as 16FT and 20FT.",
+        )
+        parser.add_argument(
             "--apply", action="store_true",
             help="Save valid rows. Without this flag, only show the import preview.",
         )
@@ -73,7 +77,7 @@ class Command(BaseCommand):
         if missing_columns:
             raise CommandError("Missing workbook columns: " + ", ".join(sorted(missing_columns)))
 
-        prepared, seen = [], set()
+        prepared, seen, route_mappings = [], set(), {}
         for row_number, values in enumerate(rows, start=2):
             if not values or not any(value is not None for value in values):
                 continue
@@ -82,6 +86,8 @@ class Command(BaseCommand):
             if not route_code or not vehicle_name:
                 self.stderr.write(self.style.WARNING(f"Row {row_number}: missing route or vehicle type; skipped."))
                 continue
+            if not any(kind in vehicle_name for kind in (" DRY", " REEFER")):
+                vehicle_name = f"{vehicle_name} {options['vehicle_type_suffix']}"
             weight = _decimal(values[columns["tonnage"]], row_number, "tonnage")
             amount = _decimal(values[columns["rates"]], row_number, "rate")
             key = (route_code, vehicle_name, weight)
@@ -93,6 +99,13 @@ class Command(BaseCommand):
             seen.add(key)
 
             route = Route.objects.filter(route_code__iexact=route_code).select_related("origin", "destination").first()
+            if not route and route_code.startswith("LHR-"):
+                mapped_code = "LHE-" + route_code[4:]
+                route = Route.objects.filter(route_code__iexact=mapped_code).select_related(
+                    "origin", "destination"
+                ).first()
+                if route:
+                    route_mappings[route_code] = mapped_code
             if not route:
                 self.stderr.write(self.style.WARNING(f"MISSING ROUTE: {route_code} (row {row_number})."))
                 continue
@@ -118,6 +131,9 @@ class Command(BaseCommand):
         self.stdout.write(
             f"Client: {client.name} | Effective: {effective_date} | Valid rows: {len(prepared)}"
         )
+        self.stdout.write(f"Vehicle type suffix: {options['vehicle_type_suffix']}")
+        for sheet_code, system_code in sorted(route_mappings.items()):
+            self.stdout.write(f"ROUTE CODE MAPPED: {sheet_code} -> {system_code}")
         self.stdout.write(
             "Importing the workbook's 'rates' values as fixed fares; fuel revision columns are not applied."
         )
