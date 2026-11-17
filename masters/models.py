@@ -787,15 +787,24 @@ class Expense(models.Model):
         return f"Expense for Trip #{self.trip.id} - {self.date}"
 
 
-# ================= CITY =================
+# ================= PROVINCE + CITY =================
+class Province(models.Model):
+    name = models.CharField(max_length=100, unique=True)
+    code = models.CharField(max_length=15, unique=True)
+
+    def save(self, *args, **kwargs):
+        self.name = (self.name or "").strip().title()
+        self.code = (self.code or "").strip().upper()
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        ordering = ["name"]
+
+
 class City(models.Model):
-    PROVINCE_CHOICES = [
-        ("SINDH", "Sindh"),
-        ("PUNJAB", "Punjab"),
-        ("ICT", "ICT (Islamabad Capital Territory)"),
-        ("KPK", "KPK (Khyber Pakhtoon Khuwa)"),
-        ("BALOCHISTAN", "Balochistan"),
-    ]
 
     name = models.CharField(max_length=100)
     code = models.CharField(max_length=3, unique=True)
@@ -803,7 +812,8 @@ class City(models.Model):
     longitude = models.DecimalField(max_digits=9, decimal_places=6)
     # Which of the 5 tax jurisdictions a trip starting in this city falls
     # under, for Generate Invoice's Full tax mode. Left blank = no tax.
-    province = models.CharField(max_length=15, choices=PROVINCE_CHOICES, blank=True)
+    # Store the province code so the invoice tax calculation remains compatible.
+    province = models.CharField(max_length=15, blank=True)
 
     def save(self, *args, **kwargs):
         # All city entries are stored in CAPITALS.
@@ -813,6 +823,11 @@ class City(models.Model):
 
     def __str__(self):
         return f"{self.name} ({self.code})"
+
+    def get_province_display(self):
+        if not self.province:
+            return ""
+        return Province.objects.filter(code=self.province).values_list("name", flat=True).first() or self.province
 
     @property
     def stopover_zone(self):

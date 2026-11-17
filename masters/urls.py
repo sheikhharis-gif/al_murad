@@ -98,6 +98,8 @@ urlpatterns = [
     path("locations/excel/", views.locations_excel, name="locations_excel"),
     path("locations/city/<int:city_id>/edit/", views.city_edit, name="city_edit"),
     path("locations/city/<int:city_id>/delete/", views.city_delete, name="city_delete"),
+    path("locations/province/<int:province_id>/edit/", views.province_edit, name="province_edit"),
+    path("locations/province/<int:province_id>/delete/", views.province_delete, name="province_delete"),
     path("locations/route/<int:route_id>/edit/", views.route_edit, name="route_edit"),
     path("locations/route/<int:route_id>/delete/", views.route_delete, name="route_delete"),
 

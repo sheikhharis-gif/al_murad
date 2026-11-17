@@ -48,9 +48,9 @@
                                 <label class="form-label small fw-bold">Province</label>
                                 <select name="province" class="form-select">
                                     <option value="">--- Not Set ---</option>
-                                    {% for code, label in city_provinces %}<option value="{{ code }}">{{ label }}</option>{% endfor %}
+                                    {% for p in provinces %}<option value="{{ p.code }}">{{ p.name }}</option>{% endfor %}
                                 </select>
-                                <div class="form-text small mt-1">Used to work out province-wise tax on Generate Invoice.</div>
+                                <div class="form-text small mt-1">Used for province-wise tax on Generate Invoice. Tax is configured for the existing tax jurisdictions.</div>
                             </div>
                         </div>
 
@@ -111,6 +111,33 @@
                         </table>
                     </div>
                     <div id="cityNoSearch" class="text-center text-muted small py-3" style="display:none;">No matching city found.</div>
+
+                    <hr class="my-4">
+                    <h6 class="fw-bold mb-1"><i class="bi bi-map me-2 text-primary"></i>Provinces</h6>
+                    <div class="form-text small mb-3">New province codes can be assigned to cities. Invoice tax rates are currently configured for the existing jurisdictions.</div>
+                    <form method="post" class="bg-light p-3 rounded-4 mb-3 border border-light-subtle">
+                        {% csrf_token %}<input type="hidden" name="add_province">
+                        <div class="row g-2 align-items-end">
+                            <div class="col-sm-7"><label class="form-label small fw-bold">Province Name</label><input name="province_name" class="form-control" placeholder="e.g. Sindh" required></div>
+                            <div class="col-sm-3"><label class="form-label small fw-bold">Code</label><input name="province_code" class="form-control text-uppercase" maxlength="15" placeholder="SINDH" required></div>
+                            <div class="col-sm-2"><button class="btn btn-primary w-100 fw-bold"><i class="bi bi-plus-circle me-1"></i>Add</button></div>
+                        </div>
+                    </form>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover align-middle mb-0">
+                            <thead><tr class="text-muted small text-uppercase"><th>Province</th><th>Code</th><th class="text-end">Actions</th></tr></thead>
+                            <tbody>
+                                {% for p in provinces %}
+                                <tr><td class="fw-semibold">{{ p.name }}</td><td><span class="badge bg-secondary-subtle text-secondary">{{ p.code }}</span></td>
+                                    <td class="text-end"><div class="btn-group btn-group-sm border rounded-2 overflow-hidden">
+                                        <button type="button" class="btn btn-white text-warning edit-province-btn" data-edit-url="{% url 'province_edit' p.id %}" data-name="{{ p.name }}" data-code="{{ p.code }}" title="Edit Province"><i class="bi bi-pencil-square"></i></button>
+                                        <form method="post" action="{% url 'province_delete' p.id %}">{% csrf_token %}<button class="btn btn-white text-danger" title="Delete Province" onclick="return confirm('Delete {{ p.name }}? Cities assigned to it will be set to Not Set.')"><i class="bi bi-trash"></i></button></form>
+                                    </div></td>
+                                </tr>
+                                {% empty %}<tr><td colspan="3" class="text-center text-muted py-3">No provinces registered.</td></tr>{% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>
@@ -266,7 +293,7 @@
                         <label class="form-label small fw-bold">Province</label>
                         <select name="province" id="editCityProvince" class="form-select">
                             <option value="">--- Not Set ---</option>
-                            {% for code, label in city_provinces %}<option value="{{ code }}">{{ label }}</option>{% endfor %}
+                            {% for p in provinces %}<option value="{{ p.code }}">{{ p.name }}</option>{% endfor %}
                         </select>
                     </div>
                 </div>
@@ -277,6 +304,19 @@
             </form>
         </div>
     </div>
+</div>
+
+<div class="modal fade" id="provinceEditModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered"><div class="modal-content rounded-4">
+        <form method="post" id="provinceEditForm" action="">{% csrf_token %}
+            <div class="modal-header border-0 pb-0"><h5 class="modal-title fw-bold">Edit Province</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div>
+            <div class="modal-body pt-2">
+                <div class="mb-3"><label class="form-label small fw-bold">Province Name</label><input name="province_name" id="editProvinceName" class="form-control" required></div>
+                <div><label class="form-label small fw-bold">Code</label><input name="province_code" id="editProvinceCode" class="form-control text-uppercase" maxlength="15" required></div>
+            </div>
+            <div class="modal-footer border-0 pt-0"><button type="button" class="btn btn-light border" data-bs-dismiss="modal">Cancel</button><button class="btn btn-dark fw-bold">Save Changes</button></div>
+        </form>
+    </div></div>
 </div>
 
 <!-- Edit Route Modal -->
@@ -344,6 +384,20 @@
                 document.getElementById('editCityName').value = this.dataset.cityName;
                 document.getElementById('editCityCode').value = this.dataset.cityCode;
                 document.getElementById('editCityProvince').value = this.dataset.cityProvince || '';
+                modal.show();
+            });
+        });
+    });
+
+    document.addEventListener('DOMContentLoaded', function () {
+        const modalEl = document.getElementById('provinceEditModal');
+        if (!modalEl) return;
+        const modal = new bootstrap.Modal(modalEl);
+        document.querySelectorAll('.edit-province-btn').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                document.getElementById('provinceEditForm').action = this.dataset.editUrl;
+                document.getElementById('editProvinceName').value = this.dataset.name;
+                document.getElementById('editProvinceCode').value = this.dataset.code;
                 modal.show();
             });
         });

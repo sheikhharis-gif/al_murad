@@ -14,7 +14,7 @@ from django.utils import timezone
 from datetime import date
 
 from .models import (
-    Staff, Vehicle, VehicleType, Wheeler, City, Route, StopoverRate,
+    Staff, Vehicle, VehicleType, Wheeler, Province, City, Route, StopoverRate,
     Vendor, SupplierType, Client, Expense, VehicleTyre,
     ClientRate, ClientSubCategory, DriverSalary,
     StaffMonthlyAccount, StaffAttendanceEntry, StaffAccountEntry,
@@ -516,6 +516,7 @@ def wheeler_delete(request, wheeler_id):
 def locations_master(request):
     cities = City.objects.all()
     routes = Route.objects.select_related("origin", "destination")
+    provinces = Province.objects.all()
 
     if request.method == "POST":
 
@@ -532,7 +533,7 @@ def locations_master(request):
                 messages.error(request, "City name and code are both required.")
             elif len(city_code) > 3:
                 messages.error(request, "City code cannot be more than 3 characters.")
-            elif province and province not in dict(City.PROVINCE_CHOICES):
+            elif province and not Province.objects.filter(code=province).exists():
                 messages.error(request, "Choose a valid province.")
             elif City.objects.filter(name__iexact=city_name).exists():
                 messages.error(request, f"City '{city_name.upper()}' is already registered.")
@@ -548,6 +549,23 @@ def locations_master(request):
                     province=province,
                 )
                 messages.success(request, f"City '{city_name.upper()}' registered successfully.")
+            return redirect("locations_master")
+
+        # ---- ADD PROVINCE ----
+        if "add_province" in request.POST:
+            province_name = (request.POST.get("province_name") or "").strip()
+            province_code = (request.POST.get("province_code") or "").strip().upper()
+            if not province_name or not province_code:
+                messages.error(request, "Province name and code are both required.")
+            elif len(province_code) > 15:
+                messages.error(request, "Province code cannot be more than 15 characters.")
+            elif Province.objects.filter(name__iexact=province_name).exists():
+                messages.error(request, f"Province '{province_name}' is already registered.")
+            elif Province.objects.filter(code__iexact=province_code).exists():
+                messages.error(request, f"Province code '{province_code}' is already registered.")
+            else:
+                Province.objects.create(name=province_name, code=province_code)
+                messages.success(request, f"Province '{province_name}' registered successfully.")
             return redirect("locations_master")
 
         # ---- ADD ROUTE (MANUAL KMs & TT HOURS) ----
@@ -578,7 +596,7 @@ def locations_master(request):
     return render(request, "locations/locations.html", {
         "cities": cities,
         "routes": routes,
-        "city_provinces": City.PROVINCE_CHOICES,
+        "provinces": provinces,
     })
 
 
@@ -593,7 +611,7 @@ def city_edit(request, city_id):
             messages.error(request, "City name and code are both required.")
         elif len(city_code) > 3:
             messages.error(request, "City code cannot be more than 3 characters.")
-        elif province and province not in dict(City.PROVINCE_CHOICES):
+        elif province and not Province.objects.filter(code=province).exists():
             messages.error(request, "Choose a valid province.")
         elif City.objects.exclude(id=city.id).filter(name__iexact=city_name).exists():
             messages.error(request, f"City '{city_name.upper()}' is already registered.")
@@ -605,6 +623,39 @@ def city_edit(request, city_id):
             city.province = province
             city.save()
             messages.success(request, f"City '{city.name}' updated successfully.")
+    return redirect("locations_master")
+
+
+def province_edit(request, province_id):
+    province = get_object_or_404(Province, id=province_id)
+    if request.method == "POST":
+        name = (request.POST.get("province_name") or "").strip()
+        code = (request.POST.get("province_code") or "").strip().upper()
+        if not name or not code:
+            messages.error(request, "Province name and code are both required.")
+        elif len(code) > 15:
+            messages.error(request, "Province code cannot be more than 15 characters.")
+        elif Province.objects.exclude(id=province.id).filter(name__iexact=name).exists():
+            messages.error(request, f"Province '{name}' is already registered.")
+        elif Province.objects.exclude(id=province.id).filter(code__iexact=code).exists():
+            messages.error(request, f"Province code '{code}' is already registered.")
+        else:
+            old_code = province.code
+            province.name, province.code = name, code
+            province.save()
+            if old_code != code:
+                City.objects.filter(province=old_code).update(province=code)
+            messages.success(request, f"Province '{name}' updated successfully.")
+    return redirect("locations_master")
+
+
+def province_delete(request, province_id):
+    province = get_object_or_404(Province, id=province_id)
+    if request.method == "POST":
+        City.objects.filter(province=province.code).update(province="")
+        name = province.name
+        province.delete()
+        messages.success(request, f"Province '{name}' deleted; linked cities were set to Not Set.")
     return redirect("locations_master")
 
 
