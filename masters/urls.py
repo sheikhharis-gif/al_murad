@@ -1,10 +1,11 @@
 from django.urls import path
-from . import rate_copy, rate_correct, rate_exports, rate_fuel, views
+from . import list_exports, rate_copy, rate_correct, rate_exports, rate_fuel, views
 
 urlpatterns = [
 
     # STAFF
     path("staff/", views.staff_list, name="staff_list"),
+    path("staff/excel/", list_exports.staff_excel, name="staff_excel"),
     path("staff/add/", views.staff_add, name="staff_add"),
     path("staff/edit/<int:staff_id>/", views.staff_edit, name="staff_edit"),
     path("staff/delete/<int:staff_id>/", views.staff_delete, name="staff_delete"),
@@ -53,6 +54,7 @@ urlpatterns = [
     path("vendors/fuel-rates/pso/<str:effective_date>/delete/", views.pso_fuel_price_delete, name="pso_fuel_price_delete"),
     # CLIENTS
     path("clients/", views.client_list, name="client_list"),
+    path("clients/excel/", list_exports.client_excel, name="client_excel"),
     path("clients/add/", views.client_add, name="client_add"),
     path("clients/rates/", views.client_rates_select, name="client_rates_select"),
     path("clients/<int:client_id>/rates/", views.client_rates, name="client_rates"),
