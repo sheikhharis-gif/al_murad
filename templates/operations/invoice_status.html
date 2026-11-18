@@ -162,13 +162,19 @@
                                         <span class="diff-amount">{% if inv.difference is not None %}{{ inv.difference|floatformat:"0g" }}{% else %}-{% endif %}</span>
                                     </div>
                                     {% if not inv.is_cancelled %}
+                                    {% if not inv.is_paid %}
+                                    <div class="pay-field align-self-end">
+                                        <button type="button" class="btn btn-sm btn-outline-secondary fw-bold pay-edit" title="Fill the cheque details by hand, whatever the status">
+                                            <i class="bi bi-pencil-square me-1"></i>Edit</button>
+                                    </div>
+                                    {% endif %}
                                     <div class="pay-field align-self-end">
                                         <button type="submit" class="btn btn-sm btn-primary fw-bold px-3 pay-save"><i class="bi bi-check2 me-1"></i>Save</button>
                                     </div>
                                     {% endif %}
                                 </div>
                                 {% if not inv.is_paid and not inv.is_cancelled %}
-                                <div class="pay-hint">Cheque details open up once the status is Payment Received.</div>
+                                <div class="pay-hint">Cheque details open up once the status is Payment Received - or press Edit to fill them by hand.</div>
                                 {% endif %}
                             </form>
                         </td>
@@ -248,6 +254,14 @@
                 form.querySelector('.diff-amount').textContent = c === null || isNaN(c) ? '-' : fmt(c - net);
             }
             form.addEventListener('input', function () { recalc(); if (save) save.classList.add('btn-warning'); });
+            // Edit: open the cheque fields by hand even though the status is not Payment Received
+            var edit = form.querySelector('.pay-edit');
+            if (edit) edit.addEventListener('click', function () {
+                form.querySelectorAll('.pay-locked').forEach(function (i) { i.disabled = false; });
+                var hint = form.querySelector('.pay-hint'); if (hint) hint.style.display = 'none';
+                edit.style.display = 'none';
+                form.elements['cheque_no'].focus();
+            });
             if (wht && !wht.disabled) {
                 wht.addEventListener('input', recalc);
                 // a changed WHT % saves on its own (Enter or clicking away) - no need to press Save

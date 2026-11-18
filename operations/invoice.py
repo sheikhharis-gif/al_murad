@@ -505,7 +505,9 @@ def invoice_payment_update(request, invoice_id):
 
     if invoice.status != "DRAFT" and "submission_date" in post:
         invoice.submission_date = _parse_date(post.get("submission_date"))
-    if invoice.is_paid:
+    # Locked inputs are not posted, so these are only saved when the status is Payment Received
+    # or the user pressed "Edit" to open them by hand.
+    if invoice.is_paid or "cheque_no" in post:
         invoice.cheque_no = (post.get("cheque_no") or "").strip()[:60]
         invoice.bank_name = (post.get("bank_name") or "").strip()[:80]
         invoice.cheque_date = _parse_date(post.get("cheque_date"))
