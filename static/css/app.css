@@ -1149,3 +1149,74 @@ span.flatpickr-weekday:nth-child(7n) { color: var(--danger); }
 /* Trip opened from the navbar box: scroll offset + brief highlight */
 .trip-block { scroll-margin-top: 96px; }
 .trip-block:target { border-color: #0d6efd !important; box-shadow: 0 0 0 3px rgba(13, 110, 253, .25); }
+
+/* ===== PAGE TABS (browser-style, static/js/tabs.js) ===== */
+.app-navbar.navbar-expand-xl { flex-wrap: wrap; }
+.app-tabs {
+    width: 100%;
+    display: flex;
+    align-items: flex-end;
+    gap: 3px;
+    padding: 8px 1.5rem 0;
+    margin-bottom: -0.6rem;          /* sit on the navbar's bottom edge */
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: thin;
+}
+.app-tab {
+    display: flex;
+    align-items: center;
+    flex: 0 1 200px;
+    min-width: 96px;
+    height: 32px;
+    padding: 0 4px 0 12px;
+    border-radius: 9px 9px 0 0;
+    background: rgba(255, 255, 255, 0.07);
+    color: #cbd5e1;
+    font-size: 0.8rem;
+    font-weight: 500;
+    transition: background var(--transition), color var(--transition);
+}
+.app-tab:hover:not(.active) { background: rgba(255, 255, 255, 0.15); color: #fff; }
+.app-tab.active { background: var(--bg-page); color: var(--text-main); font-weight: 600; }
+.app-tab a {
+    flex: 1;
+    min-width: 0;
+    color: inherit;
+    text-decoration: none;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 32px;
+}
+.app-tab-close {
+    flex: 0 0 auto;
+    width: 20px;
+    height: 20px;
+    margin-left: 4px;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    color: inherit;
+    font-size: 1rem;
+    line-height: 1;
+    opacity: 0.65;
+}
+.app-tab-close:hover { opacity: 1; background: rgba(148, 163, 184, 0.3); }
+.app-tab-new {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    margin: 0 0 2px 4px;
+    border-radius: 50%;
+    color: #cbd5e1;
+    text-decoration: none;
+}
+.app-tab-new:hover { background: rgba(255, 255, 255, 0.15); color: #fff; }
+@media (max-width: 576px) {
+    .app-tabs { padding: 6px 0.75rem 0; margin-bottom: -0.5rem; }
+    .app-tab { flex-basis: 140px; }
+}
