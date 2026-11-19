@@ -867,6 +867,31 @@
             document.querySelectorAll('.trip-block').forEach(syncAutoTimes);
         });
 
+        // The FIRST trip of a job that has no saved trip yet takes the Job's Date automatically
+        // (and follows it if that date is changed) - until its own Date is typed in by hand.
+        (function () {
+            var jobDate = document.querySelector('input[name="job_date"]');
+            var first = document.querySelector('.trip-block');
+            if (!jobDate || !first) return;
+            var tripDate = first.querySelector('input.trip-date');
+            var tripId = first.querySelector('input[name$="-id"]');
+            if (!tripDate || (tripId && tripId.value)) return;   // an already-saved trip keeps its date
+            tripDate.addEventListener('input', function (e) { if (e.isTrusted) tripDate.dataset.manual = '1'; });
+            function follow() {
+                if (tripDate.dataset.manual === '1' || !jobDate.value) return;
+                if (tripDate.value !== jobDate.value) {
+                    tripDate.value = jobDate.value;
+                    tripDate.dispatchEvent(new Event('change', { bubbles: true }));   // Auto times follow
+                }
+            }
+            jobDate.addEventListener('change', follow);
+            // on opening the page too - but not when the page came back from a failed save with the
+            // first trip's own (possibly hand-typed) date in it
+            window.addEventListener('load', function () {
+                if (!first.querySelector('.text-danger, .is-invalid')) follow();
+            });
+        })();
+
         // Monthly rental trip: its Trip Expense Total follows the five boxes as you type.
         document.getElementById('trip-formset').addEventListener('input', function (e) {
             if (!e.target.classList.contains('trip-exp')) return;
