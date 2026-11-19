@@ -37,3 +37,11 @@ def access_flags(request):
         "is_expense_only": "Expense Only" in user_groups,
         "is_workshop_only": "Workshop Only" in user_groups,
     }
+
+
+def copy_numbers(request):
+    """Numbers to show once in the 'copy me' pop-up (a new Job #, new Trip #s) - set in the session
+    by the view that saved them and shown on the very next page."""
+    if not request.user.is_authenticated or not hasattr(request, "session"):
+        return {}
+    return {"copy_numbers": request.session.pop("copy_numbers", None) or []}

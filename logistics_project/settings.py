@@ -68,6 +68,7 @@ TEMPLATES = [
                 "django.contrib.messages.context_processors.messages",
                 "operations.context_processors.fleet_alerts",
                 "operations.context_processors.access_flags",
+                "operations.context_processors.copy_numbers",
             ],
         },
     },

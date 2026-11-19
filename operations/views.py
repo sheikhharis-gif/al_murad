@@ -224,6 +224,7 @@ def job_add(request):
                                        f"{month:%b-%Y} - continuing that job.")
                 return redirect("job_edit", job_id=open_job.job_number)
             job = form.save()
+            request.session["copy_numbers"] = [{"label": "Job #", "numbers": [job.job_code]}]
             messages.success(request, f"Rental Job #{job.job_code} created for {supplier} ({month:%b-%Y}) - "
                                       "add each trip with its vehicle #.")
             return redirect("job_edit", job_id=job.job_number)
@@ -239,6 +240,7 @@ def job_add(request):
                 messages.info(request, f"{vehicle.vehicle_number} already has an open Job #{open_job.job_code} - continuing that job.")
                 return redirect("job_edit", job_id=open_job.job_number)
         job = form.save()
+        request.session["copy_numbers"] = [{"label": "Job #", "numbers": [job.job_code]}]
         if vehicle:
             messages.success(request, f"Job #{job.job_code} created - now add its trips, expenses and fuel entries.")
         else:
@@ -276,8 +278,13 @@ def job_edit(request, job_id):
         if "save_trips" in request.POST:
             trip_formset = TripFormSet(request.POST, instance=job, prefix="trips")
             if trip_formset.is_valid():
+                before = set(job.trips.values_list("pk", flat=True))
                 trip_formset.save()
                 messages.success(request, "Saved - trips updated.")
+                # Trips created by this save: their Trip #s are shown in a pop-up to copy.
+                new_nos = list(job.trips.exclude(pk__in=before).order_by("pk").values_list("trip_no", flat=True))
+                if new_nos:
+                    request.session["copy_numbers"] = [{"label": "Trip #", "numbers": new_nos}]
                 # Saved from a trip's own Save button -> come back to that trip
                 anchor = request.POST.get("save_trips", "")
                 url = reverse("job_edit", kwargs={"job_id": job.job_number})
