@@ -278,10 +278,15 @@
                             <div class="col-md-2 stopover-col">
                                 <label class="form-label x-small fw-bold mb-1">Stopover City</label>
                                 {{ tf.stopover_city }}
+                                {# more stops: dropdowns are added here by the page script (named like the form field) #}
+                                <div class="stopover-extras" data-name="{{ tf.extra_stopover_cities.html_name }}"
+                                     data-initial="{% for v in tf.extra_stopover_cities.value %}{{ v.pk|default:v }},{% endfor %}"></div>
+                                <button type="button" class="btn btn-link btn-sm p-0 mt-1 fw-bold add-stop text-decoration-none"
+                                        title="Trip with more than one stopover city"><i class="bi bi-plus-circle me-1"></i>Add stop</button>
                                 {% if tf.stopover_city.errors %}<div class="text-danger small mt-1">{{ tf.stopover_city.errors.0 }}</div>{% endif %}
                             </div>
                             <div class="col-md-2 stopover-col">
-                                <label class="form-label x-small fw-bold mb-1">Stopover Charges</label>
+                                <label class="form-label x-small fw-bold mb-1">Stopover Charges <span class="text-muted fw-normal">(all stops)</span></label>
                                 {{ tf.stopover_charges }}
                                 {% if tf.stopover_charges.errors %}<div class="text-danger small mt-1">{{ tf.stopover_charges.errors.0 }}</div>{% endif %}
                             </div>
@@ -502,6 +507,10 @@
             var tonSelect = block.querySelector('select.trip-ton-select');
             if (!box || !client) return;
             var empty = box.checked;
+            // A client is chosen -> it is not an empty trip: the checkbox is switched off
+            // (clear the client again to be able to tick it).
+            box.disabled = !empty && !!client.value;
+            box.title = box.disabled ? 'A client is selected - clear the client to mark this trip as empty' : '';
             if (empty) client.value = '';
             client.disabled = empty;
             if (weight) {
@@ -517,7 +526,7 @@
         }
         document.querySelectorAll('.trip-block').forEach(syncEmptyTrip);
         document.getElementById('trip-formset').addEventListener('change', function (e) {
-            if (e.target.matches('input.trip-empty')) syncEmptyTrip(e.target.closest('.trip-block'));
+            if (e.target.matches('input.trip-empty, select.trip-client')) syncEmptyTrip(e.target.closest('.trip-block'));
         });
 
         // Vehicle Type auto-fill: when a per-trip vehicle is selected, set
@@ -563,12 +572,51 @@
             if (!city || !amt) return;
             if (amt.dataset.manual === '1' && amt.value !== '') return;
             if (!city.value) { amt.value = ''; return; }
-            var zone = city.options[city.selectedIndex].getAttribute('data-zone');
             var rates = {};
             try { rates = JSON.parse(amt.getAttribute('data-rates') || '{}'); } catch (err) {}
-            var v = ((rates[client ? client.value : ''] || {})[vt ? vt.value : ''] || {})[zone];
-            amt.value = v !== undefined ? parseFloat(v) : '';
+            // every stop (the first one + the added ones) is charged and the amounts added up
+            var total = null;
+            [city].concat(Array.prototype.slice.call(block.querySelectorAll('select.trip-stopover-extra'))).forEach(function (c) {
+                if (!c.value) return;
+                var zone = c.options[c.selectedIndex].getAttribute('data-zone');
+                var v = ((rates[client ? client.value : ''] || {})[vt ? vt.value : ''] || {})[zone];
+                if (v !== undefined) total = (total || 0) + parseFloat(v);
+            });
+            amt.value = total === null ? '' : total;
         }
+        // More than one stopover city: "Add stop" adds another dropdown (same city list) under the first.
+        function addStop(block, value) {
+            var main = block.querySelector('select.trip-stopover-city');
+            var box = block.querySelector('.stopover-extras');
+            if (!main || !box) return;
+            var row = document.createElement('div');
+            row.className = 'input-group input-group-sm mt-1';
+            var sel = main.cloneNode(true);
+            sel.removeAttribute('id');
+            sel.name = box.dataset.name;
+            sel.className = 'form-select form-select-sm trip-stopover-extra';
+            sel.options[0].textContent = '--- Another stop ---';
+            sel.value = value || '';
+            var x = document.createElement('button');
+            x.type = 'button'; x.className = 'btn btn-outline-danger'; x.title = 'Remove this stop'; x.innerHTML = '&times;';
+            x.addEventListener('click', function () { row.remove(); syncStopover(block); });
+            row.appendChild(sel); row.appendChild(x);
+            box.appendChild(row);
+            return sel;
+        }
+        document.querySelectorAll('.trip-block').forEach(function (blk) {
+            var box = blk.querySelector('.stopover-extras');
+            if (!box) return;
+            (box.dataset.initial || '').split(',').filter(Boolean).forEach(function (id) { addStop(blk, id); });
+        });
+        document.getElementById('trip-formset').addEventListener('click', function (e) {
+            var b = e.target.closest('button.add-stop');
+            if (!b) return;
+            var blk = b.closest('.trip-block');
+            var main = blk.querySelector('select.trip-stopover-city');
+            if (!main.value) { main.focus(); return; }   // the first stop comes first
+            var sel = addStop(blk, ''); if (sel) sel.focus();
+        });
         var tripFormset = document.getElementById('trip-formset');
         document.querySelectorAll('.trip-block').forEach(syncStopoverVisibility);
         tripFormset.addEventListener('change', function (e) {
@@ -580,12 +628,16 @@
                 var opt = e.target.options[e.target.selectedIndex];
                 if (!(opt && opt.getAttribute('data-stopover') === '1')) {
                     blk.querySelector('select.trip-stopover-city').value = '';
+                    blk.querySelectorAll('.stopover-extras').forEach(function (b) { b.innerHTML = ''; });
                     var a = blk.querySelector('input.trip-stopover-charges');
                     a.value = ''; delete a.dataset.manual;
                 }
                 syncStopover(blk);
                 syncStopoverVisibility(blk);
-            } else if (e.target.matches('select.trip-stopover-city, select[name$="-vehicle_type"]')) {
+            } else if (e.target.matches('select.trip-stopover-city, select.trip-stopover-extra, select[name$="-vehicle_type"]')) {
+                if (e.target.matches('select.trip-stopover-city') && !e.target.value) {
+                    blk.querySelectorAll('.stopover-extras').forEach(function (b) { b.innerHTML = ''; });   // no first stop, no more stops
+                }
                 syncStopover(blk);
             }
         });
@@ -607,6 +659,10 @@
                 newRow.removeAttribute('id');
                 newRow.querySelectorAll('select.trip-ton-select').forEach(function (el) { el.remove(); });
                 newRow.querySelectorAll('.trip-errors').forEach(function (el) { el.remove(); });
+                newRow.querySelectorAll('.stopover-extras').forEach(function (el) {
+                    el.innerHTML = ''; el.dataset.initial = '';
+                    el.dataset.name = el.dataset.name.replace(/-\d+-/, '-' + formNum + '-');
+                });
                 newRow.querySelectorAll('.trip-save-btn').forEach(function (btn) { btn.value = ''; });
 
                 // A cloned flatpickr field is a dead copy (its visible box has no

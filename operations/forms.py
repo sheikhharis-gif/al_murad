@@ -200,7 +200,7 @@ class TripForm(forms.ModelForm):
         fields = [
             "trip_date", "auto_times", "client", "empty_trip", "sub_category", "bilty_number", "weight", "route", "vehicle_type",
             "reached_at", "departed_at", "arrived_at", "delivered_at",
-            "stopover_city", "stopover_charges", "additional_charges", "remarks",
+            "stopover_city", "extra_stopover_cities", "stopover_charges", "additional_charges", "remarks",
             "trip_fare", "trip_fuel", "trip_weighbridge", "trip_loading", "trip_offloading",
         ]
         widgets = {
@@ -353,15 +353,22 @@ class TripForm(forms.ModelForm):
                 self.add_error("sub_category", f"{client.name} has sub-categories ({', '.join(s.name for s in client.sub_categories.all())}) - please choose one.")
 
         city, charges = cleaned.get("stopover_city"), cleaned.get("stopover_charges")
+        # More stops after the first one; a city repeated or equal to the first stop is dropped.
+        extras = list({c.pk: c for c in (cleaned.get("extra_stopover_cities") or [])
+                       if not city or c.pk != city.pk}.values())
         if "stopover_charges" not in self.errors:
             if not city:
-                if charges:
-                    self.add_error("stopover_city", "Choose the stopover city these charges are for.")
+                if charges or extras:
+                    self.add_error("stopover_city", "Choose the first stopover city before adding more stops.")
                 cleaned["stopover_charges"] = Decimal(0)
+                extras = []
             elif charges is None:
+                # Charges left blank = the Stopover Rates table's amount for EVERY stop, added up.
                 vt = cleaned.get("vehicle_type")
-                cleaned["stopover_charges"] = stopover_amount(
-                    client.pk if client else None, vt.pk if vt else None, city) or Decimal(0)
+                cleaned["stopover_charges"] = sum(
+                    (stopover_amount(client.pk if client else None, vt.pk if vt else None, c) or Decimal(0)
+                     for c in [city] + extras), Decimal(0))
+        cleaned["extra_stopover_cities"] = City.objects.filter(pk__in=[c.pk for c in extras])
         return cleaned
 
     # Pre-filled on new rows, so on their own they don't count as "the user

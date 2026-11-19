@@ -95,7 +95,7 @@ def build_mis(request):
 
     trips = Trip.objects.filter(job_id__in=job_ids).select_related(
         "client", "route", "vehicle__vehicle_type", "vehicle_type", "sub_category", "stopover_city"
-    ).order_by("job_id", "id")
+    ).prefetch_related("extra_stopover_cities").order_by("job_id", "id")
     if client_id:
         trips = trips.filter(client_id=client_id)
     if vehicle_id:
@@ -137,7 +137,7 @@ def build_mis(request):
                 (t.sub_category.name if t and t.sub_category_id else ""),
                 t.bilty_number if t else "",
                 t.weight if t else None, t.route.route_code if t else "",
-                (t.stopover_city.name if t and t.stopover_city_id else ""),
+                (t.stopover_names if t else ""),
                 t.status_display if t else "",
                 invoice_no.get(t.id, "") if t else "",
                 (t.freight - (t.additional_charges or 0) - (t.stopover_charges or 0)) if t else None,

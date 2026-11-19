@@ -226,6 +226,10 @@ class Trip(models.Model):
         "masters.City", on_delete=models.PROTECT, null=True, blank=True, related_name="stopover_trips",
         verbose_name="Stopover City",
     )
+    # Further stops on the same trip (the first stop is stopover_city). stopover_charges is
+    # always the TOTAL for every stop, so freight and invoices need no other change.
+    extra_stopover_cities = models.ManyToManyField(
+        "masters.City", blank=True, related_name="extra_stopover_trips", verbose_name="More stopover cities")
     stopover_charges = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     additional_charges = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     # Monthly rental job: this trip's own expenses (each trip can be a different
@@ -303,6 +307,13 @@ class Trip(models.Model):
     @property
     def unloading_duration_display(self):
         return _format_duration(self.arrived_at, self.delivered_at)
+
+    @property
+    def stopover_names(self):
+        """All stopover cities, first stop first: 'SUKKUR, MULTAN'."""
+        names = [self.stopover_city.name] if self.stopover_city_id else []
+        names += sorted(c.name for c in self.extra_stopover_cities.all())
+        return ", ".join(names)
 
     def compute_freight(self):
         """Freight = Updated Trip Cost of the Client Rate in force on the trip's

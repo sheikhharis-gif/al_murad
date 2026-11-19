@@ -40,7 +40,7 @@ COLUMNS = [
     ("sub_category", "Sub-Category", lambda t: t.sub_category.name if t.sub_category_id else "", False),
     ("route", "Route", lambda t: t.route.route_code, False),
     ("weight", "Weight (Tons)", lambda t: t.weight, False),
-    ("stopover_city", "Stopover City", lambda t: t.stopover_city.name if t.stopover_city_id else "", False),
+    ("stopover_city", "Stopover City", lambda t: t.stopover_names, False),
     ("stopover_charges", "Stopover Charges", lambda t: t.stopover_charges, True),
     ("trip_charges", "Trip Charges", lambda t: t.freight - (t.additional_charges or 0) - (t.stopover_charges or 0), True),
     ("additional_charges", "Additional Charges", lambda t: t.additional_charges, True),
