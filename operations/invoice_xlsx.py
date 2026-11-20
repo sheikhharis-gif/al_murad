@@ -114,7 +114,7 @@ def _page(ws, orientation, last_row, last_col, one_page=False, letterhead=True, 
 
 # Total sheet width (characters) that prints at about 100% across A4 portrait inside the
 # letterhead margins: a narrower table is stretched to it, a wider one is scaled down to fit.
-TRIPS_SUMMARY_WIDTH = 100
+TRIPS_SUMMARY_WIDTH = 106
 NON_TAX_WIDTH = 100
 # Remarks: as wide as its longest remark needs, within these limits (it wraps beyond).
 _REMARKS_MIN, _REMARKS_MAX = 14, 38
@@ -157,14 +157,14 @@ def _data_row_heights(data, widths):
     row whose remark needs more lines once wrapped in its column - so every
     remark prints in full without stretching the other rows."""
     if "remarks" not in data["keys"]:
-        return [19.95] * len(data["rows"])
+        return [24] * len(data["rows"])
     idx = data["keys"].index("remarks")
     # characters that fit on one line: a width unit is one digit; mixed text runs a bit wider
     per_line = max(int(widths[idx + 1] * 0.85), 8)
     heights = []
     for row in data["rows"]:
         lines = max(len(textwrap.wrap(str(row[idx] or ""), per_line, break_long_words=True)), 1)
-        heights.append(19.95 if lines == 1 else round(13.5 * lines + 6, 2))
+        heights.append(24 if lines == 1 else round(14 * lines + 7, 2))
     return heights
 
 

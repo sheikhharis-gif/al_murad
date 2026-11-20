@@ -71,7 +71,7 @@
                                             data-date="{{ row.effective_date|date:'Y-m-d' }}"
                                             data-premier="{{ row.premier|default_if_none:'' }}"
                                             data-hi-cetane="{{ row.hi_cetane|default_if_none:'' }}"
-                                            title="Edit">
+                                            title="Edit PSO price{% if row.premier_used or row.hi_cetane_used %} (opens Correct &amp; Recalculate for locked linked rates){% endif %}">
                                             <i class="bi bi-pencil-square"></i>
                                         </button>
                                         <form method="post" action="{% url 'pso_fuel_price_delete' row.effective_date|date:'Y-m-d' %}" class="d-inline">

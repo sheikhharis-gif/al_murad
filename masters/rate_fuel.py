@@ -225,11 +225,17 @@ def _annotate_moves(client, prices, products):
         base_date = max(r.effective_date for r in rates)
         due = None
         for p in sorted((p for p in prices if p.product_id == product.id), key=lambda p: (p.effective_date, p.id)):
-            if p.effective_date <= base_date or not base:
+            eligible = [r for r in rates if r.effective_date < p.effective_date]
+            p.already_applied = not eligible
+            if not eligible or not base:
                 continue
             p.move = (p.fuel_price - base) / base * 100
             p.crosses = bool(threshold) and abs(p.move) >= threshold
-            if p.crosses and due is None and not p.already_applied:
+            # A fuel date can already exist for some route/type combinations
+            # while others still need it. Keep the date selectable until every
+            # eligible latest rate is already on or after it; _plan skips only
+            # those individual combinations that were previously revised.
+            if p.crosses and due is None:
                 due = p
                 p.is_due = True
         out.append({"product_id": product.id, "base": base, "base_date": base_date, "due": due})
@@ -241,12 +247,8 @@ def fuel_price_choices(client):
     product, plus how many of the client's rates have no fuel product set."""
     prices = list(pso_fuel_prices().select_related("product").order_by("-effective_date", "-id"))
     products = FuelProduct.objects.filter(pk__in={p.product_id for p in prices}).order_by("name")
-    # A price already applied to this client (its rates have an entry on that product
-    # + date) is shown disabled, so the same update can't be applied twice.
-    applied = set(ClientRate.objects.filter(client=client, fuel_product__isnull=False)
-                  .values_list("fuel_product_id", "effective_date"))
     for p in prices:
-        p.already_applied = (p.product_id, p.effective_date) in applied
+        p.already_applied = False
         p.move, p.crosses, p.is_due = None, False, False
     fuel_due = _annotate_moves(client, prices, products)
     return {

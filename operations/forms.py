@@ -85,7 +85,7 @@ class JobForm(forms.ModelForm):
                 "data-placeholder": "Type supplier name to search...", "data-empty-text": "No matching supplier"}),
             "job_date": forms.DateInput(attrs={"class": "form-control datepicker"}),
             "trip_advance": forms.NumberInput(attrs={"class": "form-control", "step": "0.01"}),
-            "remarks": forms.Textarea(attrs={"class": "form-control", "rows": 2, "placeholder": "Voyage details..."}),
+            "remarks": forms.Textarea(attrs={"class": "form-control", "rows": 2, "placeholder": "Voyage details...", "data-uppercase": "1"}),
         }
 
     def __init__(self, *args, **kwargs):
@@ -154,6 +154,9 @@ class JobForm(forms.ModelForm):
         cleaned["rental_month"] = None
         return cleaned
 
+    def clean_remarks(self):
+        return (self.cleaned_data.get("remarks") or "").upper()
+
 
 # -----------------------
 # TRIP FORM (one leg of a Job)
@@ -213,7 +216,11 @@ class TripForm(forms.ModelForm):
             "sub_category": SubCategorySelect(attrs={"class": "form-select form-select-sm trip-subcategory"}),
             "bilty_number": forms.TextInput(attrs={"class": "form-control form-control-sm", "placeholder": "Bilty #"}),
             "weight": forms.NumberInput(attrs={"class": "form-control form-control-sm trip-weight", "step": "0.01", "placeholder": "Weight (Tons)"}),
-            "route": forms.Select(attrs={"class": "form-select form-select-sm"}),
+            "route": forms.Select(attrs={
+                "class": "form-select form-select-sm dropdown-search-select",
+                "data-match": "contains", "data-theme": "light",
+                "data-placeholder": "Type route code or city...", "data-empty-text": "No matching route",
+            }),
             "vehicle_type": forms.Select(attrs={
                 "class": "form-select form-select-sm dropdown-search-select",
                 "data-match": "contains", "data-theme": "light",
@@ -237,7 +244,7 @@ class TripForm(forms.ModelForm):
                 "class": "form-control form-control-sm trip-stopover-charges", "step": "0.01", "placeholder": "Auto",
             }),
             "additional_charges": forms.NumberInput(attrs={"class": "form-control form-control-sm", "step": "0.01"}),
-            "remarks": forms.TextInput(attrs={"class": "form-control form-control-sm", "placeholder": "Remarks"}),
+            "remarks": forms.TextInput(attrs={"class": "form-control form-control-sm", "placeholder": "Remarks", "data-uppercase": "1"}),
         }
 
     # Monthly rental job only: the hired vehicle's number, typed per trip
@@ -371,6 +378,9 @@ class TripForm(forms.ModelForm):
         cleaned["extra_stopover_cities"] = City.objects.filter(pk__in=[c.pk for c in extras])
         return cleaned
 
+    def clean_remarks(self):
+        return (self.cleaned_data.get("remarks") or "").upper()
+
     # Pre-filled on new rows, so on their own they don't count as "the user
     # filled this row in" - otherwise an untouched blank row would fail
     # validation (its time default moves on by the time the page is saved).
@@ -383,6 +393,10 @@ class TripForm(forms.ModelForm):
 
 
 class BaseTripFormSet(forms.BaseInlineFormSet):
+    def __init__(self, *args, lock_existing=False, **kwargs):
+        self.lock_existing = lock_existing
+        super().__init__(*args, **kwargs)
+
     def _construct_form(self, i, **kwargs):
         form = super()._construct_form(i, **kwargs)
         form.rental_pool = bool(getattr(self.instance, "rental_pool", False))
@@ -404,6 +418,12 @@ class BaseTripFormSet(forms.BaseInlineFormSet):
         # Rows added in the browser ("Add Trip") start on the vehicle's type too
         if vehicle and vehicle.vehicle_type_id:
             form.fields["vehicle_type"].widget.attrs["data-default"] = vehicle.vehicle_type_id
+        if self.lock_existing and form.instance.pk:
+            # The browser disables saved rows until Edit is selected. Keep the
+            # Django fields enabled so the submit handler can post their values.
+            form.locked = True
+            for field in form.fields.values():
+                field.widget.attrs["disabled"] = "disabled"
         return form
 
 

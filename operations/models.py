@@ -81,6 +81,7 @@ class Job(models.Model):
         return self.trips.values("vehicle").distinct().count()
 
     def save(self, *args, **kwargs):
+        self.remarks = (self.remarks or "").upper()
         if self.status == 'completed' and not self.completion_date:
             self.completion_date = timezone.now()
         super(Job, self).save(*args, **kwargs)
@@ -246,6 +247,7 @@ class Trip(models.Model):
         ordering = ["id"]
 
     def save(self, *args, **kwargs):
+        self.remarks = (self.remarks or "").upper()
         if self.job.rental_pool:
             # Monthly rental job: the trip's own hired vehicle (set by the form), no meters / KMs.
             if not self.vehicle_type_id:

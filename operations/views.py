@@ -227,7 +227,7 @@ def job_add(request):
             request.session["copy_numbers"] = [{"label": "Job #", "numbers": [job.job_code]}]
             messages.success(request, f"Rental Job #{job.job_code} created for {supplier} ({month:%b-%Y}) - "
                                       "add each trip with its vehicle #.")
-            return redirect("job_edit", job_id=job.job_number)
+            return redirect(reverse("job_edit", kwargs={"job_id": job.job_number}) + "?focus=trip-date")
         vehicle = form.cleaned_data.get("vehicle")
         if vehicle:
             open_job = (
@@ -245,7 +245,7 @@ def job_add(request):
             messages.success(request, f"Job #{job.job_code} created - now add its trips, expenses and fuel entries.")
         else:
             messages.success(request, f"Job #{job.job_code} created - add each trip with its own Vehicle # below.")
-        return redirect("job_edit", job_id=job.job_number)
+        return redirect(reverse("job_edit", kwargs={"job_id": job.job_number}) + "?focus=trip-date")
     return render(request, "operations/job_form.html", {"form": form})
 
 
@@ -257,6 +257,20 @@ def _rate_tonnages_json():
             "client_id", "sub_category_id", "route_id", "vehicle_type_id", "weight_tons"):
         rows.add((client_id, sub_id, route_id, vt_id, format(weight.normalize(), "f")))
     return json.dumps(sorted(rows, key=lambda r: (r[0], r[2], float(r[4]))))
+
+
+def _rate_costs_json():
+    """Rate history used to show the exact trip charge before a trip is saved."""
+    rows = []
+    for client_id, sub_id, route_id, vehicle_type_id, weight, effective_date, amount, rate_id in (
+        ClientRate.objects.exclude(weight_tons__isnull=True).exclude(vehicle_type__isnull=True)
+        .order_by("effective_date", "id")
+        .values_list("client_id", "sub_category_id", "route_id", "vehicle_type_id", "weight_tons",
+                     "effective_date", "updated_trip_cost", "id")
+    ):
+        rows.append((str(client_id), str(sub_id or ""), str(route_id), str(vehicle_type_id),
+                     format(weight.normalize(), "f"), effective_date.isoformat(), str(amount), rate_id))
+    return json.dumps(rows)
 
 
 # ================= JOB SHEET (the full multi-section page: header + trips + expense + fuel) =================
@@ -300,6 +314,7 @@ def job_edit(request, job_id):
                 "expense_form": JobExpenseForm(instance=expense, rental=is_rental, pool=job.rental_pool),
                 "fuel_formset": JobFuelEntryFormSet(instance=job, prefix="fuel"),
                 "rate_tonnages_json": _rate_tonnages_json(),
+                "rate_costs_json": _rate_costs_json(),
             })
 
         if "save_expense" in request.POST:
@@ -321,7 +336,7 @@ def job_edit(request, job_id):
             return redirect("job_edit", job_id=job.job_number)
 
     job_form = JobForm(instance=job)
-    trip_formset = TripFormSet(instance=job, prefix="trips")
+    trip_formset = TripFormSet(instance=job, prefix="trips", lock_existing=True)
     expense_form = JobExpenseForm(instance=expense, rental=is_rental, pool=job.rental_pool)
     fuel_formset = JobFuelEntryFormSet(instance=job, prefix="fuel")
 
@@ -332,6 +347,8 @@ def job_edit(request, job_id):
         "expense_form": expense_form,
         "fuel_formset": fuel_formset,
         "rate_tonnages_json": _rate_tonnages_json(),
+        "rate_costs_json": _rate_costs_json(),
+        "focus_trip_date": request.GET.get("focus") == "trip-date",
     })
 
 def job_delete(request, job_id):
