@@ -43,7 +43,8 @@
                             {{ pso_form.hi_cetane_price }}
                         </div>
                         <div class="col-12">
-                            <button type="submit" class="btn btn-primary w-100 fw-bold"><i class="bi bi-plus-lg me-1"></i>Add</button>
+                            <button type="submit" id="psoSubmitBtn" class="btn btn-primary w-100 fw-bold"><i class="bi bi-plus-lg me-1"></i><span>Add</span></button>
+                            <div id="psoEditHint" class="small text-primary mt-2" style="display:none">Editing the selected date. If a price is locked, saving opens its correction and recalculation step.</div>
                         </div>
                     </form>
                 </div>
@@ -135,11 +136,21 @@ document.addEventListener('DOMContentLoaded', function () {
     var effDateInput = document.getElementById('id_effective_date');
     var premierInput = document.getElementById('id_premier_price');
     var hiCetaneInput = document.getElementById('id_hi_cetane_price');
+    var submitBtn = document.getElementById('psoSubmitBtn');
+    var editHint = document.getElementById('psoEditHint');
     document.querySelectorAll('.pso-edit-btn').forEach(function (btn) {
         btn.addEventListener('click', function () {
-            if (effDateInput) effDateInput.value = this.dataset.date;
+            if (effDateInput) {
+                if (effDateInput._flatpickr) effDateInput._flatpickr.setDate(this.dataset.date, false);
+                else effDateInput.value = this.dataset.date;
+            }
             if (premierInput) premierInput.value = this.dataset.premier;
             if (hiCetaneInput) hiCetaneInput.value = this.dataset.hiCetane;
+            if (submitBtn) {
+                submitBtn.querySelector('i').className = 'bi bi-save me-1';
+                submitBtn.querySelector('span').textContent = 'Save Changes';
+            }
+            if (editHint) editHint.style.display = '';
             var form = document.getElementById('psoForm');
             if (form) form.scrollIntoView({ behavior: 'smooth', block: 'start' });
         });
