@@ -48,7 +48,7 @@ COLUMNS = [
     ("remarks", "Remarks", lambda t: t.remarks, False),
 ]
 DEFAULT_COLUMNS = ["trip_no", "trip_date", "bilty_number", "vehicle", "vehicle_type", "route", "weight",
-                    "trip_charges", "additional_charges", "total_freight"]
+                    "stopover_city", "stopover_charges", "trip_charges", "additional_charges", "total_freight"]
 
 # Invoices Status: what its Sort by box offers.
 INVOICE_SORT_FIELDS = {"created_at": "Date", "invoice_no": "Invoice #", "client__name": "Client",
