@@ -363,7 +363,7 @@
                     <div class="col-md-2"><label class="form-label x-small fw-bold mb-1">Offloading</label>{{ expense_form.offloading }}</div>
                     <div class="col-md-2">
                         <label class="form-label x-small fw-bold mb-1">Total</label>
-                        <div class="fw-bold fs-6">{{ job.trip_expense|floatformat:2 }}</div>
+                        <div class="fw-bold fs-6 expense-total">{{ job.trip_expense|floatformat:2 }}</div>
                     </div>
                 </div>
                 {% else %}
@@ -386,7 +386,7 @@
                     <div class="col-md-2"><label class="form-label x-small fw-bold mb-1">Other</label>{{ expense_form.other }}</div>
                     <div class="col-md-2">
                         <label class="form-label x-small fw-bold mb-1">Total</label>
-                        <div class="fw-bold fs-6">{{ job.trip_expense|floatformat:2 }}</div>
+                        <div class="fw-bold fs-6 expense-total">{{ job.trip_expense|floatformat:2 }}</div>
                     </div>
                     <div class="col-md-6">
                         <label class="form-label x-small fw-bold mb-1">Remarks</label>
@@ -1053,6 +1053,26 @@
                 setTimeout(function () { fuelBox.querySelectorAll('.fuel-row').forEach(fuelAmount); }, 80);
             });
         }
+
+        // Expense Total follows what is typed (no need to Save to see it): the total as saved,
+        // plus the change made to the boxes since the page loaded.
+        (function () {
+            var totalEl = document.querySelector('.expense-total');
+            var form = totalEl && totalEl.closest('form');
+            if (!form) return;
+            var base = parseFloat(totalEl.textContent.replace(/,/g, '')) || 0;
+            function boxes() { return form.querySelectorAll('input[type="number"][name]'); }
+            function sum(useDefault) {
+                var t = 0;
+                boxes().forEach(function (e) { t += parseFloat(useDefault ? e.defaultValue : e.value) || 0; });
+                return t;
+            }
+            var start = sum(true);
+            form.addEventListener('input', function (e) {
+                if (!e.target.matches('input[type="number"]')) return;
+                totalEl.textContent = (base + sum(false) - start).toFixed(2);
+            });
+        })();
 
         // Unsaved Expense / Fuel entries are kept (in this browser) when you leave the page - another menu,
         // a new tab, a refresh - and come back as they were until you Save or change them yourself.
