@@ -940,7 +940,11 @@ def job_invoice_pdf(request, job_id):
     job = get_object_or_404(Job, job_number=job_id)
 
     # Is job se linked saari trips fetch karein
-    trips = job.trips.select_related("client", "route").order_by("trip_date")
+    trips = list(job.trips.select_related("client", "route").order_by("trip_date"))
+    for t in trips:
+        # Trip.freight already includes the additional + stopover charges: show the plain freight apart from them
+        t.extra_charges = (t.additional_charges or 0) + (t.stopover_charges or 0)
+        t.base_freight = (t.freight or 0) - t.extra_charges
     fuel_rows = job.fuel_entries.select_related("supplier", "product").order_by("date")
     expense = getattr(job, "expense_breakdown", None)
 
