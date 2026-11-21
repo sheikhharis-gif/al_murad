@@ -875,13 +875,13 @@
             // Manual-tonnage client (Red Bull): Weight is just a box typed by hand; the rate is the Rate Category
             var clientSel = blk.querySelector('select[name$="-client"]');
             var clientOpt = clientSel && clientSel.options[clientSel.selectedIndex];
-            if (client && clientOpt && clientOpt.dataset.manualTonnage) {
-                var oldSelect = blk.querySelector('select.trip-ton-select');
-                if (oldSelect) oldSelect.classList.add('d-none');
-                weight.classList.remove('d-none');
-                weight.placeholder = 'Type tons';
-                return;
-            }
+            // The trip's actual tonnage is always typed by hand (no dropdown); the rate it is billed at is
+            // picked separately as the Rate Category.
+            var oldSelect = blk.querySelector('select.trip-ton-select');
+            if (oldSelect) oldSelect.classList.add('d-none');
+            weight.classList.remove('d-none');
+            weight.placeholder = 'Weight (Tons)';
+            return;
             // tonnage -> the vehicle types it is rated for (on this client + route)
             var types = {};
             RATE_TONNAGES.forEach(function (r) {
