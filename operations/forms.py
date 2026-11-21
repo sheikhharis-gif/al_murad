@@ -211,7 +211,11 @@ class TripForm(forms.ModelForm):
                for f in ("trip_fare", "trip_fuel", "trip_weighbridge", "trip_loading", "trip_offloading")},
             "trip_date": forms.DateInput(attrs={"class": "form-control form-control-sm trip-date", "type": "date"}),
             "auto_times": forms.CheckboxInput(attrs={"class": "form-check-input trip-auto-times"}),
-            "client": ClientSelect(attrs={"class": "form-select form-select-sm trip-client"}),
+            "client": ClientSelect(attrs={
+                "class": "form-select form-select-sm trip-client dropdown-search-select",
+                "data-match": "contains", "data-theme": "light",
+                "data-placeholder": "Type client...", "data-empty-text": "No matching client",
+            }),
             "empty_trip": forms.CheckboxInput(attrs={"class": "form-check-input trip-empty"}),
             "sub_category": SubCategorySelect(attrs={"class": "form-select form-select-sm trip-subcategory"}),
             "bilty_number": forms.TextInput(attrs={"class": "form-control form-control-sm", "placeholder": "Bilty #"}),
