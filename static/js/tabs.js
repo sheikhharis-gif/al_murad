@@ -5,8 +5,8 @@
  * - Anything else (links inside a page, saving a form, Back) stays in the
  *   current tab, the way a browser tab works.
  * - Tabs stay until closed with x; they are kept in this browser per user.
- *   Switching tab re-opens that page (its saved URL), so unsaved typing on a
- *   form is not kept - save first.
+ *   Switching tab re-opens that page (its saved URL). The Job Sheet's Expense
+ *   and Fuel sections keep their unsaved typing themselves (see job_sheet.html).
  */
 (function () {
     var bar = document.getElementById('appTabs');
