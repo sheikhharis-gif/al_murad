@@ -18,10 +18,11 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db.models import CharField, Prefetch, Value
 from django.db.models.functions import Coalesce
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from django.utils import timezone
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
+from django.views.decorators.http import require_http_methods
 
 from masters.models import DEFAULT_INVOICE_NOTES, Client, ClientSubCategory, Company, TaxSettings
 from . import invoice_pdf, invoice_xlsx
@@ -91,6 +92,55 @@ def _parse_date(text):
         return date.fromisoformat(text) if text else None
     except ValueError:
         return None
+
+
+def _rate_category_options(trip):
+    """The Client Rates (tons + vehicle type) a trip can be billed at: this client + route, the
+    trip's sub-category rates (or the client's plain default ones). [(key 'tons|vtId', label)]"""
+    from masters.models import ClientRate
+    rates = ClientRate.objects.filter(client_id=trip.client_id, route_id=trip.route_id,
+                                      weight_tons__isnull=False, vehicle_type__isnull=False)
+    if trip.sub_category_id:
+        rates = rates.filter(sub_category_id__in=[trip.sub_category_id, None])
+    else:
+        rates = rates.filter(sub_category_id__isnull=True)
+    seen, out = set(), []
+    for r in rates.select_related("vehicle_type").order_by("weight_tons", "vehicle_type__name"):
+        tons = format(r.weight_tons.normalize(), "f")
+        key = f"{tons}|{r.vehicle_type_id}"
+        if key not in seen:
+            seen.add(key)
+            out.append((key, f"{tons} Ton - {r.vehicle_type.name}"))
+    return out
+
+
+@login_required
+@require_http_methods(["GET", "POST"])
+def invoice_trip_rate(request, trip_id):
+    """Generate Invoice page: pick the Rate Category of a trip (GET lists the choices, POST saves one
+    on the trip itself and re-prices it). A trip already on a live invoice is locked."""
+    trip = get_object_or_404(Trip.objects.select_related("vehicle_type"), pk=trip_id, empty_trip=False)
+    options = _rate_category_options(trip)
+    current = (f"{format(trip.rate_weight.normalize(), 'f')}|{trip.rate_vehicle_type_id}"
+               if trip.rate_vehicle_type_id and trip.rate_weight is not None else "")
+    if request.method == "GET":
+        return JsonResponse({"options": options, "current": current})
+    if trip.pk in Trip.invoiced_ids():
+        return JsonResponse({"error": "This trip is already on an invoice - cancel that invoice first."}, status=400)
+    choice = request.POST.get("category", "")
+    if choice:
+        if choice not in dict(options):
+            return JsonResponse({"error": "That rate does not exist for this client and route."}, status=400)
+        tons, vt = choice.split("|")
+        trip.rate_weight, trip.rate_vehicle_type_id = Decimal(tons), int(vt)
+    else:
+        trip.rate_weight = trip.rate_vehicle_type_id = None
+    freight = trip.compute_freight()
+    Trip.objects.filter(pk=trip.pk).update(rate_vehicle_type=trip.rate_vehicle_type_id,
+                                           rate_weight=trip.rate_weight, freight=freight)
+    extra = (trip.additional_charges or 0) + (trip.stopover_charges or 0)
+    return JsonResponse({"current": choice, "total": str(freight),
+                         "trip_charges": f"{_d(freight - extra):,.0f}", "total_freight": f"{_d(freight):,.0f}"})
 
 
 @login_required

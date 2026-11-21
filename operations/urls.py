@@ -21,6 +21,7 @@ urlpatterns = [
     path("reports/mis/excel/", mis.mis_excel, name="mis_excel"),
     path("reports/mis/pdf/", mis.mis_pdf, name="mis_pdf"),
     path("reports/invoice/", invoice.invoice_select, name="invoice_select"),
+    path("reports/invoice/trip/<int:trip_id>/rate/", invoice.invoice_trip_rate, name="invoice_trip_rate"),
     path("reports/invoice/pdf/", invoice.invoice_generate_pdf, name="invoice_generate_pdf"),
     path("reports/invoice/status/", invoice.invoice_status, name="invoice_status"),
     path("reports/invoice/status/excel/", invoice.invoice_status_excel, name="invoice_status_excel"),

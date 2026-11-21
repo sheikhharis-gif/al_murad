@@ -199,7 +199,7 @@
                             <td><input type="checkbox" class="form-check-input trip-check" name="trip_ids" value="{{ row.id }}"
                                        data-total="{{ row.total }}" checked></td>
                             {% for key, value, money in row.cells %}
-                            <td data-col="{{ key }}" class="{% if money %}text-end{% endif %}">{{ value }}</td>
+                            <td data-col="{{ key }}" class="{% if money %}text-end{% endif %}">{% if key == "trip_charges" %}<span class="rate-cell" data-trip="{{ row.id }}"><span class="cell-val">{{ value }}</span> <button type="button" class="btn btn-link btn-sm p-0 ms-1 rate-edit" title="Edit - pick the Rate Category (tons + vehicle type) for this trip"><i class="bi bi-pencil-square"></i></button></span>{% else %}{{ value }}{% endif %}</td>
                             {% endfor %}
                         </tr>
                         {% empty %}
@@ -260,6 +260,47 @@ document.addEventListener('DOMContentLoaded', function () {
     }
     checks.forEach(function (c) { c.addEventListener('change', updateSummary); });
     updateSummary();
+
+    // Trip Charges > pencil: pick the Rate Category (tons + vehicle type) a trip is billed at. It is saved
+    // on the trip itself, the trip is re-priced, and the amounts on this page update.
+    var csrfToken = (document.querySelector('#invoiceForm input[name="csrfmiddlewaretoken"]') || {}).value;
+    var rateUrlTemplate = '{% url "invoice_trip_rate" 0 %}';
+    document.addEventListener('click', function (e) {
+        var btn = e.target.closest('.rate-edit');
+        if (!btn) return;
+        var cell = btn.closest('.rate-cell'), row = cell.closest('tr');
+        var url = rateUrlTemplate.replace('/0/', '/' + cell.dataset.trip + '/');
+        if (cell.querySelector('select')) return;
+        fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } }).then(function (r) { return r.json(); }).then(function (data) {
+            if (!data.options || !data.options.length) { alert('No Client Rates for this client and route - add the rate first (Client Rates).'); return; }
+            var sel = document.createElement('select');
+            sel.className = 'form-select form-select-sm d-inline-block';
+            sel.style.width = '190px';
+            var add = function (v, t) { var o = document.createElement('option'); o.value = v; o.textContent = t; sel.appendChild(o); };
+            add('', 'Default (own type + weight)');
+            data.options.forEach(function (o) { add(o[0], o[1]); });
+            sel.value = data.current || '';
+            cell.querySelector('.cell-val').style.display = 'none';
+            btn.style.display = 'none';
+            cell.appendChild(sel);
+            sel.focus();
+            var done = function () { sel.remove(); cell.querySelector('.cell-val').style.display = ''; btn.style.display = ''; };
+            sel.addEventListener('blur', function () { setTimeout(done, 150); });
+            sel.addEventListener('change', function () {
+                var body = new URLSearchParams(); body.set('category', sel.value);
+                fetch(url, { method: 'POST', headers: { 'X-CSRFToken': csrfToken, 'X-Requested-With': 'XMLHttpRequest' }, body: body })
+                    .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+                    .then(function (res) {
+                        if (!res.ok) { alert(res.j.error || 'Could not save.'); done(); return; }
+                        cell.querySelector('.cell-val').textContent = res.j.trip_charges;
+                        var tf = row.querySelector('[data-col="total_freight"]'); if (tf) tf.textContent = res.j.total_freight;
+                        var chk = row.querySelector('.trip-check'); if (chk) chk.dataset.total = res.j.total;
+                        updateSummary();
+                        done();
+                    });
+            });
+        });
+    });
 
     // Ticking/unticking an Invoice Columns box adds/removes that column from
     // the table below live, so what's checked is exactly what's on the PDF.
