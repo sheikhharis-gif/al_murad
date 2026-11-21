@@ -200,7 +200,7 @@
                                 {# Rate Category: which Client Rate (tons + vehicle type) prices this trip, when the truck / load differs from it #}
                                 <div class="trip-rate-cat-wrap mt-1 d-none">
                                     <label class="form-label x-small fw-bold mb-1">Rate Category</label>
-                                    <select class="form-select form-select-sm trip-rate-cat" title="Pick the rate (tons + vehicle type) to bill this trip at; the trip's own vehicle and weight stay as typed"></select>
+                                    <select class="form-select form-select-sm trip-rate-cat" style="width: 210px; max-width: 38vw; position: relative; z-index: 2;" title="Pick the rate (tons + vehicle type) to bill this trip at; the trip's own vehicle and weight stay as typed"></select>
                                 </div>
                             </div>
                             {% if own_vehicle_pick %}
@@ -847,7 +847,7 @@
             list.sort(function (a, b) { return a.tons - b.tons || vtName(a.vt).localeCompare(vtName(b.vt)); });
             sel.innerHTML = '';
             var add = function (v, t) { var o = document.createElement('option'); o.value = v; o.textContent = t; sel.appendChild(o); };
-            add('', 'Same as Vehicle Type + Weight');
+            add('', 'Default');
             list.forEach(function (x) { add(x.key, x.tons + ' Ton - ' + vtName(x.vt)); });
             if (cur && !seen[cur]) add(cur, parseFloat(hw.value) + ' Ton - ' + vtName(hv.value));
             sel.value = cur;
