@@ -433,7 +433,7 @@
                         <div class="col-md-2">{{ ff.slip_number }}</div>
                         <div class="col-md-1">{{ ff.liters }}</div>
                         <div class="col-md-1">{{ ff.fuel_price }}</div>
-                        <div class="col-md-1 fw-bold">{{ ff.instance.amount|default_if_none:"--" }}</div>
+                        <div class="col-md-1 fw-bold fuel-amount">{{ ff.instance.amount|default_if_none:"--" }}</div>
                         <div class="col-md-1">
                             {% if ff.instance.pk %}
                             <div class="form-check">
@@ -1016,6 +1016,23 @@
             });
         }
         wireAddRow('add-fuel-row', 'fuel-formset', 'fuel-row', 'id_fuel-TOTAL_FORMS');
+        // Fuel Amount = Liters x Fuel Price, live as you type (saved the same way on the server).
+        function fuelAmount(row) {
+            var l = row.querySelector('input[name$="-liters"]'), p = row.querySelector('input[name$="-fuel_price"]'), a = row.querySelector('.fuel-amount');
+            if (!l || !p || !a) return;
+            var v = parseFloat(l.value) * parseFloat(p.value);
+            a.textContent = isNaN(v) ? '0.00' : v.toFixed(2);
+        }
+        var fuelBox = document.getElementById('fuel-formset');
+        if (fuelBox) {
+            fuelBox.addEventListener('input', function (e) {
+                if (e.target.matches('input[name$="-liters"], input[name$="-fuel_price"]')) fuelAmount(e.target.closest('.fuel-row'));
+            });
+            var addFuel = document.getElementById('add-fuel-row');
+            if (addFuel) addFuel.addEventListener('click', function () {
+                setTimeout(function () { fuelBox.querySelectorAll('.fuel-row').forEach(fuelAmount); }, 80);
+            });
+        }
     });
 </script>
 {% endblock %}
