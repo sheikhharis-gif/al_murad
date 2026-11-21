@@ -19,13 +19,13 @@ class Command(BaseCommand):
     help = ("Trip Details workbook (sheets KHI / LHE ...) -> the trips named in its 'trip #' column get the tons "
             "from the sheet as their Weight, and a Rate Category (the rate the system should price them by). "
             "A trip that is already priced by its own vehicle type + tons keeps exactly that rate; any other "
-            "trip gets the rate of its route whose price matches the sheet's Freight. Preview by default; "
+            "trip gets the rate of its route whose price is closest to the sheet's Freight (within --tolerance %). Preview by default; "
             "--apply saves. Trips on a live invoice are never touched.")
 
     def add_arguments(self, parser):
         parser.add_argument("file")
         parser.add_argument("--client", default="red bull", help="Only trips of this client (part of the name)")
-        parser.add_argument("--tolerance", type=float, default=0.5, help="Freight match tolerance in %% (default 0.5)")
+        parser.add_argument("--tolerance", type=float, default=4, help="Freight match tolerance in %% (default 4: the sheet's freight can sit a little off the system rate)")
         parser.add_argument("--apply", action="store_true")
 
     def read_rows(self, path):
@@ -38,12 +38,19 @@ class Command(BaseCommand):
             header, cols = None, {}
             for r in ws.iter_rows(values_only=True):
                 labels = [str(c).strip().lower() if c is not None else "" for c in r]
-                if "trip #" in labels and "weight (tons)" in labels:
+                if "weight (tons)" in labels and "freight" in labels:
                     header = True
-                    cols = {"trip": labels.index("trip #"), "tons": labels.index("weight (tons)"),
-                            "freight": labels.index("freight")}
+                    # the trip numbers sit in a 'trip #' column - on some sheets it has no title and is
+                    # simply the column after 'Total Freight'
+                    trip_col = labels.index("trip #") if "trip #" in labels else (
+                        labels.index("total freight") + 1 if "total freight" in labels else None)
+                    if trip_col is None:
+                        continue
+                    cols = {"trip": trip_col, "tons": labels.index("weight (tons)"), "freight": labels.index("freight")}
                     continue
                 if not header:
+                    continue
+                if len(r) <= cols["trip"]:
                     continue
                 trip_no, tons, freight = r[cols["trip"]], r[cols["tons"]], r[cols["freight"]]
                 if trip_no in (None, "") or tons in (None, ""):
