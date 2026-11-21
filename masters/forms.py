@@ -506,7 +506,7 @@ class ClientForm(forms.ModelForm):
         model = Client
         # Has Sub-Categories / Has Stopover Charges live on the Client Rates
         # page - left out here so saving a client never resets them.
-        exclude = ["has_sub_categories", "has_stopover"]
+        exclude = ["has_sub_categories", "has_stopover", "manual_tonnage"]
 
         text_fields = [
             "name", "poc1_name", "poc1_phone", "poc2_name", "poc2_phone",

@@ -1300,7 +1300,8 @@ def client_rate_options(request, client_id):
     if request.method == "POST":
         client.has_sub_categories = "has_sub_categories" in request.POST
         client.has_stopover = "has_stopover" in request.POST
-        fields = ["has_sub_categories", "has_stopover"]
+        client.manual_tonnage = "manual_tonnage" in request.POST
+        fields = ["has_sub_categories", "has_stopover", "manual_tonnage"]
         if "fuel_revision_threshold" in request.POST:
             raw = (request.POST.get("fuel_revision_threshold") or "").strip()
             try:

@@ -872,6 +872,16 @@
             var pick = function (sel) { var el = blk.querySelector(sel); return el ? el.value : ''; };
             var client = pick('select[name$="-client"]'), route = pick('select[name$="-route"]');
             var vt = pick('select[name$="-vehicle_type"]'), sub = pick('select[name$="-sub_category"]');
+            // Manual-tonnage client (Red Bull): Weight is just a box typed by hand; the rate is the Rate Category
+            var clientSel = blk.querySelector('select[name$="-client"]');
+            var clientOpt = clientSel && clientSel.options[clientSel.selectedIndex];
+            if (client && clientOpt && clientOpt.dataset.manualTonnage) {
+                var oldSelect = blk.querySelector('select.trip-ton-select');
+                if (oldSelect) oldSelect.classList.add('d-none');
+                weight.classList.remove('d-none');
+                weight.placeholder = 'Type tons';
+                return;
+            }
             // tonnage -> the vehicle types it is rated for (on this client + route)
             var types = {};
             RATE_TONNAGES.forEach(function (r) {

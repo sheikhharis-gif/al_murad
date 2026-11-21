@@ -22,6 +22,8 @@ class ClientSelect(forms.Select):
         instance = getattr(value, "instance", None)
         if instance is not None and instance.has_stopover:
             option["attrs"]["data-stopover"] = "1"
+        if instance is not None and instance.manual_tonnage:
+            option["attrs"]["data-manual-tonnage"] = "1"
         return option
 
 # -----------------------

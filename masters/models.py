@@ -476,6 +476,9 @@ class Client(models.Model):
     # Clients billed a charge for stops on the way: shows the Stopover Charges
     # table on their Client Rates page and the Stopover fields on their trips.
     has_stopover = models.BooleanField("Has Stopover Charges", default=False)
+    # Clients (Red Bull) whose trips are billed by the Rate Category picked on the trip (tons +
+    # vehicle type of a Client Rate): their trip's Weight (Tons) is a plain box typed by hand.
+    manual_tonnage = models.BooleanField("Manual tonnage (Rate Category)", default=False)
     # Some clients only accept a rate revision once fuel has moved this much (e.g. 5%, up or
     # down) since the rate was last revised; Apply Fuel Price leaves smaller moves alone.
     # Once crossed, the FULL change applies. Blank = every fuel change is applied.

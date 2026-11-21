@@ -113,6 +113,12 @@
                     <label class="form-check-label fw-bold" for="optStopover">Has Stopover Charges</label>
                     <span class="text-muted ms-1">(shows the Stopover Charges table)</span>
                 </div>
+                <div class="form-check form-switch m-0">
+                    <input class="form-check-input" type="checkbox" role="switch" id="optManualTons" name="manual_tonnage"
+                           {% if client.manual_tonnage %}checked{% endif %} onchange="this.form.submit()">
+                    <label class="form-check-label fw-bold" for="optManualTons">Manual tonnage</label>
+                    <span class="text-muted ms-1">(trip Weight is typed by hand; the rate is picked as Rate Category)</span>
+                </div>
                 <div class="d-flex align-items-center gap-2"
                      title="Rates are revised only when fuel has moved at least this much (up or down) since the rate was last revised - then the full change applies. Leave blank to apply every change.">
                     <label class="fw-bold mb-0" for="optFuelThreshold">Fuel revision threshold</label>
