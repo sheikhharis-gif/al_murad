@@ -197,6 +197,11 @@
                             <div class="{% if own_vehicle_pick %}col-md-1{% else %}col-md-2{% endif %}">
                                 <label class="form-label x-small fw-bold mb-1">Weight (Tons)</label>
                                 {{ tf.weight }}
+                                {# Rate Category: which Client Rate (tons + vehicle type) prices this trip, when the truck / load differs from it #}
+                                <div class="trip-rate-cat-wrap mt-1 d-none">
+                                    <label class="form-label x-small fw-bold mb-1">Rate Category</label>
+                                    <select class="form-select form-select-sm trip-rate-cat" title="Pick the rate (tons + vehicle type) to bill this trip at; the trip's own vehicle and weight stay as typed"></select>
+                                </div>
                             </div>
                             {% if own_vehicle_pick %}
                             {# Vehicle # first: picking it fills Vehicle Type next to it #}
@@ -794,6 +799,8 @@
             var weightEl = blk.querySelector('input[name$="-weight"]');
             var weight = weightEl && weightEl.value !== '' ? String(parseFloat(weightEl.value)) : '';
             var tripDate = value('input[name$="-trip_date"]');
+            var rateType = value('input[name$="-rate_vehicle_type"]'), rateWeight = value('input[name$="-rate_weight"]');
+            if (rateType && rateWeight !== '') { type = rateType; weight = String(parseFloat(rateWeight)); }   // Rate Category picked
             if (!client || !route || !type || !weight) { preview.textContent = 'Trip Charges: --'; return; }
             var matching = RATE_COSTS.filter(function (r) {
                 return r[0] === client && r[2] === route && r[3] === type && r[4] === weight;
@@ -811,7 +818,45 @@
             preview.classList.remove('text-danger');
             preview.textContent = 'Trip Charges: PKR ' + Number(chosen[6]).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
         }
+        // Rate Category: a dropdown of the rates (tons + vehicle type) this client + route has. Picking one
+        // bills the trip at that rate whatever its own vehicle type / typed weight are (kept in two hidden fields).
+        function syncRateCat(blk, reset) {
+            var wrap = blk.querySelector('.trip-rate-cat-wrap'), sel = wrap && wrap.querySelector('select.trip-rate-cat');
+            var hv = blk.querySelector('input[name$="-rate_vehicle_type"]'), hw = blk.querySelector('input[name$="-rate_weight"]');
+            if (!sel || !hv || !hw) return;
+            var pick = function (q) { var el = blk.querySelector(q); return el ? el.value : ''; };
+            var client = pick('select[name$="-client"]'), route = pick('select[name$="-route"]'), sub = pick('select[name$="-sub_category"]');
+            var emptyBox = blk.querySelector('input.trip-empty');
+            var vtSelect = blk.querySelector('select[name$="-vehicle_type"]');
+            var vtName = function (id) {
+                var o = vtSelect && Array.prototype.filter.call(vtSelect.options, function (x) { return x.value === id; })[0];
+                return o ? o.textContent.trim() : id;
+            };
+            var seen = {}, list = [];
+            if (client && route && !(emptyBox && emptyBox.checked)) {
+                RATE_TONNAGES.forEach(function (r) {
+                    if (String(r[0]) !== client || String(r[2]) !== route) return;
+                    if (sub && String(r[1] === null ? '' : r[1]) !== sub) return;
+                    var key = parseFloat(r[4]) + '|' + r[3];
+                    if (!seen[key]) { seen[key] = 1; list.push({ key: key, tons: parseFloat(r[4]), vt: String(r[3]) }); }
+                });
+            }
+            var cur = hv.value && hw.value !== '' ? parseFloat(hw.value) + '|' + hv.value : '';
+            if (reset && cur && !seen[cur]) { hv.value = ''; hw.value = ''; cur = ''; }
+            if (!list.length) { wrap.classList.add('d-none'); return; }
+            list.sort(function (a, b) { return a.tons - b.tons || vtName(a.vt).localeCompare(vtName(b.vt)); });
+            sel.innerHTML = '';
+            var add = function (v, t) { var o = document.createElement('option'); o.value = v; o.textContent = t; sel.appendChild(o); };
+            add('', 'Same as Vehicle Type + Weight');
+            list.forEach(function (x) { add(x.key, x.tons + ' Ton - ' + vtName(x.vt)); });
+            if (cur && !seen[cur]) add(cur, parseFloat(hw.value) + ' Ton - ' + vtName(hv.value));
+            sel.value = cur;
+            sel.disabled = hv.disabled;
+            wrap.classList.remove('d-none');
+        }
+
         function syncTonnages(blk) {
+            syncRateCat(blk, false);
             var weight = blk.querySelector('input[name$="-weight"]');
             if (!weight) return;
             weight.min = '0';
@@ -883,8 +928,15 @@
         tonForm.addEventListener('change', function (e) {
             if (e.target.matches('select[name$="-client"], select[name$="-route"], select[name$="-vehicle_type"], select[name$="-sub_category"]')) {
                 var block = e.target.closest('.trip-block');
+                if (e.target.matches('select[name$="-client"], select[name$="-route"], select[name$="-sub_category"]')) syncRateCat(block, true);
                 syncTonnages(block);
                 syncTripRate(block);
+            } else if (e.target.matches('select.trip-rate-cat')) {
+                var blk2 = e.target.closest('.trip-block');
+                var parts = e.target.value ? e.target.value.split('|') : ['', ''];
+                blk2.querySelector('input[name$="-rate_weight"]').value = parts[0];
+                blk2.querySelector('input[name$="-rate_vehicle_type"]').value = parts[1];
+                syncTripRate(blk2);
             }
         });
         tonForm.addEventListener('input', function (e) {

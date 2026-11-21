@@ -201,7 +201,7 @@ class TripForm(forms.ModelForm):
     class Meta:
         model = Trip
         fields = [
-            "trip_date", "auto_times", "client", "empty_trip", "sub_category", "bilty_number", "weight", "route", "vehicle_type",
+            "trip_date", "auto_times", "client", "empty_trip", "sub_category", "bilty_number", "weight", "route", "vehicle_type", "rate_vehicle_type", "rate_weight",
             "reached_at", "departed_at", "arrived_at", "delivered_at",
             "stopover_city", "extra_stopover_cities", "stopover_charges", "additional_charges", "remarks",
             "trip_fare", "trip_fuel", "trip_weighbridge", "trip_loading", "trip_offloading",
@@ -220,6 +220,8 @@ class TripForm(forms.ModelForm):
             "sub_category": SubCategorySelect(attrs={"class": "form-select form-select-sm trip-subcategory"}),
             "bilty_number": forms.TextInput(attrs={"class": "form-control form-control-sm", "placeholder": "Bilty #"}),
             "weight": forms.NumberInput(attrs={"class": "form-control form-control-sm trip-weight", "step": "0.01", "placeholder": "Weight (Tons)"}),
+            "rate_vehicle_type": forms.HiddenInput(),
+            "rate_weight": forms.HiddenInput(),
             "route": forms.Select(attrs={
                 "class": "form-select form-select-sm dropdown-search-select",
                 "data-match": "contains", "data-theme": "light",
@@ -362,6 +364,10 @@ class TripForm(forms.ModelForm):
                 self.add_error("sub_category", f"{sub.name} doesn't belong to {client.name}.")
             elif client and not sub and client.has_sub_categories and client.sub_categories.exists():
                 self.add_error("sub_category", f"{client.name} has sub-categories ({', '.join(s.name for s in client.sub_categories.all())}) - please choose one.")
+
+        # Rate category is a pair: both or neither (and none on an Empty Trip)
+        if cleaned.get("empty_trip") or not (cleaned.get("rate_vehicle_type") and cleaned.get("rate_weight") is not None):
+            cleaned["rate_vehicle_type"] = cleaned["rate_weight"] = None
 
         city, charges = cleaned.get("stopover_city"), cleaned.get("stopover_charges")
         # More stops after the first one; a city repeated or equal to the first stop is dropped.

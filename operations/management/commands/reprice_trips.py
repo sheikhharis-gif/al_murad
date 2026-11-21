@@ -23,7 +23,7 @@ class Command(BaseCommand):
         changes, no_rate, locked = [], Counter(), 0
         per_client = Counter()
         for t in trips.order_by("client__name", "trip_date", "id"):
-            rate = matching_trip_cost(t.client_id, t.route_id, t.vehicle_type_id, t.weight, t.trip_date,
+            rate = matching_trip_cost(t.client_id, t.route_id, *t.rate_key(), t.trip_date,
                                       sub_category_id=t.sub_category_id)
             if rate is None:
                 no_rate[(t.client.name if t.client_id else "-", t.route.route_code if t.route_id else "-",

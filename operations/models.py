@@ -213,6 +213,11 @@ class Trip(models.Model):
     vehicle_type = models.ForeignKey(VehicleType, on_delete=models.PROTECT, null=True, blank=True, related_name="trips")
     bilty_number = models.CharField(max_length=50, blank=True)
     weight = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    # Rate category: when the vehicle / load on the trip doesn't match a Client Rate exactly (a 17FT
+    # truck billed at the 16FT / 5 ton rate), the rate to use is picked here. The trip's own vehicle
+    # type and weight stay as they are; blank = price by the trip's own vehicle type + weight.
+    rate_vehicle_type = models.ForeignKey(VehicleType, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+    rate_weight = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
 
     departure_meter = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, editable=False)
     reached_at = models.DateTimeField("Reached Date & Time", null=True, blank=True)
@@ -317,6 +322,12 @@ class Trip(models.Model):
         names += sorted(c.name for c in self.extra_stopover_cities.all())
         return ", ".join(names)
 
+    def rate_key(self):
+        """(vehicle type, weight) the Client Rate is looked up by: the rate category if one was picked."""
+        if self.rate_vehicle_type_id and self.rate_weight is not None:
+            return self.rate_vehicle_type_id, self.rate_weight
+        return self.vehicle_type_id, self.weight
+
     def compute_freight(self):
         """Freight = Updated Trip Cost of the Client Rate in force on the trip's
         date + Additional Charges. Must match vehicle type AND weight exactly -
@@ -325,7 +336,7 @@ class Trip(models.Model):
         An Empty Trip has no client/tonnage to rate - nothing to bill."""
         if self.empty_trip:
             return (self.additional_charges or 0) + (self.stopover_charges or 0)
-        rate = matching_trip_cost(self.client_id, self.route_id, self.vehicle_type_id, self.weight, self.trip_date,
+        rate = matching_trip_cost(self.client_id, self.route_id, *self.rate_key(), self.trip_date,
                                   sub_category_id=self.sub_category_id)
         return (rate or 0) + (self.additional_charges or 0) + (self.stopover_charges or 0)
 
@@ -409,8 +420,10 @@ def refresh_trip_freight(client_id, route_id, vehicle_type_id, weight, sub_categ
     Returns how many trips changed."""
     rate_on = {}  # (trip date, trip sub-category) -> rate in force that day
     changed = 0
-    trips = Trip.objects.filter(client_id=client_id, route_id=route_id, vehicle_type_id=vehicle_type_id,
-                                weight=weight)
+    # trips priced by their own vehicle type + weight, and trips that picked this rate as their rate category
+    own = models.Q(rate_vehicle_type__isnull=True, vehicle_type_id=vehicle_type_id, weight=weight)
+    picked = models.Q(rate_vehicle_type_id=vehicle_type_id, rate_weight=weight)
+    trips = Trip.objects.filter(client_id=client_id, route_id=route_id).filter(own | picked)
     # A sub-category's rate only touches that sub-category's trips; a default
     # (no sub-category) rate can also be what its sub-category trips fall back to.
     if sub_category_id:
