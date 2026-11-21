@@ -1053,6 +1053,60 @@
                 setTimeout(function () { fuelBox.querySelectorAll('.fuel-row').forEach(fuelAmount); }, 80);
             });
         }
+
+        // Unsaved Expense / Fuel entries are kept (in this browser) when you leave the page - another menu,
+        // a new tab, a refresh - and come back as they were until you Save or change them yourself.
+        (function () {
+            var SKIP = /(csrfmiddlewaretoken|TOTAL_FORMS|INITIAL_FORMS|MIN_NUM_FORMS|MAX_NUM_FORMS|-id$|-job$)/;
+            var parts = [['save_expense', 'expense'], ['save_fuel', 'fuel']];
+            function store(op, key, val) {
+                try {
+                    if (op === 'get') return window.localStorage.getItem(key);
+                    if (op === 'set') window.localStorage.setItem(key, val);
+                    else window.localStorage.removeItem(key);
+                } catch (err) { return null; }
+            }
+            parts.forEach(function (pt) {
+                var btn = document.querySelector('button[name="' + pt[0] + '"]');
+                var form = btn && btn.closest('form');
+                if (!form) return;
+                var key = 'jobdraft:' + location.pathname + ':' + pt[1];
+                function fields() {
+                    return Array.prototype.filter.call(form.querySelectorAll('input[name], select[name], textarea[name]'), function (e) {
+                        return !SKIP.test(e.name) && e.type !== 'submit' && !e.disabled;
+                    });
+                }
+                function save() {
+                    var o = { rows: form.querySelectorAll('.fuel-row').length, v: {} };
+                    fields().forEach(function (e) { o.v[e.name] = e.type === 'checkbox' ? e.checked : e.value; });
+                    store('set', key, JSON.stringify(o));
+                }
+                form.addEventListener('input', save);
+                form.addEventListener('change', save);
+                form.addEventListener('click', function (e) { if (e.target.closest('#add-fuel-row')) setTimeout(save, 120); });
+                form.addEventListener('submit', function () { store('del', key); });
+                var raw = store('get', key), d = null;
+                try { d = raw ? JSON.parse(raw) : null; } catch (err) { d = null; }
+                if (!d) return;
+                window.addEventListener('load', function () {
+                    var add = document.getElementById('add-fuel-row');
+                    for (var n = 0; pt[1] === 'fuel' && add && form.querySelectorAll('.fuel-row').length < d.rows && n < 50; n++) add.click();
+                    fields().forEach(function (e) {
+                        if (!(e.name in d.v)) return;
+                        var v = d.v[e.name];
+                        if (e.type === 'checkbox') { e.checked = !!v; return; }
+                        if (e.value === v) return;
+                        e.value = v;
+                        if (e._flatpickr) e._flatpickr.setDate(v, false);
+                        e.dispatchEvent(new Event(e.tagName === 'SELECT' ? 'change' : 'input', { bubbles: true }));
+                    });
+                    // Supplier/Product changes can auto-fill the price: put the saved prices back last
+                    fields().forEach(function (e) {
+                        if (/-fuel_price$/.test(e.name) && e.name in d.v) { e.value = d.v[e.name]; e.dispatchEvent(new Event('input', { bubbles: true })); }
+                    });
+                });
+            });
+        })();
     });
 </script>
 {% endblock %}
