@@ -273,6 +273,15 @@ def _rate_costs_json():
     return json.dumps(rows)
 
 
+def _fuel_prices_json():
+    """Supplier fuel price history, so a Fuel entry's price can be filled in from supplier + product + date."""
+    from masters.models import VendorFuelPrice
+    rows = [[str(v), str(p), d.isoformat(), str(price)]
+            for v, p, d, price in VendorFuelPrice.objects.order_by("effective_date", "id")
+            .values_list("vendor_id", "product_id", "effective_date", "fuel_price")]
+    return json.dumps(rows)
+
+
 # ================= JOB SHEET (the full multi-section page: header + trips + expense + fuel) =================
 def job_edit(request, job_id):
     job = get_object_or_404(Job, job_number=job_id)
@@ -315,6 +324,7 @@ def job_edit(request, job_id):
                 "fuel_formset": JobFuelEntryFormSet(instance=job, prefix="fuel"),
                 "rate_tonnages_json": _rate_tonnages_json(),
                 "rate_costs_json": _rate_costs_json(),
+                "fuel_prices_json": _fuel_prices_json(),
             })
 
         if "save_expense" in request.POST:
@@ -348,6 +358,7 @@ def job_edit(request, job_id):
         "fuel_formset": fuel_formset,
         "rate_tonnages_json": _rate_tonnages_json(),
         "rate_costs_json": _rate_costs_json(),
+                "fuel_prices_json": _fuel_prices_json(),
         "focus_trip_date": request.GET.get("focus") == "trip-date",
     })
 

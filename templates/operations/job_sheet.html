@@ -1016,6 +1016,22 @@
             });
         }
         wireAddRow('add-fuel-row', 'fuel-formset', 'fuel-row', 'id_fuel-TOTAL_FORMS');
+        // Fuel Price: filled from the supplier's price list (latest price on or before the entry's date)
+        // once Supplier + Product + Date are chosen - unless the price was typed by hand.
+        var FUEL_PRICES = JSON.parse('{{ fuel_prices_json|default:"[]"|escapejs }}');
+        function fuelPriceFill(row) {
+            var sup = row.querySelector('select[name$="-supplier"]'), prod = row.querySelector('select[name$="-product"]'),
+                dt = row.querySelector('input[name$="-date"]'), price = row.querySelector('input[name$="-fuel_price"]');
+            if (!sup || !prod || !dt || !price || !sup.value || !prod.value || !dt.value) return;
+            if (price.value && !price.dataset.auto) return;
+            var best = null;
+            FUEL_PRICES.forEach(function (r) {
+                if (r[0] === sup.value && r[1] === prod.value && r[2] <= dt.value) best = r[3];
+            });
+            if (best === null) return;
+            price.value = best; price.dataset.auto = '1';
+            fuelAmount(row);
+        }
         // Fuel Amount = Liters x Fuel Price, live as you type (saved the same way on the server).
         function fuelAmount(row) {
             var l = row.querySelector('input[name$="-liters"]'), p = row.querySelector('input[name$="-fuel_price"]'), a = row.querySelector('.fuel-amount');
@@ -1026,7 +1042,11 @@
         var fuelBox = document.getElementById('fuel-formset');
         if (fuelBox) {
             fuelBox.addEventListener('input', function (e) {
+                if (e.target.matches('input[name$="-fuel_price"]') && e.isTrusted) delete e.target.dataset.auto;
                 if (e.target.matches('input[name$="-liters"], input[name$="-fuel_price"]')) fuelAmount(e.target.closest('.fuel-row'));
+            });
+            fuelBox.addEventListener('change', function (e) {
+                if (e.target.matches('select[name$="-supplier"], select[name$="-product"], input[name$="-date"]')) fuelPriceFill(e.target.closest('.fuel-row'));
             });
             var addFuel = document.getElementById('add-fuel-row');
             if (addFuel) addFuel.addEventListener('click', function () {
