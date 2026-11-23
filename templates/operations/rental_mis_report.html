@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% load humanize %}
+
+{% block content %}
+<div class="container-fluid py-4 bg-light min-vh-100">
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+        <div>
+            <h3 class="fw-bold text-dark mb-1"><i class="bi bi-truck text-primary me-2"></i>Rental MIS</h3>
+            <p class="text-muted small mb-0">Rental trips only: supplier, complete trip fare, trip expenses and profit/loss.</p>
+        </div>
+        <a href="{% url 'rental_mis_excel' %}?{{ query }}" class="btn btn-success btn-sm fw-bold"><i class="bi bi-file-earmark-excel me-1"></i>Download Excel</a>
+    </div>
+
+    <div class="card border-0 shadow-sm rounded-4 mb-4">
+        <div class="card-body p-4">
+            <form method="get" class="row g-3 align-items-end">
+                <div class="col-md-3"><label class="form-label small fw-semibold">Start Date</label><input type="date" name="start_date" value="{{ start_date }}" class="form-control form-control-sm"></div>
+                <div class="col-md-3"><label class="form-label small fw-semibold">End Date</label><input type="date" name="end_date" value="{{ end_date }}" class="form-control form-control-sm"></div>
+                <div class="col-md-4"><label class="form-label small fw-semibold">Supplier</label>
+                    <select name="supplier" class="form-select form-select-sm"><option value="">All rental suppliers</option>
+                        {% for vendor in suppliers %}<option value="{{ vendor.pk }}" {% if supplier_id == vendor.pk|stringformat:"s" %}selected{% endif %}>{{ vendor.name }}</option>{% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2 d-flex gap-2"><button class="btn btn-primary btn-sm fw-bold flex-fill">Apply</button><a class="btn btn-outline-secondary btn-sm" href="{% url 'rental_mis_report' %}">Clear</a></div>
+            </form>
+        </div>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-md-3"><div class="card border-0 shadow-sm rounded-4"><div class="card-body"><div class="small text-muted">RENTAL TRIPS</div><div class="fs-4 fw-bold">{{ trip_count }}</div></div></div></div>
+        <div class="col-md-3"><div class="card border-0 shadow-sm rounded-4"><div class="card-body"><div class="small text-muted">COMPLETE TRIP FARE</div><div class="fs-4 fw-bold text-success">Rs {{ total_fare|floatformat:0|intcomma }}</div></div></div></div>
+        <div class="col-md-3"><div class="card border-0 shadow-sm rounded-4"><div class="card-body"><div class="small text-muted">TRIP EXPENSES</div><div class="fs-4 fw-bold text-danger">Rs {{ total_expenses|floatformat:0|intcomma }}</div></div></div></div>
+        <div class="col-md-3"><div class="card border-0 shadow-sm rounded-4"><div class="card-body"><div class="small text-muted">PROFIT / LOSS</div><div class="fs-4 fw-bold {% if profit_loss < 0 %}text-danger{% else %}text-success{% endif %}">Rs {{ profit_loss|floatformat:0|intcomma }}</div></div></div></div>
+    </div>
+
+    <div class="card border-0 shadow-sm rounded-4"><div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-sm table-bordered align-middle mb-0">
+                <thead class="table-primary"><tr>{% for header in headers %}<th class="text-nowrap">{{ header }}</th>{% endfor %}</tr></thead>
+                <tbody>
+                    {% for row in rows %}<tr>
+                        {% for value in row %}<td class="{% if forloop.counter >= 11 %}text-end{% endif %}">{% if forloop.counter == 3 %}{{ value|date:"d-M-y" }}{% elif forloop.counter >= 11 %}{{ value|floatformat:0|intcomma }}{% else %}{{ value|default:"--" }}{% endif %}</td>{% endfor %}
+                    </tr>{% empty %}<tr><td colspan="{{ headers|length }}" class="text-center text-muted py-4">No rental trips found for these filters.</td></tr>{% endfor %}
+                </tbody>
+                {% if rows %}<tfoot class="table-secondary fw-bold"><tr>{% for value in totals %}<td class="{% if forloop.counter >= 11 %}text-end{% endif %}">{% if forloop.counter >= 11 %}{{ value|floatformat:0|intcomma }}{% else %}{{ value }}{% endif %}</td>{% endfor %}</tr></tfoot>{% endif %}
+            </table>
+        </div>
+    </div></div>
+</div>
+{% endblock %}

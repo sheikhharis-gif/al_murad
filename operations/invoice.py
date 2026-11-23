@@ -29,7 +29,18 @@ from . import invoice_pdf, invoice_xlsx
 from .models import GeneratedInvoice, Trip, pk_today
 
 TRIP_RELATED = ("route__origin", "route__destination", "vehicle__vehicle_type", "vehicle_type",
-                "sub_category", "stopover_city")
+                "rate_vehicle_type", "sub_category", "stopover_city")
+
+
+def _trip_rate_category(trip):
+    weight = trip.rate_weight if trip.rate_weight is not None else trip.weight
+    vehicle_type = trip.rate_vehicle_type if trip.rate_vehicle_type_id else trip.vehicle_type
+    if not vehicle_type and trip.vehicle_id:
+        vehicle_type = trip.vehicle.vehicle_type
+    if weight is None or not vehicle_type:
+        return "Empty Trip" if trip.empty_trip else "Not Set"
+    prefix = "" if trip.rate_vehicle_type_id and trip.rate_weight is not None else "Default - "
+    return f"{prefix}{weight.normalize():f} Ton - {vehicle_type.name}"
 
 # (key, label, value-from-trip, is a money column that gets totalled)
 COLUMNS = [
@@ -38,6 +49,7 @@ COLUMNS = [
     ("bilty_number", "Bilty #", lambda t: t.bilty_number, False),
     ("vehicle", "Vehicle #", lambda t: t.vehicle.vehicle_number, False),
     ("vehicle_type", "Vehicle Type", lambda t: str(t.vehicle_type or t.vehicle.vehicle_type or ""), False),
+    ("rate_category", "Rate Category", _trip_rate_category, False),
     ("sub_category", "Sub-Category", lambda t: t.sub_category.name if t.sub_category_id else "", False),
     ("route", "Route", lambda t: t.route.route_code, False),
     ("weight", "Weight (Tons)", lambda t: t.weight, False),
@@ -49,7 +61,7 @@ COLUMNS = [
     ("remarks", "Remarks", lambda t: t.remarks, False),
 ]
 DEFAULT_COLUMNS = ["trip_no", "trip_date", "bilty_number", "vehicle", "vehicle_type", "route", "weight",
-                    "stopover_city", "stopover_charges", "trip_charges", "additional_charges", "total_freight"]
+                    "rate_category", "stopover_city", "stopover_charges", "trip_charges", "additional_charges", "total_freight"]
 
 # Invoices Status: what its Sort by box offers.
 INVOICE_SORT_FIELDS = {"created_at": "Date", "invoice_no": "Invoice #", "client__name": "Client",

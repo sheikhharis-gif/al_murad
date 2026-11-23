@@ -24,11 +24,11 @@ from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib.units import mm
 from reportlab.platypus import PageBreak, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
-from masters.models import Client, MaintenanceJob, Staff, Vehicle
+from masters.models import Client, MaintenanceJob, Staff, Vehicle, Vendor
 from .models import GeneratedInvoice, Job, JobExpense, JobFuelEntry, Trip
 
 MIS_HEADERS = [
-    "JOB #", "Trip #", "Vehicle #", "Vehicle Type", "Date", "Client", "Sub-Category", "Bilty #",
+    "JOB #", "Trip #", "Own/Rental", "Supplier", "Vehicle #", "Vehicle Type", "Rate Category", "Date", "Client", "Sub-Category", "Bilty #",
     "Weight (Tons)", "Route", "Stopover City", "Status", "Invoice #", "Trip Charges", "Stopover Charges",
     "Additional Charges", "Total Freight",
     "Departure Meter", "Arrival Meter", "Running KMs",
@@ -78,7 +78,7 @@ def build_mis(request):
     vehicle_id = request.GET.get("vehicle") or ""
     status = request.GET.get("status") or ""
 
-    jobs = Job.objects.select_related("vehicle__vehicle_type").order_by("job_number")
+    jobs = Job.objects.select_related("vehicle__vehicle_type", "vehicle__vendor", "rental_supplier").order_by("job_number")
     if start_date:
         jobs = jobs.filter(job_date__gte=start_date)
     if end_date:
@@ -94,7 +94,8 @@ def build_mis(request):
     job_ids = [j.job_number for j in jobs]
 
     trips = Trip.objects.filter(job_id__in=job_ids).select_related(
-        "client", "route", "vehicle__vehicle_type", "vehicle_type", "sub_category", "stopover_city"
+        "client", "route", "vehicle__vehicle_type", "vehicle__vendor", "vehicle_type", "rate_vehicle_type",
+        "sub_category", "stopover_city"
     ).prefetch_related("extra_stopover_cities").order_by("job_id", "id")
     if client_id:
         trips = trips.filter(client_id=client_id)
@@ -129,9 +130,14 @@ def build_mis(request):
         expense = expenses.get(job_id)
         for idx, t in enumerate(job_trips or [None]):
             vehicle = t.vehicle if t else job.vehicle
+            supplier = job.rental_supplier if job.rental_pool else (vehicle.vendor if vehicle and vehicle.vendor_id else None)
+            ownership = "RENTAL" if job.rental_pool or (vehicle and vehicle.vehicle_mode == "RENTAL") else "OWN"
+            rate_category = _rate_category_label(t) if t else "Not Set"
             row = [
-                job.job_code, t.trip_no if t else "", vehicle.vehicle_number if vehicle else job.vehicle_label,
+                job.job_code, t.trip_no if t else "", ownership, supplier.name if supplier else (vehicle.owner if vehicle and ownership == "RENTAL" else ""),
+                vehicle.vehicle_number if vehicle else job.vehicle_label,
                 str((t.vehicle_type if t else None) or (vehicle.vehicle_type if vehicle else "") or ""),
+                rate_category,
                 t.trip_date if t else job.job_date,
                 (t.client.name if t.client_id else "Empty Trip") if t else "",
                 (t.sub_category.name if t and t.sub_category_id else ""),
@@ -329,6 +335,136 @@ def _fmt(value):
     return str(value)
 
 
+def _rate_category_label(trip):
+    weight = trip.rate_weight if trip.rate_weight is not None else trip.weight
+    vehicle_type = trip.rate_vehicle_type if trip.rate_vehicle_type_id else trip.vehicle_type
+    if not vehicle_type and trip.vehicle_id:
+        vehicle_type = trip.vehicle.vehicle_type
+    if weight is None or not vehicle_type:
+        return "Empty Trip" if trip.empty_trip else "Not Set"
+    prefix = "" if trip.rate_vehicle_type_id and trip.rate_weight is not None else "Default - "
+    return f"{prefix}{weight.normalize():f} Ton - {vehicle_type.name}"
+
+
+RENTAL_HEADERS = ["Job #", "Trip #", "Date", "Client", "Supplier", "Vehicle #", "Vehicle Type",
+                  "Route", "Weight (Tons)", "Rate Category", "Complete Trip Fare", "Trip Expenses", "Profit/Loss"]
+
+
+def build_rental_mis(request):
+    """Trip-wise income and cost report for rental vehicles only."""
+    start_date = request.GET.get("start_date") or ""
+    end_date = request.GET.get("end_date") or ""
+    supplier_id = request.GET.get("supplier") or ""
+    rental_jobs = Job.objects.filter(
+        Q(rental_pool=True) | Q(vehicle__vehicle_mode="RENTAL") | Q(trips__vehicle__vehicle_mode="RENTAL")
+    ).select_related("vehicle__vendor", "rental_supplier").distinct()
+    if start_date:
+        rental_jobs = rental_jobs.filter(job_date__gte=start_date)
+    if end_date:
+        rental_jobs = rental_jobs.filter(job_date__lte=end_date)
+    if supplier_id.isdigit():
+        rental_jobs = rental_jobs.filter(
+            Q(rental_supplier_id=supplier_id) | Q(vehicle__vendor_id=supplier_id) | Q(trips__vehicle__vendor_id=supplier_id)
+        ).distinct()
+    job_ids = list(rental_jobs.values_list("job_number", flat=True))
+    trips = Trip.objects.filter(job_id__in=job_ids).filter(
+        Q(job__rental_pool=True) | Q(job__vehicle__vehicle_mode="RENTAL") | Q(vehicle__vehicle_mode="RENTAL")
+    ).select_related("job__rental_supplier", "job__vehicle__vendor", "vehicle__vendor", "vehicle__vehicle_type",
+                     "vehicle_type", "rate_vehicle_type", "client", "route", "sub_category").order_by("job_id", "trip_date", "id")
+    if start_date:
+        trips = trips.filter(trip_date__gte=start_date)
+    if end_date:
+        trips = trips.filter(trip_date__lte=end_date)
+    trips = list(trips)
+    job_expenses = {e.job_id: e for e in JobExpense.objects.filter(job_id__in=job_ids)}
+    fuel_by_job = {
+        row["job_id"]: _d(row["amount"])
+        for row in JobFuelEntry.objects.filter(job_id__in=job_ids).values("job_id").annotate(amount=Sum("amount"))
+    }
+    first_trip_by_job = {}
+    for trip in trips:
+        first_trip_by_job.setdefault(trip.job_id, trip.id)
+
+    rows = []
+    for trip in trips:
+        job = trip.job
+        vehicle = trip.vehicle
+        supplier = job.rental_supplier or vehicle.vendor
+        if not supplier and job.vehicle_id:
+            supplier = job.vehicle.vendor
+        if supplier_id.isdigit() and not (supplier and str(supplier.pk) == supplier_id):
+            continue
+        category = _rate_category_label(trip)
+        shared = job_expenses.get(job.job_number)
+        expense = _d(trip.trip_expense_total)
+        if shared and first_trip_by_job.get(job.job_number) == trip.id:
+            expense += _d(shared.total)
+        if first_trip_by_job.get(job.job_number) == trip.id:
+            expense += fuel_by_job.get(job.job_number, Decimal(0))
+        fare = _d(trip.freight)
+        rows.append([
+            job.job_code, trip.trip_no, trip.trip_date, trip.client.name if trip.client_id else "Empty Trip",
+            supplier.name if supplier else (vehicle.owner or ""), vehicle.vehicle_number,
+            str(trip.vehicle_type or vehicle.vehicle_type or ""), trip.route.route_code,
+            trip.weight, category, fare, expense, fare - expense,
+        ])
+    totals = ["Total", "", "", "", "", "", "", "", "", ""] + [
+        sum((_d(row[i]) for row in rows), Decimal(0)) for i in (10, 11, 12)
+    ]
+    return {
+        "headers": RENTAL_HEADERS, "rows": rows, "totals": totals,
+        "start_date": start_date, "end_date": end_date, "supplier_id": supplier_id,
+        "suppliers": Vendor.objects.filter(Q(rental_jobs__isnull=False) | Q(vehicles__vehicle_mode="RENTAL")).distinct().order_by("name"),
+        "query": request.GET.urlencode(), "trip_count": len(rows),
+        "total_fare": totals[10], "total_expenses": totals[11], "profit_loss": totals[12],
+    }
+
+
+@login_required
+def rental_mis_report(request):
+    return render(request, "operations/rental_mis_report.html", build_rental_mis(request))
+
+
+@login_required
+def rental_mis_excel(request):
+    data = build_rental_mis(request)
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Rental MIS"
+    header_font = Font(bold=True, color="FFFFFF")
+    header_fill = PatternFill("solid", fgColor="1F4E79")
+    border = Border(bottom=Side(style="thin", color="D9E2F3"))
+    ws.append(["Al Murad Logistics - Rental MIS"])
+    ws["A1"].font = Font(bold=True, size=14)
+    ws.append(data["headers"])
+    for cell in ws[2]:
+        cell.font, cell.fill = header_font, header_fill
+        cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+    for row in data["rows"]:
+        ws.append(row)
+    ws.append(data["totals"])
+    for row in ws.iter_rows(min_row=3):
+        for cell in row:
+            cell.border = border
+            if isinstance(cell.value, Decimal):
+                cell.value = float(cell.value)
+                cell.number_format = "#,##0.00"
+            elif isinstance(cell.value, dt.date):
+                cell.number_format = "dd-mmm-yy"
+    for cell in ws[ws.max_row]:
+        cell.font = Font(bold=True)
+        cell.fill = PatternFill("solid", fgColor="D9E2F3")
+    widths = [12, 12, 14, 26, 26, 16, 18, 14, 14, 20, 22, 18, 18]
+    for idx, width in enumerate(widths, 1):
+        ws.column_dimensions[get_column_letter(idx)].width = width
+    ws.freeze_panes = "A3"
+    ws.auto_filter.ref = f"A2:{get_column_letter(len(data['headers']))}{max(ws.max_row - 1, 2)}"
+    response = HttpResponse(content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    response["Content-Disposition"] = 'attachment; filename="Rental MIS.xlsx"'
+    wb.save(response)
+    return response
+
+
 @login_required
 def mis_report(request):
     data = build_mis(request)
@@ -381,7 +517,9 @@ def mis_excel(request):
         write_row(ws, r, row)
         r += 1
     write_row(ws, r, data["totals"], font=bold, fill=head_fill)
-    widths = {"Client": 28, "Route": 12, "Remarks": 30, "Vehicle #": 13, "Vehicle Type": 14, "Actual Transit": 16, "Invoice #": 20}
+    widths = {"Client": 28, "Supplier": 25, "Route": 12, "Remarks": 30, "Vehicle #": 13,
+              "Vehicle Type": 14, "Rate Category": 20, "Own/Rental": 13,
+              "Actual Transit": 16, "Invoice #": 20}
     for c, title in enumerate(data["headers"], start=1):
         ws.column_dimensions[get_column_letter(c)].width = widths.get(title, 18 if "Date & Time" in title else 12)
     ws.row_dimensions[2].height = 30

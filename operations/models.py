@@ -382,16 +382,12 @@ class Trip(models.Model):
         return f"Job {self.job.job_number} | Trip {self.trip_no}"
 
 
-def matching_trip_cost(client_id, route_id, vehicle_type_id, weight, on_date=None, sub_category_id=None):
-    """Updated Trip Cost of the Client Rate for this client + route + vehicle
-    type + tonnage that was in force on `on_date` (the latest one effective on
-    or before it), so revising a rate never re-prices older trips. A trip
-    dated before the first rate on file uses that first rate. None if there's
-    no rate at all.
+def matching_trip_rate(client_id, route_id, vehicle_type_id, weight, on_date=None, sub_category_id=None):
+    """Find the Client Rate matching this trip's details and effective date.
 
-    A trip with a sub-category (e.g. Revo) uses that sub-category's own rates;
-    if it has none for this route/type/tonnage it falls back to the client's
-    plain default rates (sub-category left blank)."""
+    A sub-category prefers its own rate and falls back to the client's default
+    rate. If the trip predates every rate, use the earliest rate on file.
+    """
     if not (client_id and route_id and vehicle_type_id):
         return None
     from masters.models import ClientRate
@@ -399,7 +395,7 @@ def matching_trip_cost(client_id, route_id, vehicle_type_id, weight, on_date=Non
         rates = ClientRate.objects.filter(
             client_id=client_id, route_id=route_id, vehicle_type_id=vehicle_type_id, weight_tons=weight,
             sub_category_id=sub_id,
-        ).only("updated_trip_cost")
+        )
         rate = None
         if on_date:
             rate = rates.filter(effective_date__lte=on_date).order_by("-effective_date", "-id").first()
@@ -408,8 +404,14 @@ def matching_trip_cost(client_id, route_id, vehicle_type_id, weight, on_date=Non
         else:
             rate = rates.order_by("-effective_date", "-id").first()
         if rate:
-            return rate.updated_trip_cost
+            return rate
     return None
+
+
+def matching_trip_cost(client_id, route_id, vehicle_type_id, weight, on_date=None, sub_category_id=None):
+    """Return the matched rate's fare, using the same exact trip matching rules."""
+    rate = matching_trip_rate(client_id, route_id, vehicle_type_id, weight, on_date, sub_category_id)
+    return rate.updated_trip_cost if rate else None
 
 
 def refresh_trip_freight(client_id, route_id, vehicle_type_id, weight, sub_category_id=None):
