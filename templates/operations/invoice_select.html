@@ -30,13 +30,19 @@
                 </div>
                 <div class="col-md-2 col-sm-6">
                     <label class="form-label small fw-semibold text-muted">Origin / Loading Point</label>
-                    <select name="origin_city" class="form-select form-select-sm dropdown-search-select"
-                            data-match="contains" data-theme="light" data-placeholder="Type city code or name..."
-                            data-empty-text="No matching starting city">
-                        <option value="">All invoiced origin cities</option>
-                        {% for city in origin_cities %}<option value="{{ city.id }}" {% if origin_city == city.id|stringformat:"s" %}selected{% endif %}>{{ city.code }} - {{ city.name }}</option>{% endfor %}
-                    </select>
-                    <div class="form-text">Cities appear after a non-cancelled invoice has been generated{% if client %} for this client{% endif %}.</div>
+                    <div class="position-relative" id="originCityPicker">
+                        <input type="text" id="originCitySearch" class="form-control form-control-sm" autocomplete="off" placeholder="Type city code or name...">
+                        <div class="dropdown-menu w-100" id="originCityResults" style="max-height:240px;overflow-y:auto;">
+                            {% for city in origin_cities %}
+                            <button type="button" class="dropdown-item origin-city-option" data-city-id="{{ city.id }}" data-city-label="{{ city.code }} - {{ city.name }}">{{ city.code }} - {{ city.name }}</button>
+                            {% empty %}<span class="dropdown-item-text text-muted small">No cities with generated invoices yet.</span>{% endfor %}
+                        </div>
+                    </div>
+                    <div class="d-flex flex-wrap gap-1 mt-1" id="selectedOriginCities"></div>
+                    <div id="originCityQueryInputs">
+                        {% for city in selected_origin_cities %}<input type="hidden" name="origin_city" value="{{ city.id }}">{% endfor %}
+                    </div>
+                    <div class="form-text">Choose one or more cities. List is based on generated invoices{% if client %} for this client{% endif %}.</div>
                 </div>
                 {# Shown only for a client with Has Sub-Categories on (see the script below) #}
                 <div class="col-md-2 col-sm-6 d-none" id="subCatBox">
@@ -60,7 +66,7 @@
         <input type="hidden" name="start_date" value="{{ start_date }}">
         <input type="hidden" name="end_date" value="{{ end_date }}">
         <input type="hidden" name="sub_category" value="{{ sub_category }}">
-        <input type="hidden" name="origin_city" value="{{ origin_city }}">
+        {% for city in selected_origin_cities %}<input type="hidden" name="origin_city" value="{{ city.id }}">{% endfor %}
 
         <div class="card border-0 shadow-sm rounded-4 mb-4">
             <div class="card-header bg-white border-0 pt-3 px-4">
@@ -329,6 +335,78 @@ document.addEventListener('DOMContentLoaded', function () {
     // Load Trips needs a client. The Client box is a live-search dropdown (its real <select> is
     // hidden), so check it here with a visible warning instead of a silent browser block.
     var loadForm = document.getElementById('loadForm');
+
+    // Searchable multi-select for previously billed origins. Repeated
+    // origin_city values let the server include each selected starting city.
+    var originSearch = document.getElementById('originCitySearch');
+    if (originSearch) {
+        var originPicker = document.getElementById('originCityPicker');
+        var originResults = document.getElementById('originCityResults');
+        var originOptions = Array.prototype.slice.call(originResults.querySelectorAll('.origin-city-option'));
+        var originSelected = document.getElementById('selectedOriginCities');
+        var originInputs = document.getElementById('originCityQueryInputs');
+        var selectedOrigins = Object.create(null);
+        Array.prototype.forEach.call(originInputs.querySelectorAll('input[name="origin_city"]'), function (input) {
+            selectedOrigins[input.value] = true;
+        });
+
+        function renderOrigins(showResults) {
+            var query = originSearch.value.trim().toUpperCase();
+            originOptions.forEach(function (option) {
+                var matches = option.dataset.cityLabel.toUpperCase().indexOf(query) !== -1;
+                option.style.display = matches ? '' : 'none';
+                option.classList.toggle('active', !!selectedOrigins[option.dataset.cityId]);
+                option.setAttribute('aria-selected', selectedOrigins[option.dataset.cityId] ? 'true' : 'false');
+            });
+            originResults.classList.toggle('show', !!showResults);
+            originSelected.innerHTML = '';
+            originInputs.innerHTML = '';
+            Object.keys(selectedOrigins).forEach(function (cityId) {
+                var option = originOptions.find(function (item) { return item.dataset.cityId === cityId; });
+                if (!option) return;
+                var chip = document.createElement('span');
+                chip.className = 'badge text-bg-primary d-inline-flex align-items-center gap-1';
+                chip.appendChild(document.createTextNode(option.dataset.cityLabel));
+                var remove = document.createElement('button');
+                remove.type = 'button';
+                remove.className = 'btn-close btn-close-white';
+                remove.setAttribute('aria-label', 'Remove ' + option.dataset.cityLabel);
+                remove.dataset.removeCity = cityId;
+                remove.style.fontSize = '0.55rem';
+                chip.appendChild(remove);
+                originSelected.appendChild(chip);
+                var hidden = document.createElement('input');
+                hidden.type = 'hidden'; hidden.name = 'origin_city'; hidden.value = cityId;
+                originInputs.appendChild(hidden);
+            });
+        }
+
+        originSearch.addEventListener('input', function () { renderOrigins(true); });
+        originSearch.addEventListener('focus', function () { renderOrigins(true); });
+        originResults.addEventListener('click', function (event) {
+            var option = event.target.closest('.origin-city-option');
+            if (!option) return;
+            var cityId = option.dataset.cityId;
+            if (selectedOrigins[cityId]) delete selectedOrigins[cityId];
+            else selectedOrigins[cityId] = true;
+            originSearch.value = '';
+            renderOrigins(true);
+            originSearch.focus();
+        });
+        originSelected.addEventListener('click', function (event) {
+            var remove = event.target.closest('[data-remove-city]');
+            if (!remove) return;
+            delete selectedOrigins[remove.dataset.removeCity];
+            renderOrigins(false);
+        });
+        document.addEventListener('click', function (event) {
+            if (!originPicker.contains(event.target)) originResults.classList.remove('show');
+        });
+        originSearch.addEventListener('keydown', function (event) {
+            if (event.key === 'Escape') originResults.classList.remove('show');
+        });
+        renderOrigins(false);
+    }
 
     // Sub-Category box: only for a client that has sub-categories, listing just that client's.
     var clientSel = loadForm.querySelector('select[name="client"]');

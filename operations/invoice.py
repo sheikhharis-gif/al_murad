@@ -162,7 +162,7 @@ def invoice_select(request):
     start_date = request.GET.get("start_date") or ""
     end_date = request.GET.get("end_date") or ""
     sub_category = request.GET.get("sub_category") or ""
-    origin_city_id = request.GET.get("origin_city") or ""
+    requested_origin_ids = request.GET.getlist("origin_city")
     client = Client.objects.filter(pk=client_id).first() if client_id else None
     invoiced_origin_ids = GeneratedInvoice.trips.through.objects.exclude(
         generatedinvoice__status="CANCELLED"
@@ -171,6 +171,11 @@ def invoice_select(request):
         invoiced_origin_ids = invoiced_origin_ids.filter(generatedinvoice__client=client)
     invoiced_origin_ids = invoiced_origin_ids.values_list("trip__route__origin_id", flat=True).distinct()
     origin_cities = City.objects.filter(pk__in=invoiced_origin_ids).order_by("code", "name")
+    available_origin_ids = {str(city.pk) for city in origin_cities}
+    selected_origin_city_ids = list(dict.fromkeys(
+        city_id for city_id in requested_origin_ids if city_id in available_origin_ids
+    ))
+    selected_origin_cities = list(origin_cities.filter(pk__in=selected_origin_city_ids))
     trips = []
     hidden_invoiced = 0
     if client:
@@ -178,10 +183,8 @@ def invoice_select(request):
         # A client with Sub-Categories can be invoiced one sub-category at a time.
         if client.has_sub_categories and sub_category.isdigit():
             trips = trips.filter(sub_category_id=sub_category)
-        if origin_city_id.isdigit() and origin_cities.filter(pk=origin_city_id).exists():
-            trips = trips.filter(route__origin_id=origin_city_id)
-        else:
-            origin_city_id = ""
+        if selected_origin_city_ids:
+            trips = trips.filter(route__origin_id__in=selected_origin_city_ids)
         if start_date:
             trips = trips.filter(trip_date__gte=start_date)
         if end_date:
@@ -220,7 +223,8 @@ def invoice_select(request):
         "client_provider_id": client_provider_id,
         "start_date": start_date, "end_date": end_date,
         "sub_category": sub_category,
-        "origin_city": origin_city_id,
+        "selected_origin_city_ids": selected_origin_city_ids,
+        "selected_origin_cities": selected_origin_cities,
         "origin_cities": origin_cities,
         # every client's sub-categories; the page shows the chosen client's (if it has them on)
         "sub_categories": ClientSubCategory.objects.filter(client__has_sub_categories=True).order_by("name"),
