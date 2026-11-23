@@ -29,13 +29,14 @@
                     <input type="date" name="end_date" value="{{ end_date }}" class="form-control form-control-sm rounded-3">
                 </div>
                 <div class="col-md-2 col-sm-6">
-                    <label class="form-label small fw-semibold text-muted">Starting City / Route Code</label>
+                    <label class="form-label small fw-semibold text-muted">Origin / Loading Point</label>
                     <select name="origin_city" class="form-select form-select-sm dropdown-search-select"
                             data-match="contains" data-theme="light" data-placeholder="Type city code or name..."
                             data-empty-text="No matching starting city">
-                        <option value="">All starting cities</option>
+                        <option value="">All invoiced origin cities</option>
                         {% for city in origin_cities %}<option value="{{ city.id }}" {% if origin_city == city.id|stringformat:"s" %}selected{% endif %}>{{ city.code }} - {{ city.name }}</option>{% endfor %}
                     </select>
+                    <div class="form-text">Cities appear after a non-cancelled invoice has been generated{% if client %} for this client{% endif %}.</div>
                 </div>
                 {# Shown only for a client with Has Sub-Categories on (see the script below) #}
                 <div class="col-md-2 col-sm-6 d-none" id="subCatBox">

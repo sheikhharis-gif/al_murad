@@ -164,6 +164,13 @@ def invoice_select(request):
     sub_category = request.GET.get("sub_category") or ""
     origin_city_id = request.GET.get("origin_city") or ""
     client = Client.objects.filter(pk=client_id).first() if client_id else None
+    invoiced_origin_ids = GeneratedInvoice.trips.through.objects.exclude(
+        generatedinvoice__status="CANCELLED"
+    )
+    if client:
+        invoiced_origin_ids = invoiced_origin_ids.filter(generatedinvoice__client=client)
+    invoiced_origin_ids = invoiced_origin_ids.values_list("trip__route__origin_id", flat=True).distinct()
+    origin_cities = City.objects.filter(pk__in=invoiced_origin_ids).order_by("code", "name")
     trips = []
     hidden_invoiced = 0
     if client:
@@ -171,8 +178,10 @@ def invoice_select(request):
         # A client with Sub-Categories can be invoiced one sub-category at a time.
         if client.has_sub_categories and sub_category.isdigit():
             trips = trips.filter(sub_category_id=sub_category)
-        if origin_city_id.isdigit():
+        if origin_city_id.isdigit() and origin_cities.filter(pk=origin_city_id).exists():
             trips = trips.filter(route__origin_id=origin_city_id)
+        else:
+            origin_city_id = ""
         if start_date:
             trips = trips.filter(trip_date__gte=start_date)
         if end_date:
@@ -212,7 +221,7 @@ def invoice_select(request):
         "start_date": start_date, "end_date": end_date,
         "sub_category": sub_category,
         "origin_city": origin_city_id,
-        "origin_cities": City.objects.order_by("code", "name"),
+        "origin_cities": origin_cities,
         # every client's sub-categories; the page shows the chosen client's (if it has them on)
         "sub_categories": ClientSubCategory.objects.filter(client__has_sub_categories=True).order_by("name"),
         "trip_rows": trip_rows,
