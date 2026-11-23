@@ -22,6 +22,7 @@ urlpatterns = [
     path("reports/mis/pdf/", mis.mis_pdf, name="mis_pdf"),
     path("reports/rental-mis/", mis.rental_mis_report, name="rental_mis_report"),
     path("reports/rental-mis/excel/", mis.rental_mis_excel, name="rental_mis_excel"),
+    path("reports/rental-mis/trip/<int:trip_id>/expenses/", mis.rental_trip_expense_update, name="rental_trip_expense_update"),
     path("reports/invoice/", invoice.invoice_select, name="invoice_select"),
     path("reports/invoice/trip/<int:trip_id>/rate/", invoice.invoice_trip_rate, name="invoice_trip_rate"),
     path("reports/invoice/pdf/", invoice.invoice_generate_pdf, name="invoice_generate_pdf"),

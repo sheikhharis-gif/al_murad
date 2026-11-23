@@ -8,12 +8,15 @@ row per trip in the client's MIS column layout. Downloadable as Excel and PDF.
 import datetime as dt
 import io
 from collections import OrderedDict
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 
+from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db.models import Q, Sum
 from django.http import HttpResponse
-from django.shortcuts import render
+from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
+from django.views.decorators.http import require_POST
 from django.utils import timezone
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
@@ -347,7 +350,8 @@ def _rate_category_label(trip):
 
 
 RENTAL_HEADERS = ["Job #", "Trip #", "Date", "Client", "Supplier", "Vehicle #", "Vehicle Type",
-                  "Route", "Weight (Tons)", "Rate Category", "Complete Trip Fare", "Trip Expenses", "Profit/Loss"]
+                  "Route", "Weight (Tons)", "Rate Category", "Complete Trip Fare", "Trip Expenses",
+                  "Expense %", "Profit/Loss", "Profit/Loss %"]
 
 
 def build_rental_mis(request):
@@ -355,13 +359,11 @@ def build_rental_mis(request):
     start_date = request.GET.get("start_date") or ""
     end_date = request.GET.get("end_date") or ""
     supplier_id = request.GET.get("supplier") or ""
+    client_id = request.GET.get("client") or ""
+    search = (request.GET.get("q") or "").strip()
     rental_jobs = Job.objects.filter(
         Q(rental_pool=True) | Q(vehicle__vehicle_mode="RENTAL") | Q(trips__vehicle__vehicle_mode="RENTAL")
     ).select_related("vehicle__vendor", "rental_supplier").distinct()
-    if start_date:
-        rental_jobs = rental_jobs.filter(job_date__gte=start_date)
-    if end_date:
-        rental_jobs = rental_jobs.filter(job_date__lte=end_date)
     if supplier_id.isdigit():
         rental_jobs = rental_jobs.filter(
             Q(rental_supplier_id=supplier_id) | Q(vehicle__vendor_id=supplier_id) | Q(trips__vehicle__vendor_id=supplier_id)
@@ -375,6 +377,8 @@ def build_rental_mis(request):
         trips = trips.filter(trip_date__gte=start_date)
     if end_date:
         trips = trips.filter(trip_date__lte=end_date)
+    if client_id.isdigit():
+        trips = trips.filter(client_id=client_id)
     trips = list(trips)
     job_expenses = {e.job_id: e for e in JobExpense.objects.filter(job_id__in=job_ids)}
     fuel_by_job = {
@@ -402,21 +406,43 @@ def build_rental_mis(request):
         if first_trip_by_job.get(job.job_number) == trip.id:
             expense += fuel_by_job.get(job.job_number, Decimal(0))
         fare = _d(trip.freight)
-        rows.append([
+        profit = fare - expense
+        expense_pct = expense / fare * 100 if fare else None
+        profit_pct = profit / fare * 100 if fare else None
+        values = [
             job.job_code, trip.trip_no, trip.trip_date, trip.client.name if trip.client_id else "Empty Trip",
             supplier.name if supplier else (vehicle.owner or ""), vehicle.vehicle_number,
             str(trip.vehicle_type or vehicle.vehicle_type or ""), trip.route.route_code,
-            trip.weight, category, fare, expense, fare - expense,
-        ])
-    totals = ["Total", "", "", "", "", "", "", "", "", ""] + [
-        sum((_d(row[i]) for row in rows), Decimal(0)) for i in (10, 11, 12)
-    ]
+            trip.weight, category, fare, expense, expense_pct, profit, profit_pct,
+        ]
+        rows.append({
+            "trip_id": trip.pk, "trip_no": trip.trip_no, "values": values,
+            "missing_expense": expense == 0, "is_loss": profit < 0,
+            "expense_fields": {
+                "trip_fare": trip.trip_fare, "trip_fuel": trip.trip_fuel,
+                "trip_weighbridge": trip.trip_weighbridge, "trip_loading": trip.trip_loading,
+                "trip_offloading": trip.trip_offloading,
+            },
+        })
+    if search:
+        needle = search.casefold()
+        rows = [row for row in rows if any(needle in str(value).casefold() for value in row["values"] if value is not None)]
+    total_fare = sum((_d(row["values"][10]) for row in rows), Decimal(0))
+    total_expenses = sum((_d(row["values"][11]) for row in rows), Decimal(0))
+    total_profit = total_fare - total_expenses
+    totals = ["Total", "", "", "", "", "", "", "", "", "", total_fare, total_expenses,
+              total_expenses / total_fare * 100 if total_fare else None, total_profit,
+              total_profit / total_fare * 100 if total_fare else None]
     return {
         "headers": RENTAL_HEADERS, "rows": rows, "totals": totals,
         "start_date": start_date, "end_date": end_date, "supplier_id": supplier_id,
+        "client_id": client_id, "search": search,
+        "clients": Client.objects.filter(trips__job__in=rental_jobs).distinct().order_by("name"),
         "suppliers": Vendor.objects.filter(Q(rental_jobs__isnull=False) | Q(vehicles__vehicle_mode="RENTAL")).distinct().order_by("name"),
         "query": request.GET.urlencode(), "trip_count": len(rows),
-        "total_fare": totals[10], "total_expenses": totals[11], "profit_loss": totals[12],
+        "total_fare": total_fare, "total_expenses": total_expenses, "profit_loss": total_profit,
+        "total_expense_pct": total_expenses / total_fare * 100 if total_fare else None,
+        "profit_pct": total_profit / total_fare * 100 if total_fare else None,
     }
 
 
@@ -441,7 +467,7 @@ def rental_mis_excel(request):
         cell.font, cell.fill = header_font, header_fill
         cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
     for row in data["rows"]:
-        ws.append(row)
+        ws.append(row["values"])
     ws.append(data["totals"])
     for row in ws.iter_rows(min_row=3):
         for cell in row:
@@ -451,10 +477,12 @@ def rental_mis_excel(request):
                 cell.number_format = "#,##0.00"
             elif isinstance(cell.value, dt.date):
                 cell.number_format = "dd-mmm-yy"
+        for col in (13, 15):
+            ws.cell(row=row[0].row, column=col).number_format = '0.00"%"'
     for cell in ws[ws.max_row]:
         cell.font = Font(bold=True)
         cell.fill = PatternFill("solid", fgColor="D9E2F3")
-    widths = [12, 12, 14, 26, 26, 16, 18, 14, 14, 20, 22, 18, 18]
+    widths = [12, 12, 14, 26, 26, 16, 18, 14, 14, 24, 22, 18, 14, 18, 16]
     for idx, width in enumerate(widths, 1):
         ws.column_dimensions[get_column_letter(idx)].width = width
     ws.freeze_panes = "A3"
@@ -463,6 +491,32 @@ def rental_mis_excel(request):
     response["Content-Disposition"] = 'attachment; filename="Rental MIS.xlsx"'
     wb.save(response)
     return response
+
+
+@login_required
+@require_POST
+def rental_trip_expense_update(request, trip_id):
+    rental_trips = Trip.objects.filter(
+        Q(job__rental_pool=True) | Q(job__vehicle__vehicle_mode="RENTAL") | Q(vehicle__vehicle_mode="RENTAL")
+    )
+    trip = get_object_or_404(rental_trips, pk=trip_id)
+    fields = ("trip_fare", "trip_fuel", "trip_weighbridge", "trip_loading", "trip_offloading")
+    values = {}
+    maximum = Decimal("9999999999.99")
+    try:
+        for field in fields:
+            raw = (request.POST.get(field) or "0").strip().replace(",", "")
+            value = Decimal(raw).quantize(Decimal("0.01"))
+            if not value.is_finite() or value < 0 or value > maximum:
+                raise InvalidOperation
+            values[field] = value
+    except (InvalidOperation, ValueError):
+        messages.error(request, "Expense values must be valid non-negative amounts.")
+    else:
+        Trip.objects.filter(pk=trip.pk).update(**values)
+        messages.success(request, f"Expenses saved for Trip #{trip.trip_no}.")
+    query = request.META.get("QUERY_STRING", "")
+    return redirect(f"{reverse('rental_mis_report')}?{query}" if query else "rental_mis_report")
 
 
 @login_required
