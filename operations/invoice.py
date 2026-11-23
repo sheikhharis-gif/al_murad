@@ -107,14 +107,6 @@ def _parse_date(text):
         return None
 
 
-def _tax_city_rows(settings_obj=None):
-    settings_obj = settings_obj or TaxSettings.current()
-    configured = settings_obj.origin_city_rates or {}
-    city_ids = [int(city_id) for city_id in configured if str(city_id).isdigit()]
-    cities = City.objects.filter(pk__in=city_ids).order_by("name")
-    return [(city.pk, city.name, city.get_province_display(), configured.get(str(city.pk), "0")) for city in cities]
-
-
 def _rate_category_options(trip):
     """The Client Rates (tons + vehicle type) a trip can be billed at: this client + route, the
     trip's sub-category rates (or the client's plain default ones). [(key 'tons|vtId', label)]"""
@@ -170,6 +162,7 @@ def invoice_select(request):
     start_date = request.GET.get("start_date") or ""
     end_date = request.GET.get("end_date") or ""
     sub_category = request.GET.get("sub_category") or ""
+    origin_city_id = request.GET.get("origin_city") or ""
     client = Client.objects.filter(pk=client_id).first() if client_id else None
     trips = []
     hidden_invoiced = 0
@@ -178,6 +171,8 @@ def invoice_select(request):
         # A client with Sub-Categories can be invoiced one sub-category at a time.
         if client.has_sub_categories and sub_category.isdigit():
             trips = trips.filter(sub_category_id=sub_category)
+        if origin_city_id.isdigit():
+            trips = trips.filter(route__origin_id=origin_city_id)
         if start_date:
             trips = trips.filter(trip_date__gte=start_date)
         if end_date:
@@ -216,6 +211,8 @@ def invoice_select(request):
         "client_provider_id": client_provider_id,
         "start_date": start_date, "end_date": end_date,
         "sub_category": sub_category,
+        "origin_city": origin_city_id,
+        "origin_cities": City.objects.order_by("code", "name"),
         # every client's sub-categories; the page shows the chosen client's (if it has them on)
         "sub_categories": ClientSubCategory.objects.filter(client__has_sub_categories=True).order_by("name"),
         "trip_rows": trip_rows,
@@ -224,7 +221,6 @@ def invoice_select(request):
         "hidden_invoiced": hidden_invoiced,
         "tax_provinces": TAX_PROVINCES,
         "tax_settings": TaxSettings.current(),
-        "tax_city_rates": _tax_city_rows(),
     })
 
 
@@ -248,9 +244,6 @@ def _tax_inputs(post):
         return min(max(_d(raw), Decimal(0)), Decimal(100))
 
     rates = {code: rate(f"tax_{code.lower()}", getattr(cfg, f"{code.lower()}_percent")) for code, _ in TAX_PROVINCES}
-    for city_id, default_rate in (cfg.origin_city_rates or {}).items():
-        if str(city_id).isdigit():
-            rates[f"CITY:{city_id}"] = rate(f"tax_city_{city_id}", default_rate)
     return True, mode, {k: str(v) for k, v in rates.items()}
 
 
@@ -277,11 +270,9 @@ def _compute_tax(trips, tax_enabled, tax_mode, tax_rates, breakdown_by="city"):
             origin_half = (amount / 2).quantize(Decimal("0.01"))
             parts = [(t.route.origin, origin_half), (t.route.destination, amount - origin_half)]
         for city, part in parts:
-            city_key = f"CITY:{city.pk}"
-            has_city_rate = city_key in rates
             province = city.province
-            mapped = has_city_rate or province in TAX_PROVINCE_LABELS
-            rate = rates.get(city_key, rates.get(province, Decimal(0)))
+            mapped = province in TAX_PROVINCE_LABELS
+            rate = rates.get(province, Decimal(0))
             city_bases[city.pk] = city_bases.get(city.pk, Decimal(0)) + part
             city_info[city.pk] = (city, rate, mapped)
 

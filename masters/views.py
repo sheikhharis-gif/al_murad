@@ -1160,61 +1160,12 @@ def tax_settings(request):
     if request.method == "POST":
         form = TaxSettingsForm(request.POST, instance=settings_obj)
         if form.is_valid():
-            city_ids = request.POST.getlist("origin_city_id")
-            city_values = request.POST.getlist("origin_city_percent")
-            city_rates = {}
-            city_rows = []
-            city_map = {str(city.pk): city for city in City.objects.all()}
-            city_error = None
-            for index in range(max(len(city_ids), len(city_values))):
-                city_id = city_ids[index] if index < len(city_ids) else ""
-                raw = city_values[index].strip() if index < len(city_values) else ""
-                city_rows.append({"city_id": city_id, "rate": raw})
-                if not city_id and not raw:
-                    continue
-                if city_id not in city_map:
-                    city_error = "Choose a valid origin city for every entered city tax rate."
-                    break
-                if not raw:
-                    continue
-                try:
-                    value = Decimal(raw)
-                    if not value.is_finite() or value < 0 or value > 100 or value.as_tuple().exponent < -2:
-                        raise InvalidOperation
-                except (InvalidOperation, ValueError):
-                    city_error = "Origin city tax rates must be between 0 and 100, with up to 2 decimal places."
-                    break
-                if city_id in city_rates:
-                    city_error = f"{city_map[city_id].name} has been added more than once."
-                    break
-                city_rates[city_id] = format(value, ".2f")
-            if city_error:
-                form.add_error(None, city_error)
-            else:
-                settings_obj = form.save(commit=False)
-                settings_obj.origin_city_rates = city_rates
-                settings_obj.save()
-                messages.success(request, "Province and origin city tax rates updated.")
-                return redirect("tax_settings")
-        else:
-            city_ids = request.POST.getlist("origin_city_id")
-            city_values = request.POST.getlist("origin_city_percent")
-            city_rows = [
-                {"city_id": city_ids[i] if i < len(city_ids) else "",
-                 "rate": city_values[i] if i < len(city_values) else ""}
-                for i in range(max(len(city_ids), len(city_values)))
-            ]
-        if not city_rows:
-            city_rows = [{"city_id": "", "rate": ""}]
+            form.save()
+            messages.success(request, "Tax rates updated.")
+            return redirect("tax_settings")
     else:
         form = TaxSettingsForm(instance=settings_obj)
-        city_rows = [{"city_id": city_id, "rate": rate}
-                     for city_id, rate in (settings_obj.origin_city_rates or {}).items()]
-        if not city_rows:
-            city_rows = [{"city_id": "", "rate": ""}]
-    return render(request, "tax/tax_settings.html", {
-        "form": form, "cities": City.objects.order_by("name"), "origin_city_rows": city_rows,
-    })
+    return render(request, "tax/tax_settings.html", {"form": form})
 
 
 # ================= CLIENT TYPE (admin-extensible registry) =================

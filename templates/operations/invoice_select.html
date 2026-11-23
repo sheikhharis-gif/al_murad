@@ -11,7 +11,7 @@
     <div class="card border-0 shadow-sm rounded-4 mb-4">
         <div class="card-body p-4">
             <form method="get" class="row g-3 align-items-end" id="loadForm">
-                <div class="col-md-4 col-sm-6">
+                <div class="col-md-3 col-sm-6">
                     <label class="form-label small fw-semibold text-muted">Client</label>
                     <select name="client" class="form-select form-select-sm dropdown-search-select"
                             data-match="contains" data-theme="light" data-placeholder="Type client name to search..."
@@ -28,6 +28,15 @@
                     <label class="form-label small fw-semibold text-muted">End Date</label>
                     <input type="date" name="end_date" value="{{ end_date }}" class="form-control form-control-sm rounded-3">
                 </div>
+                <div class="col-md-2 col-sm-6">
+                    <label class="form-label small fw-semibold text-muted">Starting City / Route Code</label>
+                    <select name="origin_city" class="form-select form-select-sm dropdown-search-select"
+                            data-match="contains" data-theme="light" data-placeholder="Type city code or name..."
+                            data-empty-text="No matching starting city">
+                        <option value="">All starting cities</option>
+                        {% for city in origin_cities %}<option value="{{ city.id }}" {% if origin_city == city.id|stringformat:"s" %}selected{% endif %}>{{ city.code }} - {{ city.name }}</option>{% endfor %}
+                    </select>
+                </div>
                 {# Shown only for a client with Has Sub-Categories on (see the script below) #}
                 <div class="col-md-2 col-sm-6 d-none" id="subCatBox">
                     <label class="form-label small fw-semibold text-muted">Sub-Category</label>
@@ -36,7 +45,7 @@
                         {% for sc in sub_categories %}<option value="{{ sc.id }}" data-client="{{ sc.client_id }}" {% if sub_category == sc.id|stringformat:"s" %}selected{% endif %}>{{ sc.name }}</option>{% endfor %}
                     </select>
                 </div>
-                <div class="col-md-2 col-sm-6">
+                <div class="col-md-1 col-sm-6">
                     <button type="submit" class="btn btn-primary btn-sm fw-bold w-100">Load Trips</button>
                 </div>
             </form>
@@ -50,6 +59,7 @@
         <input type="hidden" name="start_date" value="{{ start_date }}">
         <input type="hidden" name="end_date" value="{{ end_date }}">
         <input type="hidden" name="sub_category" value="{{ sub_category }}">
+        <input type="hidden" name="origin_city" value="{{ origin_city }}">
 
         <div class="card border-0 shadow-sm rounded-4 mb-4">
             <div class="card-header bg-white border-0 pt-3 px-4">
@@ -72,7 +82,7 @@
                 <div>
                     <h6 class="fw-bold mb-0 text-primary">Tax</h6>
                     <p class="text-muted small mb-0">
-                        Off by default. Full taxes each trip at its origin city rate; Partial splits it 50/50 between origin and destination city rates. A city override is used when set; otherwise its province rate applies. Rates are calculated trip by trip.
+                        Off by default. Full taxes each trip at its origin city's province rate; Partial splits it 50/50 between origin and destination province rates. Rates are calculated trip by trip.
                         The % boxes start from the <a href="{% url 'tax_settings' %}" target="_blank">Tax</a> menu - type over them to change this invoice only.
                     </p>
                 </div>
@@ -110,18 +120,6 @@
                         <input type="number" name="tax_balochistan" step="0.01" min="0" max="100" class="form-control form-control-sm" value="{{ tax_settings.balochistan_percent }}">
                     </div>
                 </div>
-                {% if tax_city_rates %}
-                <hr class="my-3">
-                <h6 class="fw-bold text-primary mb-2">Origin City Overrides</h6>
-                <div class="row g-3">
-                    {% for city_id, city_name, province_name, city_rate in tax_city_rates %}
-                    <div class="col-lg-3 col-md-4 col-sm-6">
-                        <label class="form-label small fw-semibold text-muted">{{ city_name }}{% if province_name %} ({{ province_name }}){% endif %} %</label>
-                        <input type="number" name="tax_city_{{ city_id }}" step="0.01" min="0" max="100" class="form-control form-control-sm" value="{{ city_rate }}">
-                    </div>
-                    {% endfor %}
-                </div>
-                {% endif %}
             </div>
         </div>
 

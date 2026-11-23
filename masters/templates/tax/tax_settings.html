@@ -24,7 +24,7 @@
                     <div class="card-header bg-white border-0 pt-4 px-4">
                         <h5 class="fw-bold mb-0 text-primary">Tax Rates by Province</h5>
                         <p class="text-muted small mb-0">
-                            These province rates are used for cities without a city-specific override. In <b>Full</b> mode,
+                            In <b>Full</b> mode,
                             a trip's full amount uses the origin city rate; <b>Partial</b> splits the amount between its origin and destination.
                             Each city's province is set on Cities &amp; Routes.
                         </p>
@@ -52,47 +52,6 @@
                                 {{ form.balochistan_percent }}{{ form.balochistan_percent.errors }}
                             </div>
                         </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-12">
-                <div class="card border-0 shadow-sm rounded-4">
-                    <div class="card-header bg-white border-0 pt-4 px-4 d-flex flex-column flex-md-row justify-content-between gap-2">
-                        <div>
-                            <h5 class="fw-bold mb-1 text-primary">Tax Rates by Origin City</h5>
-                            <p class="text-muted small mb-0">A city rate overrides its province rate for trips that start there. Cities without an override keep using the province rate. Invoices show tax separately for each origin city.</p>
-                        </div>
-                        <button type="button" class="btn btn-outline-primary btn-sm align-self-md-start" id="addOriginCityRate"><i class="bi bi-plus-lg me-1"></i>Add Origin City</button>
-                    </div>
-                    <div class="card-body px-4">
-                        <div class="row text-muted small fw-bold mb-2 d-none d-md-flex"><div class="col-md-7">Origin City</div><div class="col-md-4">Tax Rate %</div></div>
-                        <div id="originCityRateRows">
-                            {% for row in origin_city_rows %}
-                            <div class="row g-2 align-items-center mb-2 origin-city-rate-row">
-                                <div class="col-md-7">
-                                    <select name="origin_city_id" class="form-select">
-                                        <option value="">-- Select origin city --</option>
-                                        {% for city in cities %}<option value="{{ city.pk }}" {% if row.city_id == city.pk|stringformat:"s" %}selected{% endif %}>{{ city.name }} ({{ city.code }}){% if city.province %} - {{ city.get_province_display }}{% endif %}</option>{% endfor %}
-                                    </select>
-                                </div>
-                                <div class="col-md-4"><input type="number" name="origin_city_percent" class="form-control" min="0" max="100" step="0.01" value="{{ row.rate }}" placeholder="e.g. 15"></div>
-                                <div class="col-md-1"><button type="button" class="btn btn-outline-danger remove-origin-city-rate" title="Remove city rate"><i class="bi bi-trash"></i></button></div>
-                            </div>
-                            {% endfor %}
-                        </div>
-                        <template id="originCityRateTemplate">
-                            <div class="row g-2 align-items-center mb-2 origin-city-rate-row">
-                                <div class="col-md-7">
-                                    <select name="origin_city_id" class="form-select">
-                                        <option value="">-- Select origin city --</option>
-                                        {% for city in cities %}<option value="{{ city.pk }}">{{ city.name }} ({{ city.code }}){% if city.province %} - {{ city.get_province_display }}{% endif %}</option>{% endfor %}
-                                    </select>
-                                </div>
-                                <div class="col-md-4"><input type="number" name="origin_city_percent" class="form-control" min="0" max="100" step="0.01" placeholder="e.g. 15"></div>
-                                <div class="col-md-1"><button type="button" class="btn btn-outline-danger remove-origin-city-rate" title="Remove city rate"><i class="bi bi-trash"></i></button></div>
-                            </div>
-                        </template>
                     </div>
                 </div>
             </div>
@@ -151,18 +110,4 @@
         </div>
     </form>
 </div>
-<script>
-document.addEventListener('DOMContentLoaded', function () {
-    var rows = document.getElementById('originCityRateRows');
-    var template = document.getElementById('originCityRateTemplate');
-    document.getElementById('addOriginCityRate').addEventListener('click', function () {
-        rows.appendChild(template.content.cloneNode(true));
-    });
-    rows.addEventListener('click', function (event) {
-        var remove = event.target.closest('.remove-origin-city-rate');
-        if (remove) remove.closest('.origin-city-rate-row').remove();
-        if (!rows.querySelector('.origin-city-rate-row')) rows.appendChild(template.content.cloneNode(true));
-    });
-});
-</script>
 {% endblock %}
