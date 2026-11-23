@@ -72,7 +72,7 @@
                 <div>
                     <h6 class="fw-bold mb-0 text-primary">Tax</h6>
                     <p class="text-muted small mb-0">
-                        Off by default. Full taxes each trip's whole amount at its origin city's province rate; Partial splits every trip 50/50 - origin half at the origin city's province rate, destination half at the destination city's - calculated automatically, trip by trip, from the same 5 boxes.
+                        Off by default. Full taxes each trip at its origin city rate; Partial splits it 50/50 between origin and destination city rates. A city override is used when set; otherwise its province rate applies. Rates are calculated trip by trip.
                         The % boxes start from the <a href="{% url 'tax_settings' %}" target="_blank">Tax</a> menu - type over them to change this invoice only.
                     </p>
                 </div>
@@ -110,6 +110,18 @@
                         <input type="number" name="tax_balochistan" step="0.01" min="0" max="100" class="form-control form-control-sm" value="{{ tax_settings.balochistan_percent }}">
                     </div>
                 </div>
+                {% if tax_city_rates %}
+                <hr class="my-3">
+                <h6 class="fw-bold text-primary mb-2">Origin City Overrides</h6>
+                <div class="row g-3">
+                    {% for city_id, city_name, province_name, city_rate in tax_city_rates %}
+                    <div class="col-lg-3 col-md-4 col-sm-6">
+                        <label class="form-label small fw-semibold text-muted">{{ city_name }}{% if province_name %} ({{ province_name }}){% endif %} %</label>
+                        <input type="number" name="tax_city_{{ city_id }}" step="0.01" min="0" max="100" class="form-control form-control-sm" value="{{ city_rate }}">
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
             </div>
         </div>
 

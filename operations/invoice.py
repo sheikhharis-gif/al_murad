@@ -24,7 +24,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.views.decorators.http import require_http_methods
 
-from masters.models import DEFAULT_INVOICE_NOTES, Client, ClientSubCategory, Company, TaxSettings
+from masters.models import DEFAULT_INVOICE_NOTES, City, Client, ClientSubCategory, Company, TaxSettings
 from . import invoice_pdf, invoice_xlsx
 from .models import GeneratedInvoice, Trip, pk_today
 
@@ -73,6 +73,7 @@ TAX_PROVINCES = [
     ("SINDH", "Sindh"), ("PUNJAB", "Punjab"), ("ICT", "ICT (Islamabad Capital Territory)"),
     ("KPK", "KPK (Khyber Pakhtoon Khuwa)"), ("BALOCHISTAN", "Balochistan"),
 ]
+TAX_PROVINCE_LABELS = dict(TAX_PROVINCES)
 
 BLUE = "1F4E79"
 
@@ -104,6 +105,14 @@ def _parse_date(text):
         return date.fromisoformat(text) if text else None
     except ValueError:
         return None
+
+
+def _tax_city_rows(settings_obj=None):
+    settings_obj = settings_obj or TaxSettings.current()
+    configured = settings_obj.origin_city_rates or {}
+    city_ids = [int(city_id) for city_id in configured if str(city_id).isdigit()]
+    cities = City.objects.filter(pk__in=city_ids).order_by("name")
+    return [(city.pk, city.name, city.get_province_display(), configured.get(str(city.pk), "0")) for city in cities]
 
 
 def _rate_category_options(trip):
@@ -215,6 +224,7 @@ def invoice_select(request):
         "hidden_invoiced": hidden_invoiced,
         "tax_provinces": TAX_PROVINCES,
         "tax_settings": TaxSettings.current(),
+        "tax_city_rates": _tax_city_rows(),
     })
 
 
@@ -238,46 +248,70 @@ def _tax_inputs(post):
         return min(max(_d(raw), Decimal(0)), Decimal(100))
 
     rates = {code: rate(f"tax_{code.lower()}", getattr(cfg, f"{code.lower()}_percent")) for code, _ in TAX_PROVINCES}
+    for city_id, default_rate in (cfg.origin_city_rates or {}).items():
+        if str(city_id).isdigit():
+            rates[f"CITY:{city_id}"] = rate(f"tax_city_{city_id}", default_rate)
     return True, mode, {k: str(v) for k, v in rates.items()}
 
 
-def _compute_tax(trips, tax_enabled, tax_mode, tax_rates):
+def _compute_tax(trips, tax_enabled, tax_mode, tax_rates, breakdown_by="city"):
     """Returns (subtotal, tax_amount, breakdown) where breakdown is a list of
     (label, rate%, taxable base, tax amount) rows for the invoice's tax table.
 
-    Full: each trip's whole amount is taxed at its route's ORIGIN city's
-    jurisdiction rate. Partial: each trip is split 50/50 - the origin half at
-    the origin city's jurisdiction rate, the destination half at the
-    destination city's - worked out trip by trip, so one invoice can mix
-    routes (e.g. ICT and Punjab). A city with no province set pays no tax."""
+    Full: a trip's whole amount uses its origin city's override, falling back
+    to the origin province rate. Partial: split each trip 50/50 and use the
+    city/province rate at each end. The printed breakdown is city-wise; callers
+    can request province totals for Invoices Status."""
     subtotal = sum((_d(t.freight) for t in trips), Decimal(0))
     if not tax_enabled:
         return subtotal, Decimal(0), []
 
     rates = {k: _d(v) for k, v in tax_rates.items()}
-    base_by_code = {code: Decimal(0) for code, _ in TAX_PROVINCES}
-    unmapped = Decimal(0)
+    city_bases = {}
+    city_info = {}
     for t in trips:
         amount = _d(t.freight)
         if tax_mode == "FULL":
-            parts = [(t.route.origin.province, amount)]
+            parts = [(t.route.origin, amount)]
         else:
             origin_half = (amount / 2).quantize(Decimal("0.01"))
-            parts = [(t.route.origin.province, origin_half), (t.route.destination.province, amount - origin_half)]
-        for province, part in parts:
-            if province in base_by_code:
-                base_by_code[province] += part
-            else:
-                unmapped += part
+            parts = [(t.route.origin, origin_half), (t.route.destination, amount - origin_half)]
+        for city, part in parts:
+            city_key = f"CITY:{city.pk}"
+            has_city_rate = city_key in rates
+            province = city.province
+            mapped = has_city_rate or province in TAX_PROVINCE_LABELS
+            rate = rates.get(city_key, rates.get(province, Decimal(0)))
+            city_bases[city.pk] = city_bases.get(city.pk, Decimal(0)) + part
+            city_info[city.pk] = (city, rate, mapped)
 
-    breakdown, tax_amount = [], Decimal(0)
-    for code, label in TAX_PROVINCES:
-        base, rate = base_by_code[code], rates.get(code, Decimal(0))
-        amount = (base * rate / 100).quantize(Decimal("0.01"))
-        tax_amount += amount
-        breakdown.append((label, rate, base, amount))
-    if unmapped:
-        breakdown.append(("No Province Set", Decimal(0), unmapped, Decimal(0)))
+    city_rows = []
+    province_rows = {}
+    for city_id, base in city_bases.items():
+        city, rate, mapped = city_info[city_id]
+        tax = (base * rate / 100).quantize(Decimal("0.01")) if mapped else Decimal(0)
+        province = city.province if city.province in TAX_PROVINCE_LABELS else ""
+        province_label = TAX_PROVINCE_LABELS.get(province, "No Province Set")
+        label = f"{city.name} ({province_label})"
+        city_rows.append((label, rate if mapped else Decimal(0), base, tax))
+        key = province or "UNMAPPED"
+        if key not in province_rows:
+            province_rows[key] = [Decimal(0), Decimal(0)]
+        province_rows[key][0] += base
+        province_rows[key][1] += tax
+
+    tax_amount = sum((row[3] for row in city_rows), Decimal(0))
+    if breakdown_by == "province":
+        breakdown = []
+        for code, label in TAX_PROVINCES:
+            base, tax = province_rows.get(code, [Decimal(0), Decimal(0)])
+            effective_rate = tax * 100 / base if base else Decimal(0)
+            breakdown.append((label, effective_rate, base, tax))
+        unmapped_base, unmapped_tax = province_rows.get("UNMAPPED", [Decimal(0), Decimal(0)])
+        if unmapped_base:
+            breakdown.append(("No Province Set", Decimal(0), unmapped_base, unmapped_tax))
+    else:
+        breakdown = sorted(city_rows, key=lambda row: row[0])
     return subtotal, tax_amount, breakdown
 
 
@@ -594,7 +628,7 @@ def province_taxes(invoice):
     if not invoice.tax_enabled:
         return {}
     trips = list(invoice.trips.all())
-    _, _, breakdown = _compute_tax(trips, True, invoice.tax_mode, invoice.tax_rates)
+    _, _, breakdown = _compute_tax(trips, True, invoice.tax_mode, invoice.tax_rates, breakdown_by="province")
     by_label = {label: amount for label, _, _, amount in breakdown}
     return {code: by_label.get(label, Decimal(0)) for code, label in TAX_PROVINCES}
 

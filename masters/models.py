@@ -543,6 +543,9 @@ DEFAULT_INVOICE_NOTES = (
 # Configured once here instead of typed on every invoice - Generate Invoice
 # just switches Tax On/Off and Full/Partial, and pulls these rates in.
 class TaxSettings(models.Model):
+    # Optional tax overrides by route origin city (e.g. Karachi SRB / Lahore PRA).
+    # A city without an override continues to use its province percentage below.
+    origin_city_rates = models.JSONField("Tax rates by origin city", default=dict, blank=True)
     sindh_percent = models.DecimalField("Sindh %", max_digits=5, decimal_places=2, default=0)
     punjab_percent = models.DecimalField("Punjab %", max_digits=5, decimal_places=2, default=0)
     ict_percent = models.DecimalField("ICT %", max_digits=5, decimal_places=2, default=0)
