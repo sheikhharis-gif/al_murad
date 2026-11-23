@@ -425,6 +425,12 @@ document.addEventListener('DOMContentLoaded', function () {
     clientSel.addEventListener('change', syncSubCategories);
     syncSubCategories();
 
+    // Load the selected client's saved trips immediately so its actual route
+    // origin cities are available in the Origin / Loading Point picker.
+    clientSel.addEventListener('change', function () {
+        if (clientSel.value) loadForm.requestSubmit();
+    });
+
     loadForm.addEventListener('submit', function (e) {
         if (!loadForm.querySelector('select[name="client"]').value) {
             e.preventDefault();
