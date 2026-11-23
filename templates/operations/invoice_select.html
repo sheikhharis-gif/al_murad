@@ -35,14 +35,14 @@
                         <div class="dropdown-menu w-100" id="originCityResults" style="max-height:240px;overflow-y:auto;">
                             {% for city in origin_cities %}
                             <button type="button" class="dropdown-item origin-city-option" data-city-id="{{ city.id }}" data-city-label="{{ city.code }} - {{ city.name }}">{{ city.code }} - {{ city.name }}</button>
-                            {% empty %}<span class="dropdown-item-text text-muted small">No cities with generated invoices yet.</span>{% endfor %}
+                            {% empty %}<span class="dropdown-item-text text-muted small">Select a client and load trips to see its origin cities.</span>{% endfor %}
                         </div>
                     </div>
                     <div class="d-flex flex-wrap gap-1 mt-1" id="selectedOriginCities"></div>
                     <div id="originCityQueryInputs">
                         {% for city in selected_origin_cities %}<input type="hidden" name="origin_city" value="{{ city.id }}">{% endfor %}
                     </div>
-                    <div class="form-text">Choose one or more cities. List is based on generated invoices{% if client %} for this client{% endif %}.</div>
+                    <div class="form-text">Choose one or more origin cities available in this client's trips.</div>
                 </div>
                 {# Shown only for a client with Has Sub-Categories on (see the script below) #}
                 <div class="col-md-2 col-sm-6 d-none" id="subCatBox">

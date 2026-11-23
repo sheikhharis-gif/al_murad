@@ -164,13 +164,10 @@ def invoice_select(request):
     sub_category = request.GET.get("sub_category") or ""
     requested_origin_ids = request.GET.getlist("origin_city")
     client = Client.objects.filter(pk=client_id).first() if client_id else None
-    invoiced_origin_ids = GeneratedInvoice.trips.through.objects.exclude(
-        generatedinvoice__status="CANCELLED"
-    )
-    if client:
-        invoiced_origin_ids = invoiced_origin_ids.filter(generatedinvoice__client=client)
-    invoiced_origin_ids = invoiced_origin_ids.values_list("trip__route__origin_id", flat=True).distinct()
-    origin_cities = City.objects.filter(pk__in=invoiced_origin_ids).order_by("code", "name")
+    client_origin_ids = Trip.objects.filter(client=client).values_list(
+        "route__origin_id", flat=True
+    ).distinct() if client else []
+    origin_cities = City.objects.filter(pk__in=client_origin_ids).order_by("code", "name")
     available_origin_ids = {str(city.pk) for city in origin_cities}
     selected_origin_city_ids = list(dict.fromkeys(
         city_id for city_id in requested_origin_ids if city_id in available_origin_ids
