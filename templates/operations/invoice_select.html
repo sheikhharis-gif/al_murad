@@ -28,21 +28,22 @@
                     <label class="form-label small fw-semibold text-muted">End Date</label>
                     <input type="date" name="end_date" value="{{ end_date }}" class="form-control form-control-sm rounded-3">
                 </div>
-                <div class="col-md-2 col-sm-6">
+                <div class="col-md-3 col-sm-6">
                     <label class="form-label small fw-semibold text-muted">Origin / Loading Point</label>
-                    <div class="position-relative" id="originCityPicker">
-                        <input type="text" id="originCitySearch" class="form-control form-control-sm" autocomplete="off" placeholder="Type city code or name...">
-                        <div class="dropdown-menu w-100" id="originCityResults" style="max-height:240px;overflow-y:auto;">
-                            {% for city in origin_cities %}
-                            <button type="button" class="dropdown-item origin-city-option" data-city-id="{{ city.id }}" data-city-label="{{ city.code }} - {{ city.name }}">{{ city.code }} - {{ city.name }}</button>
-                            {% empty %}<span class="dropdown-item-text text-muted small">Select a client and load trips to see its origin cities.</span>{% endfor %}
+                    <div class="d-flex align-items-center gap-1 flex-nowrap">
+                        <div class="position-relative flex-grow-1" id="originCityPicker" style="min-width:0;">
+                            <input type="text" id="originCitySearch" class="form-control form-control-sm" autocomplete="off" placeholder="Type city code or name...">
+                            <div class="dropdown-menu w-100" id="originCityResults" style="max-height:240px;overflow-y:auto;">
+                                {% for city in origin_cities %}
+                                <button type="button" class="dropdown-item origin-city-option" data-city-id="{{ city.id }}" data-city-label="{{ city.code }} - {{ city.name }}">{{ city.code }} - {{ city.name }}</button>
+                                {% empty %}<span class="dropdown-item-text text-muted small">Select a client and load trips to see its origin cities.</span>{% endfor %}
+                            </div>
                         </div>
+                        <div class="d-flex flex-nowrap gap-1 overflow-auto" id="selectedOriginCities" style="max-width:48%;"></div>
                     </div>
-                    <div class="d-flex flex-wrap gap-1 mt-1" id="selectedOriginCities"></div>
                     <div id="originCityQueryInputs">
                         {% for city in selected_origin_cities %}<input type="hidden" name="origin_city" value="{{ city.id }}">{% endfor %}
                     </div>
-                    <div class="form-text">Choose one or more origin cities available in this client's trips.</div>
                 </div>
                 {# Shown only for a client with Has Sub-Categories on (see the script below) #}
                 <div class="col-md-2 col-sm-6 d-none" id="subCatBox">
@@ -52,7 +53,7 @@
                         {% for sc in sub_categories %}<option value="{{ sc.id }}" data-client="{{ sc.client_id }}" {% if sub_category == sc.id|stringformat:"s" %}selected{% endif %}>{{ sc.name }}</option>{% endfor %}
                     </select>
                 </div>
-                <div class="col-md-1 col-sm-6">
+                <div class="col-md-2 col-sm-6">
                     <button type="submit" class="btn btn-primary btn-sm fw-bold w-100">Load Trips</button>
                 </div>
             </form>
