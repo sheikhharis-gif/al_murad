@@ -55,6 +55,9 @@
     }
     current.url = url;
     current.title = title;
+    // two tabs on the very same page are pointless (e.g. a saved form redirecting back to a list
+    // that is already open) - keep the one we are in
+    tabs = tabs.filter(function (t) { return t === current || t.url !== url; });
     while (tabs.length > MAX_TABS) {
         var drop = tabs[0] === current ? 1 : 0;
         tabs.splice(drop, 1);
@@ -121,6 +124,31 @@
             if (e.ctrlKey || e.metaKey || e.shiftKey || e.button !== 0) return;
             setIntent('new');
         });
+    });
+
+    // A link inside a page that goes to a DIFFERENT page (report -> trip, list -> edit ...) opens
+    // as its own tab, so the page you came from (e.g. Operational MIS) stays open instead of
+    // being replaced. Same-page links (filters, paging) and downloads stay as they are.
+    document.addEventListener('click', function (e) {
+        if (e.defaultPrevented || e.ctrlKey || e.metaKey || e.shiftKey || e.button !== 0) return;
+        var a = e.target.closest && e.target.closest('a[href]');
+        if (!a || bar.contains(a) || a.closest('.app-navbar') || !a.closest('.content-area')) return;
+        if (a.target === '_blank' || a.hasAttribute('download') || a.hasAttribute('data-bs-toggle')) return;
+        var href = a.getAttribute('href');
+        if (!href || href.charAt(0) === '#' || /^(javascript|mailto|tel):/i.test(href)) return;
+        if (a.origin !== location.origin || a.pathname === location.pathname) return;
+        if (/pdf|excel|csv|export|download|print|logout|delete/i.test(a.pathname)) return;
+        setIntent('new');
+    });
+
+    // Report pages: when you come back to the tab, show fresh data within seconds
+    var hiddenAt = 0;
+    document.addEventListener('visibilitychange', function () {
+        if (document.hidden) { hiddenAt = Date.now(); return; }
+        if (hiddenAt && Date.now() - hiddenAt > 5000 && /report|mis/i.test(location.pathname) &&
+            !document.querySelector('form[method="post" i] :focus')) {
+            location.reload();
+        }
     });
 
     // Another browser window changed the tabs - keep this bar in step
