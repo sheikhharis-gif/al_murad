@@ -623,8 +623,14 @@
             if (e.key === 'ArrowDown' && n) { e.preventDefault(); highlight((active + 1) % n); }
             else if (e.key === 'ArrowUp' && n) { e.preventDefault(); highlight(active <= 0 ? n - 1 : active - 1); }
             else if (e.key === 'Escape') { hide(); }
-            else if (e.key === 'Enter' && active >= 0) { e.preventDefault(); window.location.href = items()[active].href; }
+            else if (e.key === 'Enter' && active >= 0) { e.preventDefault(); markNewTab(); window.location.href = items()[active].href; }
         });
+        // a trip / job opened from this search gets its own page tab (the page you were on stays open)
+        function markNewTab() {
+            try { sessionStorage.setItem('amTabIntent', JSON.stringify({ kind: 'new', id: '', at: Date.now() })); } catch (err) { /* storage blocked */ }
+        }
+        form.addEventListener('submit', markNewTab);
+        list.addEventListener('click', function (e) { if (e.target.closest('a')) markNewTab(); });
         document.addEventListener('click', function (e) { if (!form.contains(e.target)) hide(); });
     };
 
