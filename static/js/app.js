@@ -634,6 +634,18 @@
         document.addEventListener('click', function (e) { if (!form.contains(e.target)) hide(); });
     };
 
+    // No drag & drop of text between fields: dragging selected text out of one box (e.g. the Route)
+    // into another (Client, Bilty #) moved/changed the data by accident. Typing and copy/paste
+    // are unaffected; file inputs keep working.
+    function isTextField(t) {
+        return t && t.closest && t.closest('input:not([type=file]), textarea, select, .dropdown-search-select, [contenteditable]');
+    }
+    ['dragstart', 'dragover', 'dragenter', 'drop'].forEach(function (ev) {
+        document.addEventListener(ev, function (e) {
+            if (isTextField(e.target)) { e.preventDefault(); if (ev === 'drop') e.stopPropagation(); }
+        }, true);
+    });
+
     document.addEventListener('DOMContentLoaded', window.enhanceSearchableSelects);
     document.addEventListener('DOMContentLoaded', window.enhanceQuickOpen);
     document.addEventListener('DOMContentLoaded', window.enhanceDropdownSearchSelects);
