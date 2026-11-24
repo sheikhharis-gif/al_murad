@@ -194,13 +194,27 @@ class StaffForm(forms.ModelForm):
             ]
         }
         widgets["designation"].attrs["autofocus"] = "autofocus"
+        for _f in ("name", "father_name", "designation", "license_number", "license_category",
+                   "reference1_name", "reference2_name", "next_of_kin_name", "next_of_kin_relation"):
+            widgets[_f].attrs.update({"class": "form-control text-uppercase", "data-uppercase": "1"})
         widgets.update({
             "salary": forms.NumberInput(attrs={"class": "form-control", "step": "0.01"}),
         })
 
+    UPPER_FIELDS = ("name", "father_name", "designation", "address", "license_number", "license_category",
+                    "reference1_name", "reference2_name", "next_of_kin_name", "next_of_kin_relation")
+
+    def clean(self):
+        cleaned = super().clean()
+        for f in self.UPPER_FIELDS:
+            if isinstance(cleaned.get(f), str):
+                cleaned[f] = cleaned[f].upper()
+        return cleaned
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields["address"].widget = forms.Textarea(attrs={"class": "form-control", "rows": 3})
+        self.fields["address"].widget = forms.Textarea(
+            attrs={"class": "form-control text-uppercase", "rows": 3, "data-uppercase": "1"})
         self.fields["date_of_birth"].widget = forms.DateInput(attrs={"class": "form-control datepicker"})
         self.fields["cnic_expiry"].widget = forms.DateInput(attrs={"class": "form-control datepicker"})
         self.fields["license_expiry"].widget = forms.DateInput(attrs={"class": "form-control datepicker"})

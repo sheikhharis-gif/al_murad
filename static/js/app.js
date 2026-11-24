@@ -330,6 +330,19 @@
                 altFormat: 'd-M-y',
                 allowInput: true,
                 locale: { firstDayOfWeek: 1 },
+                // Typed text is read leniently (keypad friendly): "27-Aug-26", "27/08/2026",
+                // "27.8.26", "270826", "27082026". Flatpickr's own parser fell back to
+                // January for anything but the exact shown format. A typo keeps the old date.
+                parseDate: function (datestr) {
+                    var current = el._flatpickr && el._flatpickr.selectedDates[0];
+                    var s = String(datestr || '').trim();
+                    if (s === 'today') { var t = new Date(); t.setHours(0, 0, 0, 0); return t; }
+                    var m = s.match(/^(\d{2})(\d{2})(\d{2}|\d{4})$/);
+                    if (m) s = m[1] + '-' + m[2] + '-' + m[3];
+                    var d = window.parseFlexibleDateTime(s, null);
+                    if (d) { d.setHours(0, 0, 0, 0); return d; }
+                    return current || undefined;
+                },
                 onReady: function (selectedDates, dateStr, instance) {
                     var icon = document.createElement('i');
                     icon.className = 'bi bi-calendar3 datepicker-icon';
