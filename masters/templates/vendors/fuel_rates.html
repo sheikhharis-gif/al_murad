@@ -152,7 +152,22 @@ document.addEventListener('DOMContentLoaded', function () {
             }
             if (editHint) editHint.style.display = '';
             var form = document.getElementById('psoForm');
-            if (form) form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            if (form) {
+                // jump straight to the form (instant - the page's smooth-scroll got cancelled
+                // half way), leaving room for the sticky header, then focus the first price
+                var goUp = function () {
+                    var y = form.getBoundingClientRect().top + (window.pageYOffset || document.documentElement.scrollTop) - 150;
+                    window.scrollTo({ top: Math.max(y, 0), behavior: 'instant' });
+                    for (var p = form.parentElement; p; p = p.parentElement) {   // an inner scroll box, if any
+                        if (p.scrollHeight > p.clientHeight + 5 && /(auto|scroll)/.test(getComputedStyle(p).overflowY)) {
+                            p.scrollTop += form.getBoundingClientRect().top - p.getBoundingClientRect().top - 20;
+                        }
+                    }
+                };
+                goUp();
+                setTimeout(goUp, 60);
+                if (premierInput) premierInput.focus({ preventScroll: true });
+            }
         });
     });
 
