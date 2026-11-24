@@ -30,8 +30,8 @@
                 </div>
                 <div class="col-md-3 col-sm-6">
                     <label class="form-label small fw-semibold text-muted">Origin / Loading Point</label>
-                    <div class="d-flex align-items-center gap-1 flex-nowrap">
-                        <div class="position-relative flex-grow-1" id="originCityPicker" style="min-width:0;">
+                    <div>
+                        <div class="position-relative" id="originCityPicker" style="min-width:0;">
                             <input type="text" id="originCitySearch" class="form-control form-control-sm" autocomplete="off" placeholder="Type city code or name...">
                             <div class="dropdown-menu w-100" id="originCityResults" style="max-height:240px;overflow-y:auto;">
                                 {% for city in origin_cities %}
@@ -39,7 +39,8 @@
                                 {% empty %}<span class="dropdown-item-text text-muted small">Select a client and load trips to see its origin cities.</span>{% endfor %}
                             </div>
                         </div>
-                        <div class="d-flex flex-nowrap gap-1 overflow-auto" id="selectedOriginCities" style="max-width:48%;"></div>
+                        {# chosen cities wrap under the box - no side-by-side squeeze, no scrollbar #}
+                        <div class="d-flex flex-wrap gap-1 mt-1" id="selectedOriginCities"></div>
                     </div>
                     <div id="originCityQueryInputs">
                         {% for city in selected_origin_cities %}<input type="hidden" name="origin_city" value="{{ city.id }}">{% endfor %}
