@@ -245,7 +245,9 @@ def _annotate_moves(client, prices, products):
 def fuel_price_choices(client):
     """For the Apply Fuel Price window: every PSO fuel price (newest first) by
     product, plus how many of the client's rates have no fuel product set."""
-    prices = list(pso_fuel_prices().select_related("product").order_by("-effective_date", "-id"))
+    # a 0 price is a deleted/blank entry, never a real price to apply - keep it out of the list
+    prices = list(pso_fuel_prices().filter(fuel_price__gt=0).select_related("product")
+                  .order_by("-effective_date", "-id"))
     products = FuelProduct.objects.filter(pk__in={p.product_id for p in prices}).order_by("name")
     for p in prices:
         p.already_applied = False
