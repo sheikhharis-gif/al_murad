@@ -39,8 +39,6 @@
                                 {% empty %}<span class="dropdown-item-text text-muted small">Select a client and load trips to see its origin cities.</span>{% endfor %}
                             </div>
                         </div>
-                        {# chosen cities wrap under the box - no side-by-side squeeze, no scrollbar #}
-                        <div class="d-flex flex-wrap gap-1 mt-1" id="selectedOriginCities"></div>
                     </div>
                     <div id="originCityQueryInputs">
                         {% for city in selected_origin_cities %}<input type="hidden" name="origin_city" value="{{ city.id }}">{% endfor %}
@@ -54,7 +52,9 @@
                         {% for sc in sub_categories %}<option value="{{ sc.id }}" data-client="{{ sc.client_id }}" {% if sub_category == sc.id|stringformat:"s" %}selected{% endif %}>{{ sc.name }}</option>{% endfor %}
                     </select>
                 </div>
-                <div class="col-md-2 col-sm-6">
+                <div class="col-md-2 col-sm-6 position-relative">
+                    {# chosen origin cities sit just above Load Trips, so the input row stays on one line #}
+                    <div class="d-flex flex-wrap gap-1 position-absolute start-0 px-2" id="selectedOriginCities" style="bottom:100%;margin-bottom:4px;"></div>
                     <button type="submit" class="btn btn-primary btn-sm fw-bold w-100">Load Trips</button>
                 </div>
             </form>
