@@ -491,9 +491,16 @@ class JobFuelEntryForm(forms.ModelForm):
         model = JobFuelEntry
         fields = ["supplier", "date", "product", "slip_number", "liters", "fuel_price"]
         widgets = {
-            "supplier": forms.Select(attrs={"class": "form-select form-select-sm"}),
+            # type-to-filter, like the client / route boxes on the trips
+            "supplier": forms.Select(attrs={
+                "class": "form-select form-select-sm dropdown-search-select",
+                "data-match": "contains", "data-theme": "light",
+                "data-placeholder": "Type supplier...", "data-empty-text": "No matching supplier"}),
             "date": forms.DateInput(attrs={"class": "form-control form-control-sm", "type": "date"}),
-            "product": forms.Select(attrs={"class": "form-select form-select-sm"}),
+            "product": forms.Select(attrs={
+                "class": "form-select form-select-sm dropdown-search-select",
+                "data-match": "contains", "data-theme": "light",
+                "data-placeholder": "Type product...", "data-empty-text": "No matching product"}),
             "slip_number": forms.TextInput(attrs={"class": "form-control form-control-sm", "placeholder": "Slip #"}),
             "liters": forms.NumberInput(attrs={"class": "form-control form-control-sm", "step": "0.01"}),
             "fuel_price": forms.NumberInput(attrs={"class": "form-control form-control-sm", "step": "0.01"}),
